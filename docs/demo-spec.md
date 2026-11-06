@@ -235,7 +235,7 @@ The dragon walks. `dragon.walk` is a 2-frame walk (6 ticks per frame) drawn faci
 | `TOWER_HP` | 100 *unmeasured* |
 | `TETHER_LENGTH` | 105 px *unmeasured* |
 | `TOWER_FOLLOW_SPEED` | 60 px/s *unmeasured*, below dragon speed so the tower lags and the tether still matters |
-| `TOWER_REST_DIST` | 40 px *unmeasured*, where the follow stops; about where the 2× dragon and castle sprites stop overlapping |
+| `TOWER_REST_DIST` | 50 px *unmeasured*, where the follow stops; the 2× dragon (40 px) and the castle (60 px) just touch when one is straight above the other |
 | `TOWER_RADIUS` | 26 px, collision circle for enemies |
 | Sprite | `castle` at 2× = 60 px |
 
@@ -271,9 +271,9 @@ An enemy whose HP drops to 0 or below stops being hit at once and is removed in 
 | Skeleton | 1 | 45 | 10 | 6 | 1 | `skelly` | none (a summoned one first plays `skelly.summon`, §8.4) |
 | Slime | 2 | 35 | 12 | 8 | 1 | `slime` | on death, if `gen == 0`, spawns 2 slimes with `gen = 1`, HP 1, radius 8, at ±20 px (§8.4). Parent plays `slime.split` instead of `die`. |
 | Mage | 4 | 20 | 12 | 5 | 5 | `mage` | every `MAGE_CAST_INTERVAL = 8 s` since spawn it stops for 1 s (`spell` anim) and spawns 4 skeletons in a 40 px ring around itself, each playing `skelly.summon` once before walking. Will not cast within 80 px of the tower (§8.4). Fires a green orb at the dragon every 3 s while within 320 px of it (§8.5). |
-| Ghost knight | 3 | 27.5 | 12 | 10 | 2 | `ghost.knight` | on death plays `ghost.burn` once (0.5 s, not collidable), then becomes a **Ghost** (§8.4). |
+| Ghost knight | 10 | 27.5 | 12 | 10 | 2 | `ghost.knight` | on death plays `ghost.burn` once (0.5 s, not collidable), then becomes a **Ghost** (§8.4). |
 | Ghost | 2 | 36 | 10 | 8 | 1 | `ghost.ghost` | drawn at 60% alpha. Dies normally. |
-| Mega golem | ∞ | 75 | 56 | 40 | none | `golem` | §13. Every hit pushes it 6 px away from the hitter. Immune to procs. |
+| Mega golem | ∞ | 75 | 56 | 40 | none | `golem` | §13. Every hit pushes it `GOLEM_KNOCKBACK = 1` px away from the hitter. Immune to procs. |
 
 All numbers *unmeasured*.
 
@@ -296,7 +296,7 @@ Specials run in the enemies step before the enemy walks; a busy enemy (a casting
 - **Mage cast.** A mage's `castTimer` counts enemies steps since it spawned, or since its last cast started. When it reaches `MAGE_CAST_INTERVAL` (480 ticks) the timer restarts at 0 and a cast starts, unless the mage's centre is less than 80 px from the tower's centre at that moment: then the cast is skipped and the mage walks on. A cast lasts 60 ticks (1 s) counting the tick it starts; the mage stands still and loops `mage.spell`. At the end of its last cast tick it returns to `mage.walk` and summons 4 skeletons 40 px from its centre, at 45°, 135°, 225° and 315° from its direction toward the tower, so it walks on between the front two. Casts therefore start every 8 s; the 1 s cast is part of the 8 s. The summon has no sound (`death02` is not used).
 - **Summoned skeletons** start on `skelly.summon` frame 0. They join the enemy list at once (separation, collisions, the cap) but first act on the next tick. While `skelly.summon` plays they do not walk; they can be hit and damaged and they do touch the tower. On the tick the anim ends they switch to `skelly.walk` and walk from the next tick on.
 - **Ghost knight burn.** A dying ghost knight counts as a kill, plays `death01` and drops its gem; its effect is `ghost.burn` with its `flip` and `alpha` and `life` 30 ticks (0.5 s): the anim is 22 ticks long and holds its last frame for the rest. The burn is an effect, so it is not hit and does not touch the tower. In the effects step of the tick it finishes, the burn is removed and a ghost appears at its position with its `flip`. The ghost is added even when the cap is full. No ghost rises once the phase is no longer `'play'`.
-- **Golem.** It spawns with `hp = GOLEM_HP` and `unkillable`; it never dies and never despawns. On every damaging hit, after the damage, its HP is restored to `GOLEM_HP` and it moves 6 px along the unit direction from the hitting projectile's position (for the ring, the ring fireball; for an explosion, its centre) to the golem's centre, `(0, 1)` if they coincide, and sound `hit_golem` plays. The knockback is applied at once, before the next separation. `procImmune` marks it as immune to procs (§12). It is immovable in separation (§8.1) and deals 40 DPS on contact (§7.2).
+- **Golem.** It spawns with `hp = GOLEM_HP` and `unkillable`; it never dies and never despawns. On every damaging hit, after the damage, its HP is restored to `GOLEM_HP` and it moves `GOLEM_KNOCKBACK` (1 px) along the unit direction from the hitting projectile's position (for the ring, the ring fireball; for an explosion, its centre) to the golem's centre, `(0, 1)` if they coincide, and sound `hit_golem` plays. The knockback is applied at once, before the next separation. `procImmune` marks it as immune to procs (§12). It is immovable in separation (§8.1) and deals 40 DPS on contact (§7.2).
 
 ### 8.5 Mage orbs
 
@@ -331,7 +331,7 @@ The spawner uses `t` at the start of the tick. The weights are those of the last
 | 0:30 | 0.5 | 70 | 30 | 0 | 0 | 0 |
 | 1:00 | 0.6 | 50 | 30 | 20 | 0 | 0 |
 | 2:00 | 2.5 | 40 | 25 | 25 | 10 | 0 |
-| 3:00 | 14 | 30 | 25 | 20 | 10 | 15 |
+| 3:00 | 10 | 30 | 25 | 20 | 10 | 15 |
 | 4:00 | 16 | 25 | 25 | 20 | 10 | 20 |
 | 5:00 | 18 + golem | 25 | 25 | 20 | 10 | 20 |
 
@@ -461,7 +461,7 @@ Precisely:
 
 ## 13. Boss and run end
 
-- At 5:00 the mega golem spawns (§9). It walks at the tower at 75 px/s (faster than any other enemy and than the following tower, slower than the dragon, so only a tower dragged on the tether outruns it) and deals 40 DPS on contact. It cannot die and is never despawned. Each hit knocks it back 6 px away from the hitter, so a strong build can hold it off for a while. Hit sound `hit_golem`. Details in §8.4.
+- At 5:00 the mega golem spawns (§9). It walks at the tower at 75 px/s (faster than any other enemy and than the following tower, slower than the dragon, so only a tower dragged on the tether outruns it) and deals 40 DPS on contact. It cannot die and is never despawned. Each hit knocks it back 1 px away from the hitter, so a strong build slows it but cannot hold it off: once it arrives the tower falls within seconds unless the dragon drags it away. Hit sound `hit_golem`. Details in §8.4.
 - The run ends when tower HP reaches 0. Play `castle.destroy` and `destroy_castle_sound`, freeze the sim for 2 s, then show the game-over screen: time survived, level reached, kills, and a **Retry** button (new seed).
 - Score is `seconds survived + kills`, with seconds survived = `floor(t)` at the tick the tower fell. There is no win condition in the demo; surviving past 5:00 is the goal and the golem is what stops you.
 
@@ -477,7 +477,7 @@ Precisely:
 ## 14. XP, gems, level-up
 
 - Each enemy drops a gem worth its `XP` value at its death position. Gems are static. A gem within `DRAGON_PICKUP_RADIUS` moves toward the dragon at 500 px/s and is collected on contact. Sound `pickup`. Gems never expire. `MAX_GEMS = 600`; when exceeded, the oldest gem's value is merged into the gem nearest to it.
-- XP to next level: `xpToNext(level) = 5 + 3 × level` (level 1 needs 8, level 10 needs 35). *unmeasured*.
+- XP to next level: `xpToNext(level) = 3 + 3 × level` (level 1 needs 6, level 10 needs 33). *unmeasured*.
 - On level-up the sim increments `game.pendingLevelUps`. The loop sees it and shows the level-up screen. Several pending level-ups are shown one after the other.
 
 Gems precisely:
@@ -491,7 +491,7 @@ Level-up flow, the only entry point being `tick(intent)`:
 
 - Whenever `pendingLevelUps > 0`, `game.offers` holds the current cards, and `tick` does not advance the world: no step of §2.1 runs, `tickCount` is unchanged and `events` are still cleared.
 - If `intent.pick` is a valid index into `offers`, that card is applied, `pendingLevelUps` drops by one, sound `powerup` plays, and the next offers are rolled if level-ups remain (otherwise `offers` becomes empty). The tick that applies a pick does not advance the world either; it runs again on the next tick. Any other `pick` is ignored. So picks are part of the intent stream and a replay of the intents replays the run.
-- Offers are rolled with `game.rng` when the first level-up is queued (end of the gems step) and after each pick, from the build at that moment. A pick sent on the tick that queues a level-up is not applied, since the offers did not exist when that tick began.
+- Offers are rolled with `game.rng` when the first level-up is queued (end of the gems step) and after each pick, from the build at that moment; an empty roll ends the queue (§14.1). A pick sent on the tick that queues a level-up is not applied, since the offers did not exist when that tick began.
 - If the tower falls on the tick a level-up is queued, the offers are dropped (`offers` empty, `pendingLevelUps` 0).
 - The loop shows the level-up screen while the run is in `'play'` and `offers` is not empty, and keeps calling `tick` with the pick.
 
@@ -504,14 +504,15 @@ Build the pool, then draw 3 distinct cards with weights:
 | Upgrade weapon X to L+1 | owned, L < 5 | 4 |
 | New buff Y | Y not owned, buff slot free | 3 |
 | Upgrade buff Y to L+1 | owned, L < 3 | 3 |
-| Repair tower +25 HP | always | 1; it becomes the only card when the pool is otherwise empty |
+| Repair tower +25 HP | while any other card is in the pool, or tower HP is below `REPAIR_OFFER_BELOW = 0.5` of max HP (*unmeasured*) | 1; it becomes the only card when the pool is otherwise empty |
 
 A card shows the icon, name, level or NEW, and one line of effect text. Choose with mouse click, keys 1/2/3, or gamepad d-pad + A. Sound `powerup`.
 
 Precisely:
 
 - **Pool order** is fixed: the weapons in the order Fireball, Laser, Mini Tower, Ring, then the buffs in the §11 table order, then Repair. A weapon or buff is either an upgrade (owned, below its cap), a new card (not owned, a slot free) or absent.
-- **Drawing:** `min(3, pool size)` cards without replacement. Each card takes one `game.rng()`: `r = rng × total weight`, then the first card in pool order whose weight exceeds what is left of `r` (subtracting the weights passed). The chosen card leaves the pool before the next draw. Repair is always in the pool (weight 1), so a full build is offered Repair alone.
+- **Drawing:** `min(3, pool size)` cards without replacement. Each card takes one `game.rng()`: `r = rng × total weight`, then the first card in pool order whose weight exceeds what is left of `r` (subtracting the weights passed). The chosen card leaves the pool before the next draw. Repair (weight 1) is in the pool whenever any other card is; once the build is full (every weapon slot and buff slot filled and at its cap) it is in the pool only while `hp < 0.5 × maxHp`, so a hurt full build is offered Repair alone and a healthy one is offered nothing.
+- **Empty pool:** when the offers rolled for a pending level-up come out empty, no card is shown and every pending level-up passes at once (`pendingLevelUps` becomes 0, `offers` stays empty): the levels are still gained, no `rng` is drawn, no sound plays and the world keeps running. This happens when the first level-up is queued and after a pick (a Repair that lifts the tower to half HP or above ends the rest of the queue).
 - **Card:** `{ kind: 'weapon' | 'buff' | 'repair', id, level }`, `level` being the level after the pick (1 = new). A new weapon fires on the next weapons step; an upgrade keeps the weapon's timer and state. A new buff is appended to `game.buffs`. **Repair** restores 25 tower HP, capped at `maxHp`.
 - **Names:** Fireball, Laser, Mini Tower, Ring; Damage, Cooldown, Area, Projectile Speed, Explode, Split, Pierce; Repair.
 - **Icons:** weapons as in §17, buffs as in §11, Repair the `castle` at 1×.
@@ -618,9 +619,9 @@ Precisely:
 - **Mage:** a mage starts casting 8 s after it spawns and has spawned 4 skeletons 1 s later, unless within 80 px of the tower.
 - **Mage orbs:** a mage fires only within `MAGE_ORB_RANGE` of the dragon and never while casting, every 3 s from its spawn offset; an orb flies straight at where the dragon was; a hit removes it and takes `MAGE_ORB_DAMAGE` from the tower; a dodged orb expires after 400 px; a game without mages draws no extra random numbers.
 - **Timeline:** at t = 300 s the golem exists; at t = 0 only knights spawn.
-- **Soak:** run 5 minutes with a scripted dragon that circles the tower. Assert no exceptions, the spawner never spawns above the cap (§8.2), and the tower eventually dies. The test holds the tower at full HP until the golem has spawned, so the run reaches 5:00 whatever the balance; the horde reaches the cap on the way, and the golem then ends the run. It stays in the default suite (a few seconds).
+- **Soak:** run 5 minutes with a scripted dragon that circles the tower, on the default timeline with every rate from 3:00 on raised to at least 30/s. Assert no exceptions, the spawner never spawns above the cap (§8.2), and the tower eventually dies. The test holds the tower at full HP until the golem has spawned, so the run reaches 5:00 whatever the balance; the horde reaches the cap on the way (asserted), and the golem then ends the run. It stays in the default suite (a few seconds).
 - **Atlas:** `build-atlas.mjs` run on the manifest produces every name the game asks for. `content.js` lists its required atlas names and the test cross-checks them.
-- **Balance instrument:** `node tools/measure.mjs` plays headless runs over a pool of seeds (16 by default, a 420 s cap) and prints, per bot, median, min and max survival time, how many runs reached 5:00, kills and level as Markdown. A bot is a movement policy plus a pick rule, named `<policy>+<pick>`. Policies: `idle` gives no input (fires right, collects nothing); `aim` holds station 60 px above the tower; `kite` circles the tower at 120 px. `aim` and `kite` aim at the enemy nearest the tower, and whenever a gem that is not yet homing lies within 400 px of the tower (`--gem-range` changes it) they fly to the one nearest the dragon instead. Pick rules, used while level-up offers are open: `naive` takes card 0; `greedy` takes Repair when tower HP is below 40%, else a new weapon, else the upgrade of the highest-level weapon, else a buff upgrade, else a new buff, else card 0. `--timeline` adds tower HP, enemies alive, kills, spawned and level over time; `--set` runs a what-if (a timeline rate, the tower HP, an enemy field) without editing `content.js`. A test runs one short seed per bot.
+- **Balance instrument:** `node tools/measure.mjs` plays headless runs over a pool of seeds (16 by default, a 420 s cap) and prints, per bot, median, min and max survival time, how many runs reached 5:00 and the cap, kills, level, what ended the fallen runs and how often the tower moved, as Markdown. A bot is a movement policy plus a pick rule, named `<policy>+<pick>`. The tower follows the dragon, so every policy is anchored to a fixed world point, home (the dragon's start), never to the tower. Policies: `idle` gives no input (stands on home, fires right, collects nothing, dodges nothing); `aim` stands on home and lets the tower come to rest; `kite` walks a circle of 80 px around home, inside the tether, so the tower keeps following on a smaller circle. `aim` and `kite` aim at the enemy nearest the tower; whenever a gem that is not yet homing lies within 300 px of home (`--gem-range` changes it) they fly to the one nearest the dragon instead; and a mage orb within 100 px that will pass within its radius + `DRAGON_RADIUS` + 4 px of the dragon overrides both: they step straight away from its path, the most imminent orb first (`--no-dodge` turns it off). Pick rules, used while level-up offers are open: `naive` takes card 0; `greedy` takes Repair when tower HP is below 40%, else a new weapon, else the upgrade of the highest-level weapon, else a buff upgrade, else a new buff, else card 0. A fall's cause is the source (an enemy type's contact, or orbs) that took the most tower HP in the 30 s before it. `--timeline` adds tower HP, enemies alive, kills, spawned and level over time; `--causes` adds the tower HP lost by source per window and the HP repaired; `--set` runs a what-if (a timeline rate, the tower HP, an enemy field) without editing `content.js`. Tests run one short seed per bot and pin the anchoring, the dodge and the damage split.
 
 ---
 

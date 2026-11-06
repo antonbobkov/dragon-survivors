@@ -18,7 +18,7 @@ export const DRAGON_ANIM = 'dragon.walk'; // the sprite faces right; flipped to 
 export const TOWER_HP = 100;
 export const TETHER_LENGTH = 105;
 export const TOWER_FOLLOW_SPEED = 60;
-export const TOWER_REST_DIST = 40;
+export const TOWER_REST_DIST = 50;
 export const TOWER_RADIUS = 26;
 export const TOWER_START = { x: 0, y: TOWER_REST_DIST }; // below the dragon, at rest
 export const TOWER_QUERY_MARGIN = 60; // §15: enemy vs tower grid query radius is TOWER_RADIUS + this
@@ -33,7 +33,7 @@ export const ENEMIES = {
   skeleton:    { name: 'Skeleton',     hp: 1,        speed: 45,   r: 10, dps: 6,  xp: 1, walk: 'skelly.walk',  die: 'skelly.die',  alpha: 1, summon: 'skelly.summon' },
   slime:       { name: 'Slime',        hp: 2,        speed: 35,   r: 12, dps: 8,  xp: 1, walk: 'slime.walk',   die: 'slime.die',   alpha: 1, split: 'slime.split' },
   mage:        { name: 'Mage',         hp: 4,        speed: 20,   r: 12, dps: 5,  xp: 5, walk: 'mage.walk',    die: 'mage.die',    alpha: 1, spell: 'mage.spell' },
-  ghostKnight: { name: 'Ghost knight', hp: 3,        speed: 27.5, r: 12, dps: 10, xp: 2, walk: 'ghost.knight', die: 'ghost.burn',  alpha: 1 },
+  ghostKnight: { name: 'Ghost knight', hp: 10,       speed: 27.5, r: 12, dps: 10, xp: 2, walk: 'ghost.knight', die: 'ghost.burn',  alpha: 1 },
   ghost:       { name: 'Ghost',        hp: 2,        speed: 36,   r: 10, dps: 8,  xp: 1, walk: 'ghost.ghost',  die: 'ghost.die',   alpha: 0.6 },
   golem:       { name: 'Mega golem',   hp: Infinity, speed: 75,   r: 56, dps: 40, xp: 0, walk: 'golem.walk',   die: 'golem.die',   alpha: 1, immovable: true, procImmune: true, unkillable: true },
 };
@@ -58,7 +58,7 @@ export const MAGE_ORB_DAMAGE = 5; // tower HP per hit
 export const MAGE_ORB_ANIM = 'orb.green';
 export const MAGE_ORB_SOUND = 'slime_poke';
 export const GHOST_BURN_TIME = 0.5;
-export const GOLEM_KNOCKBACK = 6;
+export const GOLEM_KNOCKBACK = 1;
 export const GOLEM_HP = 1e9; // finite stand-in for hp ∞ in state; restored after every hit
 
 // §8.1–8.3
@@ -74,7 +74,7 @@ export const TIMELINE = [
   { t: 30,  rate: 0.5, weights: { knight: 70,  skeleton: 30, slime: 0,  mage: 0,  ghostKnight: 0 } },
   { t: 60,  rate: 0.6, weights: { knight: 50,  skeleton: 30, slime: 20, mage: 0,  ghostKnight: 0 } },
   { t: 120, rate: 2.5, weights: { knight: 40,  skeleton: 25, slime: 25, mage: 10, ghostKnight: 0 } },
-  { t: 180, rate: 14,  weights: { knight: 30,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 15 } },
+  { t: 180, rate: 10,  weights: { knight: 30,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 15 } },
   { t: 240, rate: 16,  weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 } },
   { t: 300, rate: 18,  weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 }, golem: true },
 ];
@@ -166,7 +166,9 @@ export const MAX_HITS_MEMORY = 8;
 export const GEM_SPEED = 500;
 export const GEM_COLLECT_RADIUS = 12;
 export const MAX_GEMS = 600;
-export const xpToNext = (level) => 5 + 3 * level;
+export const xpToNext = (level) => 3 + 3 * level;
+// A full build is offered Repair only while tower HP is below this fraction of max HP.
+export const REPAIR_OFFER_BELOW = 0.5;
 export const CARD_COUNT = 3;
 export const CARD_WEIGHTS = { newWeapon: 3, upgradeWeapon: 4, newBuff: 3, upgradeBuff: 3, repair: 1 };
 

@@ -39,12 +39,16 @@ test('content: dragon and tower constants match §6 and §7', () => {
 });
 
 test('content: inline constants match the spec text', () => {
-  for (const name of ['MAX_ENEMIES', 'DESPAWN_DIST', 'MAGE_CAST_INTERVAL', 'MAX_GEMS', 'GEM_COLLECT_RADIUS']) assert.equal(C[name], specConst(name), name);
+  for (const name of ['MAX_ENEMIES', 'DESPAWN_DIST', 'MAGE_CAST_INTERVAL', 'MAX_GEMS', 'GEM_COLLECT_RADIUS', 'REPAIR_OFFER_BELOW', 'GOLEM_KNOCKBACK']) assert.equal(C[name], specConst(name), name);
   assert.equal(C.DT, 1 / 60);
   assert.equal(C.GRID_CELL, 64);
   assert.equal(C.SPAWN_RING_RADIUS, 560);
-  assert.equal(C.xpToNext(1), 8);
-  assert.equal(C.xpToNext(10), 35);
+  const xp = specText.match(/`xpToNext\(level\) = (\d+) \+ (\d+) × level` \(level 1 needs (\d+), level 10 needs (\d+)\)/);
+  assert.ok(xp, 'xpToNext formula in §14');
+  const [a, b, at1, at10] = xp.slice(1).map(Number);
+  for (let l = 1; l <= 60; l++) assert.equal(C.xpToNext(l), a + b * l, `xpToNext(${l})`);
+  assert.equal(C.xpToNext(1), at1);
+  assert.equal(C.xpToNext(10), at10);
 });
 
 test('content: mage orb constants match §8.5', () => {

@@ -10,7 +10,7 @@ import { createWeapon, buffMods, buffDamage, collideRing } from '../src/sim/weap
 import { spawnProjectile, resolveHit } from '../src/sim/projectiles.js';
 import {
   DT, MAX_GEMS, GEM_COLLECT_RADIUS, DRAGON_PICKUP_RADIUS, WEAPONS, BUFFS, BUFF_IDS, WEAPON_IDS,
-  EXPLODE_RADIUS, GOLEM_HP, REPAIR_HP, xpToNext,
+  EXPLODE_RADIUS, GOLEM_HP, GOLEM_KNOCKBACK, REPAIR_HP, xpToNext,
 } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }];
@@ -82,8 +82,11 @@ test('gems: XP overflow carries over and several level-ups queue in one tick', (
   gemAt(g, 0, 0, 5);
   gemAt(g, 0, 0, 30);
   g.tick({});
-  // 42 XP: 8 (L1) + 11 (L2) + 14 (L3) leaves 9 of the 17 for L4
-  assert.deepEqual([g.level, g.pendingLevelUps, g.xp], [4, 3, 9]);
+  // 42 XP spent level by level, the overflow carried over (with 3 + 3 × level: 6 + 9 + 12 + 15)
+  let level = 1, xp = 42;
+  while (xp >= xpToNext(level)) xp -= xpToNext(level++);
+  assert.ok(level - 1 >= 2, 'several level-ups');
+  assert.deepEqual([g.level, g.pendingLevelUps, g.xp], [level, level - 1, xp]);
   assert.equal(g.offers.length, 3);
 });
 
@@ -104,7 +107,7 @@ test('gems: past MAX_GEMS the oldest merges into the gem nearest to it (ties: lo
 
 // ---- level-up ------------------------------------------------------------------------
 
-test('level-up: the pool respects slots and level caps; a full build offers only Repair', () => {
+test('level-up: the pool respects slots and level caps; a full build offers only Repair, below half HP', () => {
   const g = still();
   g.weapons = WEAPON_IDS.map((id) => createWeapon(id, id === 'ring' ? 5 : 2));
   g.buffs = ['damage', 'cooldown', 'area', 'speed'].map((id) => ({ id, level: id === 'area' ? 3 : 1 }));
@@ -116,7 +119,10 @@ test('level-up: the pool respects slots and level caps; a full build offers only
   ]);
   g.weapons.forEach((w) => { w.level = 5; });
   g.buffs.forEach((b) => { b.level = 3; });
+  g.tower.hp = g.tower.maxHp / 2 - 0.01;
   assert.deepEqual(rollOffers(g), [{ kind: 'repair', id: 'repair', level: 1 }]);
+  g.tower.hp = g.tower.maxHp / 2;
+  assert.deepEqual(rollOffers(g), [], 'a healthy full build is offered nothing');
 });
 
 test('level-up: offers are 3 distinct cards drawn by weight, one rng draw each, in pool order', () => {
@@ -480,7 +486,7 @@ test('ring: the golem is knocked back from the ring fireball', () => {
   g.weapons[0].balls = [{ x: 150, y: 0 }];
   g.grid.build(g.enemies);
   collideRing(g);
-  assert.ok(near(m.x, 206) && near(m.y, 0));
+  assert.ok(near(m.x, 200 + GOLEM_KNOCKBACK) && near(m.y, 0));
   assert.equal(m.hp, GOLEM_HP);
   assert.ok(sounded(g, 'hit_golem'));
 });
@@ -577,7 +583,7 @@ test('procs: the golem takes the hit and the knockback but no proc rolls at all'
   const p = shot(g);
   assert.equal(resolveHit(g, p, m), false, 'no pierce through the golem');
   assert.equal(c.n, 0);
-  assert.ok(near(m.x, 56));
+  assert.ok(near(m.x, 50 + GOLEM_KNOCKBACK));
   assert.equal(g.projectiles.length, 1, 'no split');
 });
 

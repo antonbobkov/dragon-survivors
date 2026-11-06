@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Game } from '../src/sim/game.js';
-import { MAX_ENEMIES } from '../src/sim/content.js';
+import { MAX_ENEMIES, TIMELINE } from '../src/sim/content.js';
 
 // Circles the tower at 120 px (tangent plus a radial correction) without aiming, so the
 // fireball fires along the flight path; picks card 0 when offers are open.
@@ -16,8 +16,12 @@ function circler(g) {
   return { moveX: ry + rx * k * 2, moveY: -rx + ry * k * 2, pick: g.offers.length ? 0 : -1 };
 }
 
+// The default timeline with every rate from 3:00 on at least 30/s, so the horde reaches the
+// cap whatever the balance and the cap check is never vacuous.
+const STRESS = TIMELINE.map((r) => (r.t >= 180 ? { ...r, rate: Math.max(r.rate, 30) } : r));
+
 test('soak: 5 minutes circling the tower; the cap holds and the golem ends the run', () => {
-  const g = new Game({ seed: 7 });
+  const g = new Game({ seed: 7, timeline: STRESS });
   // Every spawner step: whenever it spawned, the count is at most the cap.
   let overCap = 0, spawnsAtCap = 0, peak = 0;
   const step = g.stepSpawner.bind(g);
@@ -42,6 +46,7 @@ test('soak: 5 minutes circling the tower; the cap holds and the golem ends the r
   }
   assert.equal(overCap, 0, 'the spawner never spawns above the cap');
   assert.equal(spawnsAtCap, 0);
+  assert.ok(peak >= MAX_ENEMIES, `the horde reached the cap: peak ${peak}`);
   assert.ok(Math.abs(golemAt - 300) < 0.02, `golem at ${golemAt}`);
   assert.notEqual(g.phase, 'play', 'the tower fell');
   assert.ok(g.t > golemAt, `fell at ${g.t}`);
