@@ -12,11 +12,9 @@ import { dropGem } from './gems.js';
 const MAGE_INTERVAL_TICKS = Math.round(MAGE_CAST_INTERVAL / DT);
 const MAGE_CAST_TICKS = Math.round(MAGE_CAST_TIME / DT);
 const GHOST_BURN_TICKS = Math.round(GHOST_BURN_TIME / DT);
-// The summon ring, starting to the right and going clockwise on screen (y down).
-const SUMMON_DIRS = Array.from({ length: MAGE_SUMMON_COUNT }, (_, i) => {
-  const a = (i / MAGE_SUMMON_COUNT) * 2 * Math.PI;
-  return [Math.round(Math.cos(a) * 1e12) / 1e12, Math.round(Math.sin(a) * 1e12) / 1e12];
-});
+// Summon ring angles relative to the mage's direction toward the tower: half a step off
+// that direction (45°, 135°, ... for 4), so the mage walks on between the first two.
+const SUMMON_ANGLES = Array.from({ length: MAGE_SUMMON_COUNT }, (_, i) => ((i + 0.5) / MAGE_SUMMON_COUNT) * 2 * Math.PI);
 
 export function createEnemy(game, type, x, y) {
   const def = ENEMIES[type];
@@ -64,13 +62,20 @@ function mageSpecial(game, e) {
   advanceAnim(e, true);
   if (e.castTimer >= MAGE_CAST_TICKS - 1) {
     setAnim(e, def.walk);
-    for (const [ux, uy] of SUMMON_DIRS) {
-      if (game.enemies.length >= MAX_ENEMIES) break;
-      const s = createEnemy(game, 'skeleton', e.x + ux * MAGE_SUMMON_RING, e.y + uy * MAGE_SUMMON_RING);
-      setAnim(s, ENEMIES.skeleton.summon);
-    }
+    summonSkeletons(game, e);
   }
   return true;
+}
+
+function summonSkeletons(game, e) {
+  const t = game.tower;
+  const base = Math.atan2(t.y - e.y, t.x - e.x); // atan2(0, 0) = 0: defined even at the tower
+  for (const a of SUMMON_ANGLES) {
+    if (game.enemies.length >= MAX_ENEMIES) break;
+    const s = createEnemy(game, 'skeleton',
+      e.x + Math.cos(base + a) * MAGE_SUMMON_RING, e.y + Math.sin(base + a) * MAGE_SUMMON_RING);
+    setAnim(s, ENEMIES.skeleton.summon);
+  }
 }
 
 // Called on every damaging hit, after the damage. `source` is the projectile (or later the
