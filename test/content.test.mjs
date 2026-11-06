@@ -108,7 +108,8 @@ test('content: buffs match §11', () => {
     assert.equal(b.icon, icon.replace(/`/g, ''));
     [l1, l2, l3].forEach((v, i) => assert.ok(Math.abs(b.levels[i] - pct(v)) < 1e-12, `${name} L${i + 1}`));
   }
-  assert.deepEqual(C.BUFFS.pierce.laserHits, [1, 2, 3]);
+  assert.deepEqual(Object.keys(C.PROJECTILE_KINDS), ['fireball', 'laser'], 'mini-tower shots are fireballs (§10.3)');
+  assert.deepEqual(C.PROJECTILE_KINDS.laser, { explode: false, split: false, pierce: true }, '§12: lasers only pierce');
 });
 
 test('content: ATLAS_NAMES lists every §3.3 atlas name and every anim content refers to', () => {
@@ -119,7 +120,8 @@ test('content: ATLAS_NAMES lists every §3.3 atlas name and every anim content r
   assert.deepEqual([...C.ATLAS_NAMES].sort(), [...manifest].sort());
   const used = [];
   for (const e of Object.values(C.ENEMIES)) used.push(e.walk, e.die, e.summon, e.split, e.spell);
-  for (const w of Object.values(C.WEAPONS)) used.push(w.anim, w.bigAnim, w.hitEffect);
+  for (const w of Object.values(C.WEAPONS)) used.push(w.anim, w.bigAnim);
+  used.push(C.EXPLOSION_ANIM);
   for (const b of Object.values(C.BUFFS)) used.push(b.icon);
   used.push('dragon.dir', 'castle.destroy');
   for (const a of used.filter(Boolean)) assert.ok(C.ATLAS_NAMES.includes(a), a);

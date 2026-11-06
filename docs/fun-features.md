@@ -4,5 +4,5 @@ Mechanics kept for character. Each is a real rule with a test, removable only if
 
 | Feature | Rule | Where | Test |
 |---|---|---|---|
-| Split fireworks | a split child can split again, so one lucky gen-0 shot becomes up to 7 fireballs; mini-tower shots split into dragon fireballs | spec §12 Split | `test/growth.test.mjs` "procs: split spawns two fireballs…" |
+| Split fireworks | a split child can split again, so one lucky gen-0 shot becomes up to 7 fireballs; mini-tower shots are copies of the dragon's fireball, so they split the same way | spec §12 Split | `test/growth.test.mjs` "procs: split spawns two fireballs…" |
 | Gem comet tail | a gem that started homing chases the dragon across the map, so a fast pass drags a stream of gems behind it | spec §14 | `test/growth.test.mjs` "gems: homing starts inside the pickup radius and continues…" |

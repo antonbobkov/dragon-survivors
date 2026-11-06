@@ -291,7 +291,7 @@ test('fireball: kills a knight in 2 hits at level 1; death effect, kill and soun
   assert.ok(g.events.some((e) => e.name === 'death01'));
   const die = g.effects.find((f) => f.anim === 'knight.die');
   assert.ok(die && die.x === k.x && die.y === k.y && die.flip === k.flip);
-  assert.ok(g.effects.some((f) => f.anim === 'explosion.small'));
+  assert.deepEqual(g.effects.map((f) => f.anim), ['knight.die'], 'the hits spawned no effect');
   assert.equal(g.score(), Math.floor(g.t) + 1);
 });
 

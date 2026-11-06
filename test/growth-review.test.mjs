@@ -23,31 +23,33 @@ const still = (seed = 1) => {
 const near = (a, b, eps = 1e-9) => Math.abs(a - b) < eps;
 const dummy = (g, x, y, type = 'knight') => { const e = createEnemy(g, type, x, y); if (!e.unkillable) e.hp = 1000; return e; };
 const shot = (g, o = {}) => spawnProjectile(g, { kind: 'fireball', x: 0, y: 0, dx: 1, dy: 0, speed: 420, range: 420, r: 6, damage: 2, anim: 'fireball.anim', ...o });
-const laser = (g, o = {}) => spawnProjectile(g, { kind: 'laser', x: 0, y: 0, dx: 1, dy: 0, speed: 700, range: 600, r: 6, damage: 1, anim: 'laser.dir', maxHits: 3, ...o });
+const laser = (g, o = {}) => spawnProjectile(g, { kind: 'laser', x: 0, y: 0, dx: 1, dy: 0, speed: 700, range: 600, r: 6, damage: 1, anim: 'laser.dir', ...o });
 
-// ---- laser maxHits (§12) ------------------------------------------------------------
+// ---- laser vs the golem (§12) ---------------------------------------------------------
 
-test('laser: hits on the golem count toward maxHits even though no proc rolls', () => {
+test('laser: the golem uses up a laser even with Pierce L3; nothing is rolled', () => {
   const g = still();
+  g.buffs = [{ id: 'pierce', level: 3 }];
+  let draws = 0;
+  g.rng = () => { draws++; return 0; };
   const golem = createEnemy(g, 'golem', 50, 0);
   g.grid.build(g.enemies);
-  const l = laser(g, { maxHits: 2 });
-  assert.equal(resolveHit(g, l, golem), true, 'first of two hits: survives');
-  assert.equal(l.hitCount, 1);
-  assert.equal(resolveHit(g, l, golem), false, 'second hit uses it up');
-  assert.equal(l.hitCount, 2);
+  const l = laser(g);
+  assert.equal(resolveHit(g, l, golem), false, 'proc-immune: no pierce roll, used up');
+  assert.equal(draws, 0);
   assert.equal(golem.hp, GOLEM_HP);
 });
 
-test('laser: through the collision step, a golem in the row uses up one of maxHits', () => {
+test('laser: through the collision step, a golem in the row stops it before the knights', () => {
   const g = still();
+  g.buffs = [{ id: 'pierce', level: 3 }];
+  g.rng = () => 0; // every pierce roll a knight would get is won
   const golem = createEnemy(g, 'golem', 40, 0);
-  const a = dummy(g, 400, 0); // well apart: the laser reaches them one after another
-  const b = dummy(g, 440, 0);
-  const l = laser(g, { maxHits: 2 });
+  const a = dummy(g, 400, 0);
+  const l = laser(g);
   for (let i = 0; i < 40 && g.projectiles.includes(l); i++) { g.stepProjectiles(); g.stepCollisions(); }
-  assert.ok(golem.hp === GOLEM_HP && a.hp < 1000, 'golem then the first knight');
-  assert.equal(b.hp, 1000, 'gone before the second knight');
+  assert.equal(golem.hp, GOLEM_HP);
+  assert.equal(a.hp, 1000, 'stopped by the golem');
   assert.equal(g.projectiles.includes(l), false);
 });
 
@@ -175,17 +177,16 @@ test('ring: the ball radius ignores the area buff', () => {
   }
 });
 
-test('ring: every hit spawns explosion.small at the ball', () => {
+test('ring: hits spawn no effect', () => {
   const g = still();
   g.weapons = [createWeapon('ring', 1)];
   g.weapons[0].balls = [{ x: 100, y: 100 }];
-  dummy(g, 105, 100);
-  dummy(g, 100, 95);
+  const a = dummy(g, 105, 100);
+  const b = dummy(g, 100, 95);
   g.grid.build(g.enemies);
   collideRing(g);
-  const fx = g.effects.filter((f) => f.anim === 'explosion.small');
-  assert.equal(fx.length, 2, 'one per enemy hit');
-  for (const f of fx) assert.deepEqual([f.x, f.y], [100, 100]);
+  assert.ok(a.hp < 1000 && b.hp < 1000, 'both hit');
+  assert.deepEqual(g.effects, []);
 });
 
 // ---- mini tower (§10.3) --------------------------------------------------------------

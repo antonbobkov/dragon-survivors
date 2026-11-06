@@ -113,15 +113,14 @@ test('tower: HP stops at 0, never below (§7.2)', () => {
   assert.equal(g.tower.hp, 0);
 });
 
-test('projectile: the hit effect spawns at the projectile, not at the enemy (§4.1)', () => {
+test('projectile: a hit spawns no effect; explosions come only from the Explode proc (§10)', () => {
   const g = still();
   const e = createEnemy(g, 'knight', 10, 4);
   const p = bolt(g, 1, 2);
   collide(g);
-  const fx = g.effects.filter((f) => f.anim === 'explosion.small');
-  assert.equal(fx.length, 1);
-  assert.deepEqual([fx[0].x, fx[0].y], [p.x, p.y]);
-  assert.notDeepEqual([fx[0].x, fx[0].y], [e.x, e.y]);
+  assert.equal(e.hp, 2, 'hit');
+  assert.equal(g.projectiles.includes(p), false, 'used up');
+  assert.deepEqual(g.effects, []);
 });
 
 test('enemy: flip goes back to false when it walks right (§5)', () => {
