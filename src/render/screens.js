@@ -3,7 +3,7 @@
 import { VIEW_W, VIEW_H } from '../viewport.js';
 import { shadowText, formatTime, FONT, BIG_FONT } from './hud.js';
 
-export const BUTTON = { x: VIEW_W / 2 - 90, y: 400, w: 180, h: 44 };
+export const BUTTON = { x: VIEW_W / 2 - 90, y: 430, w: 180, h: 44 };
 export const OVERLAY = 'rgba(0, 0, 0, 0.6)';
 
 export const CONTROLS = [
@@ -42,24 +42,24 @@ function controls(ctx, y) {
 
 export function drawTitle(ctx) {
   overlay(ctx);
-  shadowText(ctx, 'DRAGON SURVIVORS', VIEW_W / 2, 150, { align: 'center', font: BIG_FONT, color: '#ffb84a' });
-  shadowText(ctx, 'Keep the tower alive.', VIEW_W / 2, 210, { align: 'center' });
-  controls(ctx, 270);
+  shadowText(ctx, 'DRAGON SURVIVORS', VIEW_W / 2, 100, { align: 'center', font: BIG_FONT, color: '#ffb84a' });
+  shadowText(ctx, 'Keep the tower alive.', VIEW_W / 2, 150, { align: 'center' });
+  controls(ctx, 196);
   button(ctx, 'Start');
   shadowText(ctx, 'click, Enter or A', VIEW_W / 2, BUTTON.y + BUTTON.h + 14, { align: 'center', color: '#aaa', font: FONT });
 }
 
 export function drawPause(ctx) {
   overlay(ctx);
-  shadowText(ctx, 'Paused', VIEW_W / 2, 170, { align: 'center', font: BIG_FONT });
-  controls(ctx, 260);
-  shadowText(ctx, 'Esc, P or Start to resume', VIEW_W / 2, 370, { align: 'center', color: '#aaa' });
+  shadowText(ctx, 'Paused', VIEW_W / 2, 130, { align: 'center', font: BIG_FONT });
+  controls(ctx, 196);
+  shadowText(ctx, 'Esc, P or Start to resume', VIEW_W / 2, 440, { align: 'center', color: '#aaa' });
 }
 
 export function drawGameOver(ctx, game) {
   overlay(ctx);
-  shadowText(ctx, 'The tower has fallen', VIEW_W / 2, 140, { align: 'center', font: BIG_FONT, color: '#ff6a4a' });
-  gameOverLines(game).forEach((line, i) => shadowText(ctx, line, VIEW_W / 2 - 80, 220 + i * 30));
+  shadowText(ctx, 'The tower has fallen', VIEW_W / 2, 90, { align: 'center', font: BIG_FONT, color: '#ff6a4a' });
+  gameOverLines(game).forEach((line, i) => shadowText(ctx, line, VIEW_W / 2 - 80, 140 + i * 28));
   button(ctx, 'Retry');
   shadowText(ctx, 'click, Enter or A', VIEW_W / 2, BUTTON.y + BUTTON.h + 14, { align: 'center', color: '#aaa' });
 }

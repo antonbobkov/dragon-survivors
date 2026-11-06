@@ -24,15 +24,17 @@ Change from the high-level design: the dragon does **not** body-block enemies. I
 dragon-survivors/
   index.html              canvas + script tag, nothing else
   src/
-    main.js               load assets, build Game, start the loop
-    loop.js               fixed-step loop (tick) + render on requestAnimationFrame
+    main.js               load assets, build the App, start the loop (DOM glue only)
+    app.js                screen flow (title, play, pause, game over, Retry) and ticking; no DOM
+    loop.js               fixed-step accumulator + requestAnimationFrame driver
     input.js              keyboard, mouse, gamepad -> Intent
+    viewport.js           canvas fit, CSS -> internal pixels, camera offset; no DOM
     assets.js             atlas image + atlas.json + decoded sounds
     audio.js              Web Audio playback with a voice cap
     render/
       draw.js             world rendering (background, entities, effects)
       hud.js              timer, tower HP bar, XP bar, weapon/buff icons
-      screens.js          title, level-up cards, game over
+      screens.js          title, pause, level-up cards, game over
     sim/                  no DOM, no canvas, no Date. Pure state + tick.
       game.js             Game state, tick order, run timeline
       rng.js              seeded PRNG (mulberry32)
@@ -141,6 +143,9 @@ Sounds copied as-is from the pack root: `shoot01`, `laser01`, `explosion01`, `ex
 - **Sim tick:** fixed 60 Hz (`DT = 1/60`). All speeds in this spec are world pixels per second; the sim multiplies by `DT`.
 - `loop.js` accumulates real time, runs up to 4 ticks per frame (clamps if the tab was hidden), then renders. No interpolation in the demo.
 - When the level-up screen or pause is open, ticks stop; the renderer still draws.
+- Precisely: each animation frame adds the time since the previous frame to an accumulator and runs `floor(acc / (1000/60 ms))` ticks, keeping the remainder. If more than 4 are owed, 4 run and the rest are dropped (not banked), so a stall or a hidden tab never fast-forwards. The first frame runs none. While ticks are stopped (title, pause) no time is banked, and starting or resuming a run begins with an empty accumulator.
+- Intents are built once per frame. The edge fields `confirm` and `pick` are held until the next tick runs and given to that tick only, so a frame that runs no tick (high refresh rates) loses no press. Every tick of a frame gets the frame's move and aim.
+- After each tick the browser plays that tick's `game.events` sounds (they are cleared by the next tick).
 - `Game.tick(intent)` is the only entry point into the sim. `intent` is `{ moveX, moveY, aimX, aimY, hasAim, confirm, pick }` with move and aim as unit vectors or zero, `pick` in `{0,1,2,-1}`.
 - All randomness goes through `game.rng` (mulberry32, seed passed to the `Game` constructor). Tests pass a fixed seed.
 
@@ -174,11 +179,13 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 
 ## 5. World, camera, rendering
 
-- **Internal resolution:** 960×600, matching the original. The canvas is scaled to fit the window with CSS (`image-rendering: pixelated`), keeping the aspect ratio, integer scale when possible.
+- **Internal resolution:** 960×600, matching the original. The canvas is scaled to fit the window with CSS (`image-rendering: pixelated`), keeping the aspect ratio: the scale is `min(windowW / 960, windowH / 600)`, rounded down to an integer when it is at least 1, fractional below 1. The page background is near-black and the canvas is centred.
 - **Sprite scale:** every sprite is drawn at **2×** source size (a 16px knight is 32px on screen). World coordinates are internal screen pixels, so all radii below are in those units.
-- **World:** unbounded plane. No terrain in the demo. The camera is centred on the dragon.
-- **Background:** a 64×64 grass tile generated once at startup into an offscreen canvas (dark green base, a few lighter speckles from the seeded RNG), tiled with the camera offset. A faint darker ring at tether length around the tower makes the tether rule readable.
-- **Draw order:** background, gems, tower, mini towers, enemies sorted by y, ring fireballs, projectiles, dragon, effects, HUD.
+- **World:** unbounded plane. No terrain in the demo. The camera is centred on the dragon: a world point is drawn at `world + offset` with `offset = (round(480 − dragon.x), round(300 − dragon.y))`, an integer so sprites do not shimmer. Sprites are drawn centred on the entity position, at integer screen pixels.
+- **Background:** a 64×64 grass tile generated once at startup into an offscreen canvas (dark green base, 28 lighter or darker 2×2 px speckles), tiled with the camera offset. The speckles come from the tile's own `mulberry32` with a fixed seed, never from `game.rng`, so drawing cannot change a run. A faint darker ring (2 px, black at 18% alpha) of radius `TETHER_LENGTH` around the tower makes the tether rule readable.
+- **Gem:** drawn procedurally as a 6×6 px diamond, a blue edge around a pale cyan core, at 2× (12 px on screen), centred on the gem.
+- **Draw order:** background, gems, tower, mini towers, enemies sorted by y, ring fireballs, projectiles, dragon, effects, HUD, then any screen (title, pause, game over) over a 60% black overlay. Enemies are sorted by y then id in a copy owned by the renderer; the game's enemy list is never reordered, because its order is part of the sim.
+- **Sprites:** `scale` and `alpha` of effects and enemies apply as given (`scale` multiplies the 2×); `flip` mirrors around the sprite's centre. Projectiles whose anim is a 16-direction sheet (`laser.dir`, `laser.bigdir`) draw frame `dirFrame`; others draw `frame`. The dragon draws frame `dirFrame` offset by `bob` in y.
 - **Facing:** enemies flip horizontally when moving left (`ctx.scale(-1, 1)`). The dragon uses its 16-direction sheet (§6.3).
 - `draw.js` reads the game state and never writes it. Animation indices live in the entity (`anim`, `frame`, `frameTicks`) and advance during the tick, so rendering is stateless.
 
@@ -231,7 +238,7 @@ Enemies whose circle overlaps the tower circle deal `contactDps × DT` each tick
 Circles overlap when the distance between centres is less than the sum of the radii. An enemy walking at the tower stops advancing once its centre is `r + TOWER_RADIUS − 1` px from the tower's (1 px inside contact range, *unmeasured*), so it keeps dealing damage without walking into the tower. Enemies never push the tower; when the tether drags the tower into enemies they simply overlap it.
 
 ### 7.3 Visual
-Draw the castle with a 4 px HP bar above it. Stretch goal: three tiny figures (`castle/royal_figure_*`) walking at the base of the tower while it moves, the minions carrying it.
+Draw the castle with a 4 px HP bar above it: 40 px wide, 4 px above the sprite's top edge, red fill on a dark red back, proportional to `hp / maxHp`. Once the phase is `'dying'` the castle and its bar are not drawn; the `castle.destroy` effect takes their place. Stretch goal: three tiny figures (`castle/royal_figure_*`) walking at the base of the tower while it moves, the minions carrying it.
 
 ---
 
@@ -387,6 +394,13 @@ Resolved in `projectiles.js` when a projectile hits an enemy, in this order: dam
 - The run ends when tower HP reaches 0. Play `castle.destroy` and `destroy_castle_sound`, freeze the sim for 2 s, then show the game-over screen: time survived, level reached, kills, and a **Retry** button (new seed).
 - Score is `seconds survived + kills`, with seconds survived = `floor(t)` at the tick the tower fell. There is no win condition in the demo; surviving past 5:00 is the goal and the golem is what stops you.
 
+**Screens** are the loop's business (`app.js`), drawn over the world:
+
+- **Title:** shown at page load over a fresh, unticked game: the name, one line of goal, the controls and a Start button. A click anywhere on the canvas, Enter or gamepad A starts the run. Start resumes the audio context and plays `start_game`.
+- **Pause:** Esc, P or gamepad Start toggles it during a run (`'play'` or `'dying'`). It shows "Paused" and the controls; ticks stop. Window blur and a hidden tab also pause. Pause is ignored on the title and game-over screens.
+- **Game over:** shown while the phase is `'over'`: time survived (`m:ss`), level reached, kills, score, and a Retry button. A click anywhere on the canvas, Enter or gamepad A retries. Retry builds a new `Game` with a new random seed, or the same seed when the page has `?seed=N`, skips the title and plays `start_game`.
+- Without `?seed`, the seed is a random 32-bit integer from the browser (`Math.random` is allowed outside `src/sim/`).
+
 ---
 
 ## 14. XP, gems, level-up
@@ -439,11 +453,30 @@ Checks per tick:
 
 Mouse aim always sets `hasAim = true`. Gamepad aim sets `hasAim` only when the stick is outside the deadzone. The last device that produced input wins, so plugging in a controller just works.
 
+Details:
+
+- **Keyboard:** keys are read by `KeyboardEvent.code`, so the layout does not matter. The move vector is (right − left, down − up) normalised; opposite keys cancel. Enter (and keypad Enter) is `confirm`; Digit1–3 and Numpad1–3 are `pick` 0–2. Pause, confirm and pick are edges: one per press, never from auto-repeat.
+- **Mouse:** the position is tracked over the whole window and converted from CSS pixels to internal pixels with the canvas's bounding rect (`x = (clientX − left) × 960 / width`, likewise y). The aim is the unit vector from the dragon's screen position (its centre without the bob) to the mouse; before the mouse has moved there is no mouse aim, and a mouse exactly on the dragon gives none. Only the left button counts as a click.
+- **Gamepad:** the first connected pad in the browser's standard mapping. Both sticks use a radial deadzone of 0.25: inside it the stick reads zero, outside it the raw vector clamped to length 1 (the left stick is analog movement). Buttons: A (0) is `confirm`, Start (9) pauses, d-pad left/right (14/15) navigate the level-up cards; all are edges against the previous frame.
+- **Last device:** a frame counts as keyboard-and-mouse activity when a key is held or pressed, or the mouse moved or clicked; as gamepad activity when a stick is outside its deadzone or a button was newly pressed. Move and aim come only from the current device. When both are active in the same frame the keyboard and mouse win.
+
 ---
 
 ## 17. HUD
 
 Top centre: run timer `m:ss`. Top left: tower HP bar in red with the number. Bottom: XP bar across the full width with the level number at the left. Below the timer: owned weapon icons with level pips, then buff icons. Text uses the browser's monospace font at 2× pixel scale; the original `dragonfont` is a stretch goal.
+
+| Element | Layout |
+|---|---|
+| Timer | `m:ss` of `floor(t)`, centred at the top (y 12) |
+| Tower HP | bar 200×16 px at (12, 12) with a black border, red fill proportional to `hp / maxHp`; `ceil(hp)/maxHp` to its right |
+| Icons | one 34 px slot per owned weapon (in slot order), a 16 px gap, then one per buff; the row is centred, icons at y 50 |
+| Level pips | under each icon at y 72: one 4×4 px pip per level (5 for weapons, 3 for buffs), yellow up to the current level, dark after |
+| XP bar | 14 px high across the bottom, blue fill proportional to `xp / xpToNext(level)`; `LV n` just above its left end |
+
+Text is 16 px monospace (32 px for screen titles) with a 2 px black drop shadow. All HUD numbers *unmeasured*.
+
+Weapon icons: fireball → frame 0 of `fireball.anim`; laser → frame 12 (facing right) of `laser.dir`; mini tower → `castle` at 1× (30 px); ring → `icon.ring`. Buff icons are the §11 icons. Icons draw at the standard 2× sprite scale unless stated.
 
 ---
 
@@ -451,11 +484,13 @@ Top centre: run timer `m:ss`. Top left: tower HP bar in red with the number. Bot
 
 Web Audio API. All WAVs decoded at load. `audio.play(name, { volume })` with a cap of **16 simultaneous voices** and a per-sound minimum interval of 50 ms, so 40 fireball hits in one tick play one sound. Browsers require a user gesture to start audio, so the title screen's Start click resumes the context. No music in the demo.
 
+A voice counts from its start until its buffer's duration has passed, on the audio context's clock. A sound that is throttled or over the cap is dropped, not queued. A sound that fails to load is skipped with a console warning. Every key press and click also tries to resume a suspended context (a gamepad button is not a user gesture in browsers). `start_game` plays once the context is running, on Start and on Retry. Master volume 0.6 *unmeasured*; `volume` defaults to 1.
+
 ---
 
 ## 19. Debug
 
-Query parameter `?debug=1` enables: collision circles, tick time and entity counts, keys F1–F4 to grant each weapon at level 5, F5 to jump to 4:50, `+` and `-` to change game speed. `?seed=N` fixes the RNG.
+Query parameter `?debug=1` exposes the App as `window.app` for the console (read it; only the loop calls `tick`) and enables: collision circles, tick time and entity counts, keys F1–F4 to grant each weapon at level 5, F5 to jump to 4:50, `+` and `-` to change game speed. `?seed=N` fixes the RNG.
 
 ---
 

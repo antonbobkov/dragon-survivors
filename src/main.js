@@ -53,6 +53,9 @@ async function boot() {
     audio,
   });
 
+  // §19: with ?debug=1 the App is reachable from the console as `app` (read it; do not write it).
+  if (new URLSearchParams(location.search).get('debug') === '1') window.app = app;
+
   const input = attachInput(canvas, window);
   input.onGesture(() => audio.resume());
   const inputState = createInputState();

@@ -114,6 +114,22 @@ test('game over: Retry builds a new game with a new random seed and skips the ti
   assert.equal(audio.played.filter((n) => n === 'start_game').length, 2);
 });
 
+test('pause works while dying; blur on the game-over screen does not pause', () => {
+  const { app } = makeApp();
+  app.frame(0, press({ confirm: true }));
+  run(app, 3, idle, 1);
+  app.game.tower.hp = 0; // test only
+  run(app, 3, idle, 4);
+  assert.equal(app.game.phase, 'dying');
+  app.frame(7 * STEP_MS, press({ pause: true }));
+  assert.equal(app.screen, 'paused');
+  app.frame(8 * STEP_MS, press({ pause: true }));
+  run(app, 140, idle, 9);
+  assert.equal(app.game.phase, 'over');
+  app.blur();
+  assert.equal(app.screen, 'play');
+});
+
 test('Retry with ?seed keeps the same seed', () => {
   const { app, seeds } = makeApp({ fixedSeed: 42 });
   app.frame(0, press({ confirm: true }));
