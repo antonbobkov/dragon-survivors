@@ -37,7 +37,7 @@ import { pathToFileURL } from 'node:url';
 
 const KITE_RADIUS = 120;
 const STATION = { x: 0, y: -60 }; // aim's station relative to the tower (the start layout)
-export const GEM_RANGE = 400;
+export const GEM_RANGE = 400; // about what is on screen around the tower
 const REPAIR_BELOW = 0.4;
 
 // Nearest live enemy to the tower (ties to the lower list index), or null.
@@ -209,7 +209,7 @@ export function timelineTable(runs, step, maxSeconds) {
 }
 
 function parseArgs(argv) {
-  const o = { policy: 'all', pick: 'both', gemRange: GEM_RANGE, seeds: 16, firstSeed: 1, maxSeconds: 420, timeline: false, step: 30, set: [] };
+  const o = { policy: 'all', pick: 'both', gemRange: undefined, seeds: 16, firstSeed: 1, maxSeconds: 420, timeline: false, step: 30, set: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i], v = argv[i + 1];
     if (a === '--policy') { o.policy = v; i++; }
@@ -266,7 +266,7 @@ export function main(argv) {
     }
   }
   const secs = Number(process.hrtime.bigint() - start) / 1e9;
-  console.log(`Seeds ${o.firstSeed}..${o.firstSeed + o.seeds - 1}, cap ${o.maxSeconds} s, gem range ${o.gemRange} px${o.set.length ? `, set ${o.set.join(' ')}` : ''}\n`);
+  console.log(`Seeds ${o.firstSeed}..${o.firstSeed + o.seeds - 1}, cap ${o.maxSeconds} s${o.gemRange !== undefined ? `, gem range ${o.gemRange} px` : ''}${o.set.length ? `, set ${o.set.join(' ')}` : ''}\n`);
   console.log(summaryTable(rows));
   if (o.timeline) {
     for (const bot of Object.keys(all)) {

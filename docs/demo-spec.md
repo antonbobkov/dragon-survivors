@@ -263,7 +263,7 @@ An enemy whose HP drops to 0 or below stops being hit at once and is removed in 
 | Mage | 4 | 40 | 12 | 5 | 5 | `mage` | every `MAGE_CAST_INTERVAL = 8 s` since spawn it stops for 1 s (`spell` anim) and spawns 4 skeletons in a 40 px ring around itself, each playing `skelly.summon` once before walking. Will not cast within 80 px of the tower (§8.4). |
 | Ghost knight | 3 | 55 | 12 | 10 | 2 | `ghost.knight` | on death plays `ghost.burn` once (0.5 s, not collidable), then becomes a **Ghost** (§8.4). |
 | Ghost | 2 | 72 | 10 | 8 | 1 | `ghost.ghost` | drawn at 60% alpha. Dies normally. |
-| Mega golem | ∞ | 30 | 56 | 40 | none | `golem` | §13. Every hit pushes it 6 px away from the hitter. Immune to procs. |
+| Mega golem | ∞ | 150 | 56 | 40 | none | `golem` | §13. Every hit pushes it 6 px away from the hitter. Immune to procs. |
 
 All numbers *unmeasured*.
 
@@ -303,12 +303,12 @@ The spawner uses `t` at the start of the tick. The weights are those of the last
 | 0:00 | 0.3 | 100 | 0 | 0 | 0 | 0 |
 | 0:30 | 0.5 | 70 | 30 | 0 | 0 | 0 |
 | 1:00 | 0.6 | 50 | 30 | 20 | 0 | 0 |
-| 2:00 | 5 | 40 | 25 | 25 | 10 | 0 |
-| 3:00 | 7 | 30 | 25 | 20 | 10 | 15 |
-| 4:00 | 10 | 25 | 25 | 20 | 10 | 20 |
-| 5:00 | 12 + golem | 25 | 25 | 20 | 10 | 20 |
+| 2:00 | 2.5 | 40 | 25 | 25 | 10 | 0 |
+| 3:00 | 14 | 30 | 25 | 20 | 10 | 15 |
+| 4:00 | 16 | 25 | 25 | 20 | 10 | 20 |
+| 5:00 | 18 + golem | 25 | 25 | 20 | 10 | 20 |
 
-*unmeasured*. At 5:00 the mega golem spawns on the ring on the far side of the tower from the dragon and `ohno` plays: in the clock step of the first tick where `t >= 300` (the `t` of the timeline row marked `golem`; a timeline without such a row has no golem), once per run, at `dragon + 560 px × normalize(tower − dragon)`, or straight below the dragon if dragon and tower coincide. It ignores the cap. The timeline keeps running after 5:00 (rate stays at 12) until the tower falls.
+*unmeasured*. At 5:00 the mega golem spawns on the ring on the far side of the tower from the dragon and `ohno` plays: in the clock step of the first tick where `t >= 300` (the `t` of the timeline row marked `golem`; a timeline without such a row has no golem), once per run, at `dragon + 560 px × normalize(tower − dragon)`, or straight below the dragon if dragon and tower coincide. It ignores the cap. The timeline keeps running after 5:00 (rate stays at 18) until the tower falls.
 
 ---
 
@@ -432,7 +432,7 @@ Precisely:
 
 ## 13. Boss and run end
 
-- At 5:00 the mega golem spawns (§9). It walks at the tower at 30 px/s and deals 40 DPS on contact. It cannot die and is never despawned. Each hit knocks it back 6 px away from the hitter, so a strong build can hold it off for a while. Hit sound `hit_golem`. Details in §8.4.
+- At 5:00 the mega golem spawns (§9). It walks at the tower at 150 px/s (faster than any other enemy, slower than the tower on its tether) and deals 40 DPS on contact. It cannot die and is never despawned. Each hit knocks it back 6 px away from the hitter, so a strong build can hold it off for a while. Hit sound `hit_golem`. Details in §8.4.
 - The run ends when tower HP reaches 0. Play `castle.destroy` and `destroy_castle_sound`, freeze the sim for 2 s, then show the game-over screen: time survived, level reached, kills, and a **Retry** button (new seed).
 - Score is `seconds survived + kills`, with seconds survived = `floor(t)` at the tick the tower fell. There is no win condition in the demo; surviving past 5:00 is the goal and the golem is what stops you.
 
@@ -588,7 +588,7 @@ Precisely:
 - **Timeline:** at t = 300 s the golem exists; at t = 0 only knights spawn.
 - **Soak:** run 5 minutes with a scripted dragon that circles the tower. Assert no exceptions, the spawner never spawns above the cap (§8.2), and the tower eventually dies. The test holds the tower at full HP until the golem has spawned, so the run reaches 5:00 whatever the balance; the horde reaches the cap on the way, and the golem then ends the run. It stays in the default suite (a few seconds).
 - **Atlas:** `build-atlas.mjs` run on the manifest produces every name the game asks for. `content.js` lists its required atlas names and the test cross-checks them.
-- **Balance instrument:** `node tools/measure.mjs` plays headless runs over a pool of seeds (16 by default, a 420 s cap) and prints, per bot, median, min and max survival time, how many runs reached 5:00, kills and level as Markdown. A bot is a movement policy plus a pick rule, named `<policy>+<pick>`. Policies: `idle` gives no input (fires right, collects nothing); `aim` holds station 60 px above the tower; `kite` circles the tower at 120 px. `aim` and `kite` aim at the enemy nearest the tower, and whenever a gem that is not yet homing lies within 250 px of the tower they fly to the one nearest the dragon instead. Pick rules, used while level-up offers are open: `naive` takes card 0; `greedy` takes Repair when tower HP is below 40%, else a new weapon, else the upgrade of the highest-level weapon, else a buff upgrade, else a new buff, else card 0. `--timeline` adds tower HP, enemies alive, kills, spawned and level over time; `--set` runs a what-if (a timeline rate, the tower HP, an enemy field) without editing `content.js`. A test runs one short seed per bot.
+- **Balance instrument:** `node tools/measure.mjs` plays headless runs over a pool of seeds (16 by default, a 420 s cap) and prints, per bot, median, min and max survival time, how many runs reached 5:00, kills and level as Markdown. A bot is a movement policy plus a pick rule, named `<policy>+<pick>`. Policies: `idle` gives no input (fires right, collects nothing); `aim` holds station 60 px above the tower; `kite` circles the tower at 120 px. `aim` and `kite` aim at the enemy nearest the tower, and whenever a gem that is not yet homing lies within 400 px of the tower (`--gem-range` changes it) they fly to the one nearest the dragon instead. Pick rules, used while level-up offers are open: `naive` takes card 0; `greedy` takes Repair when tower HP is below 40%, else a new weapon, else the upgrade of the highest-level weapon, else a buff upgrade, else a new buff, else card 0. `--timeline` adds tower HP, enemies alive, kills, spawned and level over time; `--set` runs a what-if (a timeline rate, the tower HP, an enemy field) without editing `content.js`. A test runs one short seed per bot.
 
 ---
 
