@@ -23,7 +23,7 @@ export class App {
     this.acc = new Accumulator();
     this.game = makeGame(this.nextSeed());
     this.screen = 'title'; // 'title' | 'play' | 'paused'
-    this.pending = { confirm: false, pick: -1, debug: null };
+    this.pending = { confirm: false, pick: -1, debug: [] };
     this.cardSel = 0; // highlighted level-up card (d-pad + A), reset for every new set of offers
     this.seenOffers = null;
   }
@@ -54,7 +54,7 @@ export class App {
   start() {
     this.screen = 'play';
     this.acc.reset(); // the run starts on the next frame
-    this.pending = { confirm: false, pick: -1, debug: null };
+    this.pending = { confirm: false, pick: -1, debug: [] };
     Promise.resolve(this.audio.resume()).then(() => this.audio.play('start_game'));
   }
 
@@ -114,10 +114,11 @@ export class App {
     // Edge-triggered fields wait for the next tick, so a frame that runs no tick loses none.
     if (input.confirm) this.pending.confirm = true;
     if (input.pick >= 0) this.pending.pick = input.pick;
-    // §19: F1–F4 / F5 reach the sim as the next tick's `intent.debug`.
+    // §19: F1–F4 / F5 queue up and reach the sim one per tick as `intent.debug`, so presses
+    // made while no tick runs (a slow or throttled frame) are not lost.
     if (this.debug && input.debug) {
-      if (input.debug.grant) this.pending.debug = { grant: input.debug.grant };
-      else if (input.debug.jump) this.pending.debug = { jumpTo: DEBUG_JUMP_TO };
+      if (input.debug.grant) this.pending.debug.push({ grant: input.debug.grant });
+      if (input.debug.jump) this.pending.debug.push({ jumpTo: DEBUG_JUMP_TO });
     }
   }
 
@@ -128,10 +129,9 @@ export class App {
     const t0 = n > 0 ? this.now() : 0;
     for (let i = 0; i < n; i++) {
       const intent = { ...input.intent, confirm: this.pending.confirm, pick: this.pending.pick };
-      if (this.pending.debug) intent.debug = this.pending.debug;
+      if (this.pending.debug.length) intent.debug = this.pending.debug.shift();
       this.pending.confirm = false;
       this.pending.pick = -1;
-      this.pending.debug = null;
       this.game.tick(intent);
       for (const ev of this.game.events) if (ev.type === 'sound') this.audio.play(ev.name);
     }

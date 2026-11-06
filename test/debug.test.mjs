@@ -195,3 +195,13 @@ test('debug overlay: draws circles and stats without writing game state', () => 
   assert.match(lines, new RegExp(`enemies ${g.enemies.length}\\b`));
   assert.match(lines, new RegExp(`gems ${g.gems.length}\\b`));
 });
+
+test('app: debug presses made while no tick runs queue up and reach the sim one per tick', () => {
+  const app = makeApp(true);
+  app.frame(0, { ...idle, confirm: true }); // title -> play
+  app.frame(STEP_MS, idle);
+  // A throttled frame rate: four presses in frames that run no tick (same timestamp).
+  for (const grant of ['fireball', 'laser', 'miniTower', 'ring']) app.frame(STEP_MS, press({ grant }));
+  for (let i = 2; i <= 6; i++) app.frame(i * STEP_MS, idle);
+  assert.equal(levels(app.game), 'fireball:5,laser:5,miniTower:5,ring:5');
+});
