@@ -178,14 +178,21 @@ test('separation: overlapping enemies push apart; the golem is immovable', () =>
 });
 
 test('separation: at most 6 neighbours push an enemy per tick', () => {
+  // A knight inside a ring of 10 immovable neighbours: every push moves it toward the
+  // opposite side, so overlaps persist and only the cap stops the pushes.
   const g = quietGame();
-  const e = createEnemy(g, 'knight', 0, 0);
-  for (let i = 0; i < 10; i++) createEnemy(g, 'knight', 1 + i * 0.1, 0); // all to the right
+  createEnemy(g, 'knight', 0, 0);
+  let typeReads = 0;
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * 2 * Math.PI;
+    const o = createEnemy(g, 'golem', 20 * Math.cos(a), 20 * Math.sin(a));
+    o.r = 12;
+    Object.defineProperty(o, 'type', { get() { typeReads++; return 'golem'; } });
+  }
   g.grid.build(g.enemies);
-  const x0 = e.x;
   separate(g);
-  // each neighbour pushes at most half of 24 px; 6 of them -> at most 72 px
-  assert.ok(x0 - e.x <= 6 * 12 + 1e-9 && x0 - e.x > 0);
+  // each ring member reads its own type once (immovable: skipped); every push reads the neighbour's type
+  assert.equal(typeReads - 10, 6);
 });
 
 test('despawn: an enemy past DESPAWN_DIST from the tower is removed and its budget refunded', () => {
