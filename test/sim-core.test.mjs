@@ -133,12 +133,14 @@ test('tether: moving the dragon 500 px right leaves the tower exactly TETHER_LEN
   assert.deepEqual([g.tower.x, g.tower.y], before);
 });
 
-test('contact: one knight overlapping the tower for 1 s removes 10 HP (±1 tick)', () => {
+test('contact: one knight overlapping the tower for 1 s removes its contact DPS (±1 tick)', () => {
   const g = quietGame();
   g.weapons = [];
   createEnemy(g, 'knight', g.tower.x, g.tower.y + TOWER_RADIUS + 12 - 4);
   run(g, 60, {});
-  assert.ok(Math.abs(g.tower.hp - 90) <= 10 * DT + 1e-9, `hp ${g.tower.hp}`);
+  const dps = ENEMIES.knight.dps;
+  assert.ok(dps > 0);
+  assert.ok(Math.abs(g.tower.hp - (g.tower.maxHp - dps)) <= dps * DT + 1e-9, `hp ${g.tower.hp}`);
 });
 
 test('contact: an enemy walks to the tower and stops just inside contact range', () => {
@@ -214,11 +216,17 @@ test('despawn: an enemy past DESPAWN_DIST from the tower is removed and its budg
 // ---- spawner and timeline -------------------------------------------------------
 
 test('timeline: rate interpolates between rows, weights switch at the boundary, rate stays after 5:00', () => {
-  assert.equal(rateAt(TIMELINE, 0), 1.5);
-  assert.equal(rateAt(TIMELINE, 15), 2);
-  assert.equal(rateAt(TIMELINE, 90), 4.25);
-  assert.equal(rateAt(TIMELINE, 300), 12);
-  assert.equal(rateAt(TIMELINE, 1000), 12);
+  // Values come from the table, so a balance pass does not have to touch this test.
+  const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-12, `${a} vs ${b}`);
+  const [r0, r30, r60, r120] = TIMELINE.map((r) => r.rate);
+  const last = TIMELINE[TIMELINE.length - 1].rate;
+  assert.deepEqual(TIMELINE.slice(0, 4).map((r) => r.t), [0, 30, 60, 120]);
+  assert.equal(rateAt(TIMELINE, 0), r0);
+  near(rateAt(TIMELINE, 15), (r0 + r30) / 2);
+  near(rateAt(TIMELINE, 90), (r60 + r120) / 2);
+  assert.equal(rateAt(TIMELINE, 300), last);
+  assert.equal(rateAt(TIMELINE, 1000), last);
+  assert.equal(rateAt([{ t: 0, rate: 1 }, { t: 10, rate: 3 }], 5), 2);
   assert.equal(rowIndexAt(TIMELINE, 29.999), 0);
   assert.equal(rowIndexAt(TIMELINE, 30), 1);
   assert.equal(rowIndexAt(TIMELINE, 1000), 6);
@@ -244,7 +252,8 @@ test('timeline: first 30 s spawns only knights, on the ring, at the integrated r
     }
   }
   assert.deepEqual([...types], ['knight']);
-  assert.ok(Math.abs(expected - 60) < 0.1, `integral ${expected}`);
+  const integral = (TIMELINE[0].rate + TIMELINE[1].rate) / 2 * 30;
+  assert.ok(Math.abs(expected - integral) < 0.1, `integral ${expected} vs ${integral}`);
   assert.ok(Math.abs(g.spawner.spawned - expected) <= 1, `spawned ${g.spawner.spawned} vs ${expected}`);
   // the next row brings skeletons
   run(g, 30 * 60, scripted);

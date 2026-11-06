@@ -57,6 +57,7 @@ dragon-survivors/
     build-atlas.mjs       BMP -> atlas.png + atlas.json (Node, no deps)
     manifest.json         which dragongame sequences to import, under which names
     copy-sounds.mjs
+    measure.mjs           balance instrument: headless bot runs over a seed pool, Markdown tables
   test/
     *.test.mjs            node --test
   docs/
@@ -252,7 +253,7 @@ An enemy whose HP drops to 0 or below stops being hit at once and is removed in 
 
 | Type | HP | Speed px/s | Radius | Contact DPS | XP | Sprite | Special |
 |---|---|---|---|---|---|---|---|
-| Knight | 3 | 55 | 12 | 10 | 1 | `knight` | none |
+| Knight | 3 | 55 | 12 | 2 | 1 | `knight` | none |
 | Skeleton | 1 | 90 | 10 | 6 | 1 | `skelly` | none (a summoned one first plays `skelly.summon`, §8.4) |
 | Slime | 2 | 70 | 12 | 8 | 1 | `slime` | on death, if `gen == 0`, spawns 2 slimes with `gen = 1`, HP 1, radius 8, at ±20 px (§8.4). Parent plays `slime.split` instead of `die`. |
 | Mage | 4 | 40 | 12 | 5 | 5 | `mage` | every `MAGE_CAST_INTERVAL = 8 s` since spawn it stops for 1 s (`spell` anim) and spawns 4 skeletons in a 40 px ring around itself, each playing `skelly.summon` once before walking. Will not cast within 80 px of the tower (§8.4). |
@@ -295,9 +296,9 @@ The spawner uses `t` at the start of the tick. The weights are those of the last
 
 | Time | Rate (enemies/s) | Knight | Skeleton | Slime | Mage | Ghost knight |
 |---|---|---|---|---|---|---|
-| 0:00 | 1.5 | 100 | 0 | 0 | 0 | 0 |
-| 0:30 | 2.5 | 70 | 30 | 0 | 0 | 0 |
-| 1:00 | 3.5 | 50 | 30 | 20 | 0 | 0 |
+| 0:00 | 0.3 | 100 | 0 | 0 | 0 | 0 |
+| 0:30 | 0.5 | 70 | 30 | 0 | 0 | 0 |
+| 1:00 | 0.6 | 50 | 30 | 20 | 0 | 0 |
 | 2:00 | 5 | 40 | 25 | 25 | 10 | 0 |
 | 3:00 | 7 | 30 | 25 | 20 | 10 | 15 |
 | 4:00 | 10 | 25 | 25 | 20 | 10 | 20 |
@@ -517,6 +518,7 @@ Query parameter `?debug=1` exposes the App as `window.app` for the console (read
 - **Timeline:** at t = 300 s the golem exists; at t = 0 only knights spawn.
 - **Soak:** run 5 minutes with a scripted dragon that circles the tower. Assert no exceptions, the spawner never spawns above the cap (§8.2), and the tower eventually dies.
 - **Atlas:** `build-atlas.mjs` run on the manifest produces every name the game asks for. `content.js` lists its required atlas names and the test cross-checks them.
+- **Balance instrument:** `node tools/measure.mjs` plays headless runs with three bot policies over a pool of seeds (16 by default, a 180 s cap) and prints median, min and max survival time, kills and level as Markdown. `idle` gives no input (fires right); `aim` stands still and aims at the enemy nearest the tower; `kite` circles the tower at 120 px and aims the same way. When level-up offers are open every policy picks card 0. `--timeline` adds tower HP, enemies alive, kills and spawned over time; `--set` runs a what-if (a timeline rate, the tower HP, an enemy field) without editing `content.js`. A test runs one short seed per policy.
 
 ---
 

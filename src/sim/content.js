@@ -26,7 +26,7 @@ export const DYING_TIME = 2; // s of 'dying' phase before 'over' (§13)
 // §8 Enemies. hp Infinity = cannot die. xp 0 = no gem.
 export const ENEMY_TYPES = ['knight', 'skeleton', 'slime', 'mage', 'ghostKnight', 'ghost', 'golem'];
 export const ENEMIES = {
-  knight:      { name: 'Knight',       hp: 3,        speed: 55, r: 12, dps: 10, xp: 1, walk: 'knight.walk',  die: 'knight.die',  alpha: 1 },
+  knight:      { name: 'Knight',       hp: 3,        speed: 55, r: 12, dps: 2,  xp: 1, walk: 'knight.walk',  die: 'knight.die',  alpha: 1 },
   skeleton:    { name: 'Skeleton',     hp: 1,        speed: 90, r: 10, dps: 6,  xp: 1, walk: 'skelly.walk',  die: 'skelly.die',  alpha: 1, summon: 'skelly.summon' },
   slime:       { name: 'Slime',        hp: 2,        speed: 70, r: 12, dps: 8,  xp: 1, walk: 'slime.walk',   die: 'slime.die',   alpha: 1, split: 'slime.split' },
   mage:        { name: 'Mage',         hp: 4,        speed: 40, r: 12, dps: 5,  xp: 5, walk: 'mage.walk',    die: 'mage.die',    alpha: 1, spell: 'mage.spell' },
@@ -58,9 +58,9 @@ export const DESPAWN_DIST = 1400;
 export const SPAWN_RING_RADIUS = 560;
 export const GOLEM_TIME = 300;
 export const TIMELINE = [
-  { t: 0,   rate: 1.5, weights: { knight: 100, skeleton: 0,  slime: 0,  mage: 0,  ghostKnight: 0 } },
-  { t: 30,  rate: 2.5, weights: { knight: 70,  skeleton: 30, slime: 0,  mage: 0,  ghostKnight: 0 } },
-  { t: 60,  rate: 3.5, weights: { knight: 50,  skeleton: 30, slime: 20, mage: 0,  ghostKnight: 0 } },
+  { t: 0,   rate: 0.3, weights: { knight: 100, skeleton: 0,  slime: 0,  mage: 0,  ghostKnight: 0 } },
+  { t: 30,  rate: 0.5, weights: { knight: 70,  skeleton: 30, slime: 0,  mage: 0,  ghostKnight: 0 } },
+  { t: 60,  rate: 0.6, weights: { knight: 50,  skeleton: 30, slime: 20, mage: 0,  ghostKnight: 0 } },
   { t: 120, rate: 5,   weights: { knight: 40,  skeleton: 25, slime: 25, mage: 10, ghostKnight: 0 } },
   { t: 180, rate: 7,   weights: { knight: 30,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 15 } },
   { t: 240, rate: 10,  weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 } },
