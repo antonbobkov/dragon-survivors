@@ -88,6 +88,31 @@ export function miniTowerDrawPos(m) {
   };
 }
 
+// §7.3 minion carriers: while the tether is pulling the tower, the prince and the princess
+// walk at its base, one each side, bobbing out of phase. Derived from state only: the
+// tower moves on a tick when the dragon is beyond the tether, or on it and still moving.
+export const MINIONS = { anims: ['royal.prince', 'royal.princess'], dx: 14, dy: 26, bobTicks: 8 };
+const TETHER_EPS = 1e-6;
+export function towerMoving(game) {
+  const d = game.dragon, t = game.tower;
+  const dist = Math.hypot(d.x - t.x, d.y - t.y);
+  if (dist > TETHER_LENGTH + TETHER_EPS) return true;
+  if (dist < TETHER_LENGTH - 0.01) return false;
+  // On the tether: moving if the dragon's move has a component away from the tower.
+  return (d.moveX || 0) * (d.x - t.x) + (d.moveY || 0) * (d.y - t.y) > 0;
+}
+export function minionSprites(game) {
+  if (game.phase !== 'play' || !towerMoving(game)) return [];
+  const t = game.tower, d = game.dragon;
+  const flip = d.x < t.x; // face the way the tower is pulled
+  const step = Math.floor(game.tickCount / MINIONS.bobTicks) % 2;
+  return MINIONS.anims.map((anim, i) => ({
+    anim, flip,
+    x: t.x + (i === 0 ? -MINIONS.dx : MINIONS.dx),
+    y: t.y + MINIONS.dy - ((step + i) % 2),
+  }));
+}
+
 // Enemies in draw order (by y, then id), as a new array: the game's list is never reordered.
 export function enemyDrawOrder(enemies, out = []) {
   out.length = 0;
@@ -159,6 +184,7 @@ export function createRenderer({ atlas, makeCanvas }) {
       ctx.fillRect(left, top, TOWER_BAR.w, TOWER_BAR.h);
       ctx.fillStyle = TOWER_BAR.fill;
       ctx.fillRect(left, top, Math.round(TOWER_BAR.w * frac), TOWER_BAR.h);
+      for (const m of minionSprites(game)) drawAnim(ctx, atlas, m.anim, 0, m.x + o.x, m.y + o.y, { flip: m.flip });
     }
 
     for (const m of game.miniTowers || []) {

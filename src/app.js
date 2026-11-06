@@ -1,21 +1,29 @@
 // Screen flow and ticking (§4, §13, §14): title -> play <-> paused, level-up cards, game
 // over -> Retry. No DOM: main.js feeds it timestamps and input frames, so it is tested
 // under node. Only `game.tick(intent)` enters the sim.
-import { Accumulator } from './loop.js';
+import { Accumulator, SPEEDS } from './loop.js';
 import { cardAt } from './render/screens.js';
+
+// §19: F5 jumps the clock to 4:50.
+export const DEBUG_JUMP_TO = 290;
 
 export class App {
   // makeGame(seed) -> Game; fixedSeed: the ?seed=N value or null; randomSeed() -> a new seed;
-  // audio: { play(name), resume() -> Promise }.
-  constructor({ makeGame, fixedSeed = null, randomSeed, audio }) {
+  // audio: { play(name), resume() -> Promise }. debug: §19 tools (the page has ?debug=1;
+  // makeGame must then build the Game with { debug: true }); now() -> ms, for tick timing.
+  constructor({ makeGame, fixedSeed = null, randomSeed, audio, debug = false, now = () => 0 }) {
     this.makeGame = makeGame;
+    this.debug = debug;
+    this.now = now;
+    // Loop stats for the debug overlay: ticks run in the last frame, ms per tick (smoothed).
+    this.stats = { ticks: 0, tickMs: 0 };
     this.fixedSeed = fixedSeed;
     this.randomSeed = randomSeed;
     this.audio = audio;
     this.acc = new Accumulator();
     this.game = makeGame(this.nextSeed());
     this.screen = 'title'; // 'title' | 'play' | 'paused'
-    this.pending = { confirm: false, pick: -1 };
+    this.pending = { confirm: false, pick: -1, debug: null };
     this.cardSel = 0; // highlighted level-up card (d-pad + A), reset for every new set of offers
     this.seenOffers = null;
   }
@@ -46,7 +54,7 @@ export class App {
   start() {
     this.screen = 'play';
     this.acc.reset(); // the run starts on the next frame
-    this.pending = { confirm: false, pick: -1 };
+    this.pending = { confirm: false, pick: -1, debug: null };
     Promise.resolve(this.audio.resume()).then(() => this.audio.play('start_game'));
   }
 
@@ -61,8 +69,17 @@ export class App {
     if (this.screen === 'play' && this.game.phase !== 'over') this.screen = 'paused';
   }
 
+  // Game speed (§19 debug): one step along SPEEDS per + / - press.
+  get speed() { return this.acc.speed; }
+  changeSpeed(delta) {
+    const i = SPEEDS.indexOf(this.acc.speed);
+    const j = Math.max(0, Math.min(SPEEDS.length - 1, (i < 0 ? SPEEDS.indexOf(1) : i) + delta));
+    this.acc.speed = SPEEDS[j];
+  }
+
   // React to one frame of input (from input.readFrame).
   handle(input) {
+    if (this.debug && input.debug && input.debug.speed) this.changeSpeed(input.debug.speed);
     if (this.screen === 'title') {
       if (input.confirm || input.click) this.start();
       return;
@@ -97,19 +114,32 @@ export class App {
     // Edge-triggered fields wait for the next tick, so a frame that runs no tick loses none.
     if (input.confirm) this.pending.confirm = true;
     if (input.pick >= 0) this.pending.pick = input.pick;
+    // §19: F1–F4 / F5 reach the sim as the next tick's `intent.debug`.
+    if (this.debug && input.debug) {
+      if (input.debug.grant) this.pending.debug = { grant: input.debug.grant };
+      else if (input.debug.jump) this.pending.debug = { jumpTo: DEBUG_JUMP_TO };
+    }
   }
 
   // One animation frame: handle input, then run the owed ticks. Returns the tick count.
   frame(nowMs, input) {
     this.handle(input);
     const n = this.acc.advance(nowMs, this.ticking());
+    const t0 = n > 0 ? this.now() : 0;
     for (let i = 0; i < n; i++) {
       const intent = { ...input.intent, confirm: this.pending.confirm, pick: this.pending.pick };
+      if (this.pending.debug) intent.debug = this.pending.debug;
       this.pending.confirm = false;
       this.pending.pick = -1;
+      this.pending.debug = null;
       this.game.tick(intent);
       for (const ev of this.game.events) if (ev.type === 'sound') this.audio.play(ev.name);
     }
+    if (n > 0) {
+      const ms = (this.now() - t0) / n;
+      this.stats.tickMs = this.stats.tickMs ? this.stats.tickMs * 0.9 + ms * 0.1 : ms;
+    }
+    this.stats.ticks = n;
     this.syncOffers();
     return n;
   }

@@ -32,7 +32,7 @@ export const ENEMIES = {
   mage:        { name: 'Mage',         hp: 4,        speed: 40, r: 12, dps: 5,  xp: 5, walk: 'mage.walk',    die: 'mage.die',    alpha: 1, spell: 'mage.spell' },
   ghostKnight: { name: 'Ghost knight', hp: 3,        speed: 55, r: 12, dps: 10, xp: 2, walk: 'ghost.knight', die: 'ghost.burn',  alpha: 1 },
   ghost:       { name: 'Ghost',        hp: 2,        speed: 72, r: 10, dps: 8,  xp: 1, walk: 'ghost.ghost',  die: 'ghost.die',   alpha: 0.6 },
-  golem:       { name: 'Mega golem',   hp: Infinity, speed: 30, r: 56, dps: 40, xp: 0, walk: 'golem.walk',   die: 'golem.die',   alpha: 1, immovable: true, procImmune: true, unkillable: true },
+  golem:       { name: 'Mega golem',   hp: Infinity, speed: 150, r: 56, dps: 40, xp: 0, walk: 'golem.walk',   die: 'golem.die',   alpha: 1, immovable: true, procImmune: true, unkillable: true },
 };
 
 // §8 specials (implemented by the roster task)
@@ -61,10 +61,10 @@ export const TIMELINE = [
   { t: 0,   rate: 0.3, weights: { knight: 100, skeleton: 0,  slime: 0,  mage: 0,  ghostKnight: 0 } },
   { t: 30,  rate: 0.5, weights: { knight: 70,  skeleton: 30, slime: 0,  mage: 0,  ghostKnight: 0 } },
   { t: 60,  rate: 0.6, weights: { knight: 50,  skeleton: 30, slime: 20, mage: 0,  ghostKnight: 0 } },
-  { t: 120, rate: 5,   weights: { knight: 40,  skeleton: 25, slime: 25, mage: 10, ghostKnight: 0 } },
-  { t: 180, rate: 7,   weights: { knight: 30,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 15 } },
-  { t: 240, rate: 10,  weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 } },
-  { t: 300, rate: 12,  weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 }, golem: true },
+  { t: 120, rate: 2.5, weights: { knight: 40,  skeleton: 25, slime: 25, mage: 10, ghostKnight: 0 } },
+  { t: 180, rate: 14,  weights: { knight: 30,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 15 } },
+  { t: 240, rate: 16,  weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 } },
+  { t: 300, rate: 18,  weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 }, golem: true },
 ];
 
 // §10 Weapons. levels[0] is level 1.
@@ -173,7 +173,7 @@ export const ATLAS_NAMES = [
   'golem.walk', 'golem.die',
   'fireball.anim', 'fireball.big',
   'laser.dir', 'laser.bigdir',
-  'castle', 'castle.destroy',
+  'castle', 'castle.destroy', 'royal.prince', 'royal.princess',
   'explosion.small', 'explosion.big', 'explosion.laser', 'explosion.laserbig',
   'burn',
   'icon.laser', 'icon.explode', 'icon.split', 'icon.ring', 'icon.speed', 'icon.big', 'icon.multi', 'icon.nuke',

@@ -9,6 +9,7 @@ import { VIEW_W, VIEW_H, fitScale, dragonScreen } from './viewport.js';
 import { createRenderer } from './render/draw.js';
 import { drawHud, shadowText } from './render/hud.js';
 import { drawTitle, drawPause, drawGameOver, drawLevelUp } from './render/screens.js';
+import { drawDebugWorld, drawDebugStats } from './render/debug.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -46,17 +47,20 @@ async function boot() {
     makeCanvas: (w, h) => Object.assign(document.createElement('canvas'), { width: w, height: h }),
   });
 
+  // §19: ?debug=1 turns on the debug tools and exposes the App as `app` in the console
+  // (read it; do not write it).
+  const debug = new URLSearchParams(location.search).get('debug') === '1';
   const app = new App({
-    makeGame: (seed) => new Game({ seed }),
+    makeGame: (seed) => new Game({ seed, debug }),
     fixedSeed: parseSeed(location.search),
     randomSeed,
     audio,
+    debug,
+    now: () => performance.now(),
   });
+  if (debug) window.app = app;
 
-  // §19: with ?debug=1 the App is reachable from the console as `app` (read it; do not write it).
-  if (new URLSearchParams(location.search).get('debug') === '1') window.app = app;
-
-  const input = attachInput(canvas, window);
+  const input = attachInput(canvas, window, { debug });
   input.onGesture(() => audio.resume());
   const inputState = createInputState();
   window.addEventListener('blur', () => app.blur());
@@ -67,8 +71,10 @@ async function boot() {
     app.frame(now, frame);
     const game = app.game;
     renderer.drawWorld(ctx, game);
+    if (debug) drawDebugWorld(ctx, game);
     if (app.screen === 'title') { drawTitle(ctx); return; }
     drawHud(ctx, game, atlas);
+    if (debug) drawDebugStats(ctx, game, app.stats, app.speed);
     if (app.screen === 'paused') drawPause(ctx);
     else if (game.phase === 'over') drawGameOver(ctx, game);
     else if (app.levelUpOpen()) drawLevelUp(ctx, game, atlas, app.cardSel);
