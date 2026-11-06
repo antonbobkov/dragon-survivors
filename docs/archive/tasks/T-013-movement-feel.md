@@ -1,6 +1,6 @@
 # T-013: Movement feel: slower world, following tower, walking dragon
 
-**Source:** [owner play-test 1](../../reports/feedback/2026-11-06-owner-playtest-1.md), items 1, 2, 7 · **Model:** Opus · **Depends on:** nothing open
+**Source:** [owner play-test 1](../../../reports/feedback/2026-11-06-owner-playtest-1.md), items 1, 2, 7 · **Model:** Opus · **Depends on:** nothing open
 
 ## Why
 
