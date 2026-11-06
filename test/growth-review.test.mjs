@@ -11,7 +11,7 @@ import { dropGem } from '../src/sim/gems.js';
 import { applyCard } from '../src/sim/levelup.js';
 import { createWeapon, collideRing } from '../src/sim/weapons.js';
 import { spawnProjectile, resolveHit } from '../src/sim/projectiles.js';
-import { DT, MAX_GEMS, WEAPONS, EXPLODE_RADIUS, GOLEM_HP, REPAIR_HP, TOWER_HP } from '../src/sim/content.js';
+import { DT, MAX_GEMS, WEAPONS, EXPLODE_RADIUS, GOLEM_HP, GOLEM_KNOCKBACK, REPAIR_HP, TOWER_HP } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }];
 // No spawns, no weapons: only what a test places acts.
@@ -131,7 +131,7 @@ test('ring: the golem is knocked back away from the ball, not from the dragon', 
   g.weapons[0].balls = [{ x: 150, y: 0 }];
   g.grid.build(g.enemies);
   collideRing(g);
-  assert.ok(near(m.x, 150) && near(m.y, 46), `${m.x}, ${m.y}`);
+  assert.ok(near(m.x, 150) && near(m.y, 40 + GOLEM_KNOCKBACK), `${m.x}, ${m.y}`);
 });
 
 test('ring: spin ignores the cooldown buff', () => {

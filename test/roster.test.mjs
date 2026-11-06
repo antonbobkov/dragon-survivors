@@ -8,7 +8,7 @@ import { setAnim, spawnEffect, animLength } from '../src/sim/effects.js';
 import { spawnProjectile, resolveHit } from '../src/sim/projectiles.js';
 import { createWeapon } from '../src/sim/weapons.js';
 import {
-  TIMELINE, MAX_ENEMIES, SPAWN_RING_RADIUS, DESPAWN_DIST, TOWER_RADIUS, GOLEM_HP, ENEMIES, TOWER_REST_DIST,
+  TIMELINE, MAX_ENEMIES, SPAWN_RING_RADIUS, DESPAWN_DIST, TOWER_RADIUS, GOLEM_HP, GOLEM_KNOCKBACK, ENEMIES, TOWER_REST_DIST,
 } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }];
@@ -292,12 +292,12 @@ test('golem: spawn direction falls back to (0, 1); it ignores the cap; no golem 
   assert.equal(ofType(h, 'golem').length, 0);
 });
 
-test('golem: a hit knocks it 6 px away from the projectile and does not lower its HP', () => {
+test('golem: a hit knocks it GOLEM_KNOCKBACK px away from the projectile and does not lower its HP', () => {
   const g = still();
   const m = createEnemy(g, 'golem', 0, 400);
   const p = spawnProjectile(g, { kind: 'fireball', x: -30, y: 440, dx: 1, dy: 0, speed: 420, range: 420, r: 6, damage: 4, anim: 'fireball.anim' });
   resolveHit(g, p, m); // from (-30, 440): unit direction away is (0.6, -0.8)
-  assert.ok(near(m.x, 3.6) && near(m.y, 400 - 4.8), `${m.x}, ${m.y}`);
+  assert.ok(near(m.x, 0.6 * GOLEM_KNOCKBACK) && near(m.y, 400 - 0.8 * GOLEM_KNOCKBACK), `${m.x}, ${m.y}`);
   assert.equal(m.hp, GOLEM_HP);
   assert.ok(sounded(g, 'hit_golem'));
   m.hp = -100;
@@ -318,9 +318,9 @@ test('golem: fireballs in play push it back; it is never despawned', () => {
     g.tick(aim);
     if (sounded(g, 'hit_golem')) hits++;
   }
-  // it walks up 180 px; every hit from straight above pushes it 6 px down
+  // it walks up 180 px; every hit from straight above pushes it GOLEM_KNOCKBACK px down
   assert.ok(hits >= 1, `hits ${hits}`);
-  assert.ok(near(m.y, 300 - 180 + 6 * hits, 1e-6), `y ${m.y} after ${hits} hits`);
+  assert.ok(near(m.y, 300 - 180 + GOLEM_KNOCKBACK * hits, 1e-6), `y ${m.y} after ${hits} hits`);
   assert.ok(near(m.x, 0));
   assert.equal(m.hp, GOLEM_HP);
 

@@ -39,7 +39,7 @@ test('content: dragon and tower constants match §6 and §7', () => {
 });
 
 test('content: inline constants match the spec text', () => {
-  for (const name of ['MAX_ENEMIES', 'DESPAWN_DIST', 'MAGE_CAST_INTERVAL', 'MAX_GEMS', 'GEM_COLLECT_RADIUS', 'REPAIR_OFFER_BELOW']) assert.equal(C[name], specConst(name), name);
+  for (const name of ['MAX_ENEMIES', 'DESPAWN_DIST', 'MAGE_CAST_INTERVAL', 'MAX_GEMS', 'GEM_COLLECT_RADIUS', 'REPAIR_OFFER_BELOW', 'GOLEM_KNOCKBACK']) assert.equal(C[name], specConst(name), name);
   assert.equal(C.DT, 1 / 60);
   assert.equal(C.GRID_CELL, 64);
   assert.equal(C.SPAWN_RING_RADIUS, 560);

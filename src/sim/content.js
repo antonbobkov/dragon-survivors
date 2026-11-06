@@ -58,7 +58,7 @@ export const MAGE_ORB_DAMAGE = 5; // tower HP per hit
 export const MAGE_ORB_ANIM = 'orb.green';
 export const MAGE_ORB_SOUND = 'slime_poke';
 export const GHOST_BURN_TIME = 0.5;
-export const GOLEM_KNOCKBACK = 6;
+export const GOLEM_KNOCKBACK = 1;
 export const GOLEM_HP = 1e9; // finite stand-in for hp ∞ in state; restored after every hit
 
 // §8.1–8.3

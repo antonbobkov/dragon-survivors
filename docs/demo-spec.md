@@ -273,7 +273,7 @@ An enemy whose HP drops to 0 or below stops being hit at once and is removed in 
 | Mage | 4 | 20 | 12 | 5 | 5 | `mage` | every `MAGE_CAST_INTERVAL = 8 s` since spawn it stops for 1 s (`spell` anim) and spawns 4 skeletons in a 40 px ring around itself, each playing `skelly.summon` once before walking. Will not cast within 80 px of the tower (§8.4). Fires a green orb at the dragon every 3 s while within 320 px of it (§8.5). |
 | Ghost knight | 3 | 27.5 | 12 | 10 | 2 | `ghost.knight` | on death plays `ghost.burn` once (0.5 s, not collidable), then becomes a **Ghost** (§8.4). |
 | Ghost | 2 | 36 | 10 | 8 | 1 | `ghost.ghost` | drawn at 60% alpha. Dies normally. |
-| Mega golem | ∞ | 75 | 56 | 40 | none | `golem` | §13. Every hit pushes it 6 px away from the hitter. Immune to procs. |
+| Mega golem | ∞ | 75 | 56 | 40 | none | `golem` | §13. Every hit pushes it `GOLEM_KNOCKBACK = 1` px away from the hitter. Immune to procs. |
 
 All numbers *unmeasured*.
 
@@ -296,7 +296,7 @@ Specials run in the enemies step before the enemy walks; a busy enemy (a casting
 - **Mage cast.** A mage's `castTimer` counts enemies steps since it spawned, or since its last cast started. When it reaches `MAGE_CAST_INTERVAL` (480 ticks) the timer restarts at 0 and a cast starts, unless the mage's centre is less than 80 px from the tower's centre at that moment: then the cast is skipped and the mage walks on. A cast lasts 60 ticks (1 s) counting the tick it starts; the mage stands still and loops `mage.spell`. At the end of its last cast tick it returns to `mage.walk` and summons 4 skeletons 40 px from its centre, at 45°, 135°, 225° and 315° from its direction toward the tower, so it walks on between the front two. Casts therefore start every 8 s; the 1 s cast is part of the 8 s. The summon has no sound (`death02` is not used).
 - **Summoned skeletons** start on `skelly.summon` frame 0. They join the enemy list at once (separation, collisions, the cap) but first act on the next tick. While `skelly.summon` plays they do not walk; they can be hit and damaged and they do touch the tower. On the tick the anim ends they switch to `skelly.walk` and walk from the next tick on.
 - **Ghost knight burn.** A dying ghost knight counts as a kill, plays `death01` and drops its gem; its effect is `ghost.burn` with its `flip` and `alpha` and `life` 30 ticks (0.5 s): the anim is 22 ticks long and holds its last frame for the rest. The burn is an effect, so it is not hit and does not touch the tower. In the effects step of the tick it finishes, the burn is removed and a ghost appears at its position with its `flip`. The ghost is added even when the cap is full. No ghost rises once the phase is no longer `'play'`.
-- **Golem.** It spawns with `hp = GOLEM_HP` and `unkillable`; it never dies and never despawns. On every damaging hit, after the damage, its HP is restored to `GOLEM_HP` and it moves 6 px along the unit direction from the hitting projectile's position (for the ring, the ring fireball; for an explosion, its centre) to the golem's centre, `(0, 1)` if they coincide, and sound `hit_golem` plays. The knockback is applied at once, before the next separation. `procImmune` marks it as immune to procs (§12). It is immovable in separation (§8.1) and deals 40 DPS on contact (§7.2).
+- **Golem.** It spawns with `hp = GOLEM_HP` and `unkillable`; it never dies and never despawns. On every damaging hit, after the damage, its HP is restored to `GOLEM_HP` and it moves `GOLEM_KNOCKBACK` (1 px) along the unit direction from the hitting projectile's position (for the ring, the ring fireball; for an explosion, its centre) to the golem's centre, `(0, 1)` if they coincide, and sound `hit_golem` plays. The knockback is applied at once, before the next separation. `procImmune` marks it as immune to procs (§12). It is immovable in separation (§8.1) and deals 40 DPS on contact (§7.2).
 
 ### 8.5 Mage orbs
 
@@ -461,7 +461,7 @@ Precisely:
 
 ## 13. Boss and run end
 
-- At 5:00 the mega golem spawns (§9). It walks at the tower at 75 px/s (faster than any other enemy and than the following tower, slower than the dragon, so only a tower dragged on the tether outruns it) and deals 40 DPS on contact. It cannot die and is never despawned. Each hit knocks it back 6 px away from the hitter, so a strong build can hold it off for a while. Hit sound `hit_golem`. Details in §8.4.
+- At 5:00 the mega golem spawns (§9). It walks at the tower at 75 px/s (faster than any other enemy and than the following tower, slower than the dragon, so only a tower dragged on the tether outruns it) and deals 40 DPS on contact. It cannot die and is never despawned. Each hit knocks it back 1 px away from the hitter, so a strong build slows it but cannot hold it off: once it arrives the tower falls within seconds unless the dragon drags it away. Hit sound `hit_golem`. Details in §8.4.
 - The run ends when tower HP reaches 0. Play `castle.destroy` and `destroy_castle_sound`, freeze the sim for 2 s, then show the game-over screen: time survived, level reached, kills, and a **Retry** button (new seed).
 - Score is `seconds survived + kills`, with seconds survived = `floor(t)` at the tick the tower fell. There is no win condition in the demo; surviving past 5:00 is the goal and the golem is what stops you.
 

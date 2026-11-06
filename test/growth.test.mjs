@@ -10,7 +10,7 @@ import { createWeapon, buffMods, buffDamage, collideRing } from '../src/sim/weap
 import { spawnProjectile, resolveHit } from '../src/sim/projectiles.js';
 import {
   DT, MAX_GEMS, GEM_COLLECT_RADIUS, DRAGON_PICKUP_RADIUS, WEAPONS, BUFFS, BUFF_IDS, WEAPON_IDS,
-  EXPLODE_RADIUS, GOLEM_HP, REPAIR_HP, xpToNext,
+  EXPLODE_RADIUS, GOLEM_HP, GOLEM_KNOCKBACK, REPAIR_HP, xpToNext,
 } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }];
@@ -483,7 +483,7 @@ test('ring: the golem is knocked back from the ring fireball', () => {
   g.weapons[0].balls = [{ x: 150, y: 0 }];
   g.grid.build(g.enemies);
   collideRing(g);
-  assert.ok(near(m.x, 206) && near(m.y, 0));
+  assert.ok(near(m.x, 200 + GOLEM_KNOCKBACK) && near(m.y, 0));
   assert.equal(m.hp, GOLEM_HP);
   assert.ok(sounded(g, 'hit_golem'));
 });
@@ -580,7 +580,7 @@ test('procs: the golem takes the hit and the knockback but no proc rolls at all'
   const p = shot(g);
   assert.equal(resolveHit(g, p, m), false, 'no pierce through the golem');
   assert.equal(c.n, 0);
-  assert.ok(near(m.x, 56));
+  assert.ok(near(m.x, 50 + GOLEM_KNOCKBACK));
   assert.equal(g.projectiles.length, 1, 'no split');
 });
 
