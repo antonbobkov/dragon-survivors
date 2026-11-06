@@ -14,10 +14,11 @@ const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }];
 const quietGame = (seed = 1) => new Game({ seed, timeline: QUIET });
 const run = (g, n, intent) => { for (let i = 0; i < n; i++) g.tick(typeof intent === 'function' ? intent(i) : intent); };
 
-// A scripted run: circle with the stick, aim sweeps, aim released half the time.
+// A scripted run: circle with the stick, aim sweeps, aim released half the time, and a
+// level-up card picked (cycling 0, 1, 2) whenever offers are open.
 const scripted = (i) => {
   const a = i * 0.01;
-  return { moveX: Math.cos(a), moveY: Math.sin(a), aimX: -Math.sin(a * 3), aimY: Math.cos(a * 3), hasAim: i % 300 < 150 };
+  return { moveX: Math.cos(a), moveY: Math.sin(a), aimX: -Math.sin(a * 3), aimY: Math.cos(a * 3), hasAim: i % 300 < 150, pick: i % 3 };
 };
 
 // ---- determinism -------------------------------------------------------------
