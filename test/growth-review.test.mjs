@@ -55,8 +55,9 @@ test('laser: through the collision step, a golem in the row uses up one of maxHi
 
 // Fields of Game that are not run state: the rng closure (its state is the seed + draws, which
 // replays), the grid (rebuilt every tick), the per-tick event list, the constant timeline,
-// and `t`, which is tickCount × DT.
-const NOT_STATE = new Set(['rng', 'grid', 'events', 'timeline', 't']);
+// `t`, which is tickCount × DT, and `debug`, a constant construction flag like the timeline
+// (whether intent.debug is honoured, §19; it never changes during a run).
+const NOT_STATE = new Set(['rng', 'grid', 'events', 'timeline', 't', 'debug']);
 
 test('snapshot(): every own field of Game except the documented exclusions is in it', () => {
   const g = new Game({ seed: 7 });
