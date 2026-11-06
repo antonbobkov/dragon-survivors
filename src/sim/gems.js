@@ -1,6 +1,6 @@
 // XP gems (§14): drop on kill, home in once the dragon comes near, collect, queue level-ups.
 import { ENEMIES, DT, DRAGON_PICKUP_RADIUS, GEM_SPEED, GEM_COLLECT_RADIUS, MAX_GEMS, xpToNext } from './content.js';
-import { rollOffers } from './levelup.js';
+import { openOffers } from './levelup.js';
 
 // Called once per killed enemy (step 9), at its death position, before its death effect.
 // Enemies worth no XP (the golem) drop nothing. Past MAX_GEMS the oldest gem is merged
@@ -59,5 +59,5 @@ export function stepGems(game) {
   if (gained === 0) return;
   const wasIdle = game.pendingLevelUps === 0;
   game.pendingLevelUps += gained;
-  if (wasIdle) game.offers = rollOffers(game);
+  if (wasIdle) openOffers(game);
 }

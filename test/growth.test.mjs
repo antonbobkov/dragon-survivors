@@ -104,7 +104,7 @@ test('gems: past MAX_GEMS the oldest merges into the gem nearest to it (ties: lo
 
 // ---- level-up ------------------------------------------------------------------------
 
-test('level-up: the pool respects slots and level caps; a full build offers only Repair', () => {
+test('level-up: the pool respects slots and level caps; a full build offers only Repair, below half HP', () => {
   const g = still();
   g.weapons = WEAPON_IDS.map((id) => createWeapon(id, id === 'ring' ? 5 : 2));
   g.buffs = ['damage', 'cooldown', 'area', 'speed'].map((id) => ({ id, level: id === 'area' ? 3 : 1 }));
@@ -116,7 +116,10 @@ test('level-up: the pool respects slots and level caps; a full build offers only
   ]);
   g.weapons.forEach((w) => { w.level = 5; });
   g.buffs.forEach((b) => { b.level = 3; });
+  g.tower.hp = g.tower.maxHp / 2 - 0.01;
   assert.deepEqual(rollOffers(g), [{ kind: 'repair', id: 'repair', level: 1 }]);
+  g.tower.hp = g.tower.maxHp / 2;
+  assert.deepEqual(rollOffers(g), [], 'a healthy full build is offered nothing');
 });
 
 test('level-up: offers are 3 distinct cards drawn by weight, one rng draw each, in pool order', () => {

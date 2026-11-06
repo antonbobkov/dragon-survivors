@@ -491,7 +491,7 @@ Level-up flow, the only entry point being `tick(intent)`:
 
 - Whenever `pendingLevelUps > 0`, `game.offers` holds the current cards, and `tick` does not advance the world: no step of §2.1 runs, `tickCount` is unchanged and `events` are still cleared.
 - If `intent.pick` is a valid index into `offers`, that card is applied, `pendingLevelUps` drops by one, sound `powerup` plays, and the next offers are rolled if level-ups remain (otherwise `offers` becomes empty). The tick that applies a pick does not advance the world either; it runs again on the next tick. Any other `pick` is ignored. So picks are part of the intent stream and a replay of the intents replays the run.
-- Offers are rolled with `game.rng` when the first level-up is queued (end of the gems step) and after each pick, from the build at that moment. A pick sent on the tick that queues a level-up is not applied, since the offers did not exist when that tick began.
+- Offers are rolled with `game.rng` when the first level-up is queued (end of the gems step) and after each pick, from the build at that moment; an empty roll ends the queue (§14.1). A pick sent on the tick that queues a level-up is not applied, since the offers did not exist when that tick began.
 - If the tower falls on the tick a level-up is queued, the offers are dropped (`offers` empty, `pendingLevelUps` 0).
 - The loop shows the level-up screen while the run is in `'play'` and `offers` is not empty, and keeps calling `tick` with the pick.
 
@@ -504,14 +504,15 @@ Build the pool, then draw 3 distinct cards with weights:
 | Upgrade weapon X to L+1 | owned, L < 5 | 4 |
 | New buff Y | Y not owned, buff slot free | 3 |
 | Upgrade buff Y to L+1 | owned, L < 3 | 3 |
-| Repair tower +25 HP | always | 1; it becomes the only card when the pool is otherwise empty |
+| Repair tower +25 HP | while any other card is in the pool, or tower HP is below `REPAIR_OFFER_BELOW = 0.5` of max HP (*unmeasured*) | 1; it becomes the only card when the pool is otherwise empty |
 
 A card shows the icon, name, level or NEW, and one line of effect text. Choose with mouse click, keys 1/2/3, or gamepad d-pad + A. Sound `powerup`.
 
 Precisely:
 
 - **Pool order** is fixed: the weapons in the order Fireball, Laser, Mini Tower, Ring, then the buffs in the §11 table order, then Repair. A weapon or buff is either an upgrade (owned, below its cap), a new card (not owned, a slot free) or absent.
-- **Drawing:** `min(3, pool size)` cards without replacement. Each card takes one `game.rng()`: `r = rng × total weight`, then the first card in pool order whose weight exceeds what is left of `r` (subtracting the weights passed). The chosen card leaves the pool before the next draw. Repair is always in the pool (weight 1), so a full build is offered Repair alone.
+- **Drawing:** `min(3, pool size)` cards without replacement. Each card takes one `game.rng()`: `r = rng × total weight`, then the first card in pool order whose weight exceeds what is left of `r` (subtracting the weights passed). The chosen card leaves the pool before the next draw. Repair (weight 1) is in the pool whenever any other card is; once the build is full (every weapon slot and buff slot filled and at its cap) it is in the pool only while `hp < 0.5 × maxHp`, so a hurt full build is offered Repair alone and a healthy one is offered nothing.
+- **Empty pool:** when the offers rolled for a pending level-up come out empty, no card is shown and every pending level-up passes at once (`pendingLevelUps` becomes 0, `offers` stays empty): the levels are still gained, no `rng` is drawn, no sound plays and the world keeps running. This happens when the first level-up is queued and after a pick (a Repair that lifts the tower to half HP or above ends the rest of the queue).
 - **Card:** `{ kind: 'weapon' | 'buff' | 'repair', id, level }`, `level` being the level after the pick (1 = new). A new weapon fires on the next weapons step; an upgrade keeps the weapon's timer and state. A new buff is appended to `game.buffs`. **Repair** restores 25 tower HP, capped at `maxHp`.
 - **Names:** Fireball, Laser, Mini Tower, Ring; Damage, Cooldown, Area, Projectile Speed, Explode, Split, Pierce; Repair.
 - **Icons:** weapons as in §17, buffs as in §11, Repair the `castle` at 1×.

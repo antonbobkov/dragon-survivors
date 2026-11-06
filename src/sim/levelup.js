@@ -3,7 +3,7 @@
 import {
   WEAPONS, WEAPON_IDS, WEAPON_SLOTS, WEAPON_MAX_LEVEL,
   BUFFS, BUFF_IDS, BUFF_SLOTS, BUFF_MAX_LEVEL,
-  CARD_COUNT, CARD_WEIGHTS, REPAIR_HP,
+  CARD_COUNT, CARD_WEIGHTS, REPAIR_HP, REPAIR_OFFER_BELOW,
 } from './content.js';
 import { createWeapon } from './weapons.js';
 
@@ -21,8 +21,19 @@ export function cardPool(game) {
     if (b) { if (b.level < BUFF_MAX_LEVEL) pool.push({ card: { kind: 'buff', id, level: b.level + 1 }, weight: CARD_WEIGHTS.upgradeBuff }); }
     else if (game.buffs.length < BUFF_SLOTS) pool.push({ card: { kind: 'buff', id, level: 1 }, weight: CARD_WEIGHTS.newBuff });
   }
-  pool.push({ card: { kind: 'repair', id: 'repair', level: 1 }, weight: CARD_WEIGHTS.repair });
+  // A full build (nothing else to offer) is offered Repair only while the tower is hurt.
+  const t = game.tower;
+  if (pool.length > 0 || t.hp < REPAIR_OFFER_BELOW * t.maxHp) {
+    pool.push({ card: { kind: 'repair', id: 'repair', level: 1 }, weight: CARD_WEIGHTS.repair });
+  }
   return pool;
+}
+
+// Rolls the offers for the next pending level-up. With an empty pool there is nothing to
+// pick, so every pending level-up passes without a card (the levels are still gained).
+export function openOffers(game) {
+  game.offers = rollOffers(game);
+  if (game.offers.length === 0) game.pendingLevelUps = 0;
 }
 
 // min(CARD_COUNT, pool size) distinct cards, drawn by weight without replacement:

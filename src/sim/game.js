@@ -11,7 +11,7 @@ import { stepProjectiles, collideProjectiles } from './projectiles.js';
 import { stepEnemyShots, collideEnemyShots } from './enemyShots.js';
 import { stepEffects, spawnEffect } from './effects.js';
 import { stepGems } from './gems.js';
-import { applyCard, rollOffers } from './levelup.js';
+import { applyCard, openOffers } from './levelup.js';
 
 const DYING_TICKS = Math.round(DYING_TIME / DT);
 
@@ -113,7 +113,8 @@ export class Game {
     applyCard(this, card);
     this.pendingLevelUps--;
     this.sound('powerup');
-    this.offers = this.pendingLevelUps > 0 ? rollOffers(this) : [];
+    if (this.pendingLevelUps > 0) openOffers(this);
+    else this.offers = [];
   }
   // §19 debug command, applied before step 1 of a world-advancing tick; the tick then runs
   // as usual. grant: the weapon at level 5 (added if not owned and a slot is free).
