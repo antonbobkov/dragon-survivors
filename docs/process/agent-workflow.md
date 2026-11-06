@@ -39,7 +39,7 @@ The dispatch prompt names: the work file and reading order; what earlier tasks l
 ## Verification
 
 - Before every commit: `npm run check` and the tests of every module changed.
-- The gate is `npm run gate` (all static checks + the whole `node --test` suite). It runs locally because the whole suite takes well under a minute; CI (`.github/workflows/ci.yml`) runs the same gate on every push as a backstop. Long instruments, if any appear, go to CI.
+- The gate is `npm run gate` (all static checks + the whole `node --test` suite). **Everything runs locally; this project does not use GitHub Actions or any other CI.** Long instruments, if any appear, run locally one heavy process at a time.
 - Screenshots are never committed.
 - A fix needs a test that fails on the old code; otherwise say the evidence is a probe.
 

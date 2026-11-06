@@ -16,7 +16,7 @@
 
 - Every task adds or extends tests in the same commit as the code.
 - A fix needs a test that fails on the old code.
-- Tests that need the external asset pack (`E:\code\dragongame\assets`) skip when it is absent, so CI runs without it. The committed `assets/atlas.json` is always checked.
+- Tests that need the external asset pack (`E:\code\dragongame\assets`) skip when it is absent, so a checkout without the pack still passes. The committed `assets/atlas.json` is always checked.
 - Randomness goes through `game.rng`; a test that needs a forced roll stubs `game.rng` (for example a function returning 0).
 - Keep the whole suite under a minute on a laptop.
 

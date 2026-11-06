@@ -11,7 +11,7 @@ The game draws everything from one atlas built from the dragongame BMPs, and the
 1. `tools/manifest.json`: `{ "sourceRoot": "E:/code/dragongame/assets", "entries": [...], "sounds": [...] }`. Entries cover **every** atlas name in spec §3.3 (all except `gem`, which is procedural). Use `{ "name", "list" }` for `.txt` sequences, `{ "name", "file" }` for single frames, and `{ "name", "files": [...] }` for numbered BMP ranges that have no `.txt` (`explosion.big`, `explosion.laser`, `explosion.laserbig`).
 2. `tools/build-atlas.mjs` exactly as spec §3.2: own BMP decoder (8-bit palette and 24-bit, bottom-up, 4-byte row padding; also accept top-down if height is negative), key colour `(0,0,0)` → alpha 0, shelf packer with 1 px padding, PNG writer on `node:zlib` with its own CRC32, writes `assets/atlas.png`, `assets/atlas.json`, `src/sim/anims.js`. `sourceRoot` may be overridden by a `--source <dir>` argument or `DRAGONGAME_ASSETS` env var.
 3. `tools/copy-sounds.mjs`: copies the 15 WAVs listed in spec §3.3 into `assets/sounds/`.
-4. Run both and **commit the generated outputs** (`assets/atlas.png`, `assets/atlas.json`, `assets/sounds/*.wav`, `src/sim/anims.js`). CI has no asset pack, so the game and tests use the committed files.
+4. Run both and **commit the generated outputs** (`assets/atlas.png`, `assets/atlas.json`, `assets/sounds/*.wav`, `src/sim/anims.js`). A checkout without the asset pack must still run the game and pass the tests from the committed files.
 5. Tests in `test/atlas.test.mjs`.
 
 ## Decisions already made
