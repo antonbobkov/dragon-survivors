@@ -44,7 +44,7 @@ export function enemySpecial(game, e) {
   return false;
 }
 
-// §8 mage. `castTimer` counts ticks since spawn or since the last cast started (0 on the
+// §8.4 mage. `castTimer` counts ticks since spawn or since the last cast started (0 on the
 // first cast tick). At MAGE_CAST_INTERVAL a cast starts unless the mage is within
 // MAGE_NO_CAST_DIST of the tower (then the timer just starts again). A cast stands still
 // for MAGE_CAST_TIME playing `spell`, then summons skeletons on a ring.
@@ -106,7 +106,7 @@ export function onEnemyDeath(game, e) {
   return false;
 }
 
-// §8 slime: the parent plays `split`; two gen-1 children appear SLIME_CHILD_OFFSET px to
+// §8.4 slime: the parent plays `split`; two gen-1 children appear SLIME_CHILD_OFFSET px to
 // either side, perpendicular to the unit direction u from the parent to the tower: the
 // first at parent + offset × (−uy, ux), the second at parent − offset × (−uy, ux).
 function splitSlime(game, e) {

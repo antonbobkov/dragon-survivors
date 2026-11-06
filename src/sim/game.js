@@ -94,7 +94,7 @@ export class Game {
   stepTether() { stepTether(this); }
   // 4. §9
   stepSpawner() { stepSpawner(this); }
-  // 5. AI, move, separation, despawn; special timers are T-004's enemySpecial hook.
+  // 5. Special timers (mage cast, summon anim), AI, move, separation, despawn (§8).
   stepEnemies() { stepEnemies(this); }
   // 6. §10; laser, mini tower and ring are T-005 hooks in weapons.js.
   stepWeapons() { stepWeapons(this); }
@@ -106,13 +106,13 @@ export class Game {
     collideProjectiles(this);
     collideTower(this);
   }
-  // 9. Generic death; slime split and ghost burn are T-004's onEnemyDeath hook, gems T-005's dropGem.
+  // 9. Deaths, slime split, ghost knight burn (§8.4); gems are T-005's dropGem.
   stepDeaths() { stepDeaths(this); }
   // 10. T-005.
   stepGems() { stepGems(this); }
   // 11.
   stepEffects() { stepEffects(this); }
-  // 12. Clock, golem (T-004 hook), game over.
+  // 12. Clock, golem at 5:00 (§9), game over.
   stepClock() {
     this.tickCount++;
     this.t = this.tickCount * DT;
