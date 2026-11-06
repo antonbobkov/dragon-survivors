@@ -60,3 +60,12 @@ Edit `docs/backlog.md`, merge, push `main`.
 ## Done means
 
 `npm run gate` green; playable level-ups in the browser; spec updated; commit `T-005: …` with `Closes: T-005`.
+
+## What T-002 and T-004 left you
+
+- Hooks: `dropGem(game, enemy)` and `stepGems(game)` in `gems.js`; `buffMods(game)`, `fireLaser`, `fireMiniTower`, `spinRing` in `weapons.js` (already dispatched from `stepWeapons`); `rollProcs(game, p, e)` in `projectiles.js` returns whether the projectile survives. `resolveHit` already records `p.hits` (max 8). Intent `confirm`/`pick` are normalised but unused.
+- The golem has `procImmune: true`, `unkillable: true` and `hp = GOLEM_HP` (reset after every hit). Knockback goes through `onEnemyHit(game, e, source)`; for explosions pass the explosion centre as the source (spec §8.4).
+- Effects have `life` (minimum length, holds the last frame) and `hold`.
+- A projectile hits at most one enemy per tick (nearest, ties to the lower id). The grid stores enemy centres; queries add the largest stored radius.
+- The aim (`dragon.aimX/aimY`) is always a unit vector.
+- The enemy count may briefly exceed `MAX_ENEMIES` (slime children, ghosts, golem); only the spawner respects the cap.
