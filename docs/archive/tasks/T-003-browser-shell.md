@@ -1,6 +1,6 @@
 # T-003: Browser shell
 
-**Source:** [demo-spec.md](../demo-spec.md) milestones 1–2 · **Model:** Opus · **Depends on:** T-001 (atlas), T-002 (sim core)
+**Source:** [demo-spec.md](../../demo-spec.md) milestones 1–2 · **Model:** Opus · **Depends on:** T-001 (atlas), T-002 (sim core)
 
 ## Why
 
