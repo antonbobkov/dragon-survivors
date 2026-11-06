@@ -1,7 +1,7 @@
 // Balance instrument: plays headless Game runs with scripted bots over a pool of seeds and
 // prints Markdown tables (survival time, kills, level).
 //
-// Usage: node tools/measure.mjs [--policy idle|aim|kite|all] [--pick naive|greedy|both]
+// Usage: node tools/measure.mjs [--policy idle|aim|kite|all] [--pick naive|greedy|both] [--gem-range PX]
 //                               [--seeds N] [--first-seed S] [--max-seconds T]
 //                               [--timeline] [--step S] [--set k=v ...]
 //
@@ -37,7 +37,7 @@ import { pathToFileURL } from 'node:url';
 
 const KITE_RADIUS = 120;
 const STATION = { x: 0, y: -60 }; // aim's station relative to the tower (the start layout)
-export const GEM_RANGE = 250;
+export const GEM_RANGE = 400;
 const REPAIR_BELOW = 0.4;
 
 // Nearest live enemy to the tower (ties to the lower list index), or null.
@@ -60,12 +60,12 @@ function aimAt(game, e) {
 }
 
 // The non-homing gem nearest the dragon among those within GEM_RANGE of the tower, or null.
-export function gemTarget(game) {
+export function gemTarget(game, range = GEM_RANGE) {
   const d = game.dragon, t = game.tower;
   let best = null, bestD2 = Infinity;
   for (const g of game.gems) {
     if (g.homing) continue;
-    if (Math.hypot(g.x - t.x, g.y - t.y) > GEM_RANGE) continue;
+    if (Math.hypot(g.x - t.x, g.y - t.y) > range) continue;
     const d2 = (g.x - d.x) ** 2 + (g.y - d.y) ** 2;
     if (d2 < bestD2) { best = g; bestD2 = d2; }
   }
@@ -96,14 +96,14 @@ function kiteMove(game) {
 // Movement policies: game -> intent without `pick`.
 export const POLICIES = {
   idle: () => ({}),
-  aim: (game) => {
-    const gem = gemTarget(game);
+  aim: (game, o = {}) => {
+    const gem = gemTarget(game, o.gemRange);
     const t = game.tower;
     const move = gem ? toward(game, gem.x, gem.y, 0) : toward(game, t.x + STATION.x, t.y + STATION.y);
     return { ...move, ...aimAt(game, nearestToTower(game)) };
   },
-  kite: (game) => {
-    const gem = gemTarget(game);
+  kite: (game, o = {}) => {
+    const gem = gemTarget(game, o.gemRange);
     const move = gem ? toward(game, gem.x, gem.y, 0) : kiteMove(game);
     return { ...move, ...aimAt(game, nearestToTower(game)) };
   },
@@ -130,15 +130,15 @@ export const PICKS = {
 };
 
 // The intent of bot `policy` + `pick` for one tick.
-export function botIntent(game, policy, pick = 'naive') {
+export function botIntent(game, policy, pick = 'naive', opts = {}) {
   const p = POLICIES[policy], k = PICKS[pick];
   if (!p) throw new Error(`unknown policy "${policy}"`);
   if (!k) throw new Error(`unknown pick rule "${pick}"`);
-  return { ...p(game), pick: game.offers.length ? k(game) : -1 };
+  return { ...p(game, opts), pick: game.offers.length ? k(game) : -1 };
 }
 
 // One run. Returns { seed, policy, pick, bot, survived, capped, kills, level, spawned, samples }.
-export function runOne({ policy, pick = 'naive', seed, maxSeconds = 420, step = 0, timeline, towerHp } = {}) {
+export function runOne({ policy, pick = 'naive', seed, maxSeconds = 420, step = 0, timeline, towerHp, gemRange } = {}) {
   botIntent(new Game({ seed: 1 }), policy, pick); // validates the names
   const game = new Game(timeline ? { seed, timeline } : { seed });
   if (towerHp) { game.tower.hp = towerHp; game.tower.maxHp = towerHp; }
@@ -151,7 +151,7 @@ export function runOne({ policy, pick = 'naive', seed, maxSeconds = 420, step = 
   let guard = maxTicks * 4 + 1000;
   while (game.phase === 'play' && game.tickCount < maxTicks && guard-- > 0) {
     const before = game.tickCount;
-    game.tick(botIntent(game, policy, pick));
+    game.tick(botIntent(game, policy, pick, { gemRange }));
     if (stepTicks && game.tickCount !== before && game.tickCount % stepTicks === 0) sample();
   }
   const capped = game.phase === 'play';
@@ -209,11 +209,12 @@ export function timelineTable(runs, step, maxSeconds) {
 }
 
 function parseArgs(argv) {
-  const o = { policy: 'all', pick: 'both', seeds: 16, firstSeed: 1, maxSeconds: 420, timeline: false, step: 30, set: [] };
+  const o = { policy: 'all', pick: 'both', gemRange: GEM_RANGE, seeds: 16, firstSeed: 1, maxSeconds: 420, timeline: false, step: 30, set: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i], v = argv[i + 1];
     if (a === '--policy') { o.policy = v; i++; }
     else if (a === '--pick') { o.pick = v; i++; }
+    else if (a === '--gem-range') { o.gemRange = Number(v); i++; }
     else if (a === '--seeds') { o.seeds = Number(v); i++; }
     else if (a === '--first-seed') { o.firstSeed = Number(v); i++; }
     else if (a === '--max-seconds') { o.maxSeconds = Number(v); i++; }
@@ -248,7 +249,7 @@ export function applySets(sets) {
 
 export function main(argv) {
   const o = parseArgs(argv);
-  if (o.help) { console.log('node tools/measure.mjs [--policy idle|aim|kite|all] [--pick naive|greedy|both] [--seeds N] [--first-seed S] [--max-seconds T] [--timeline] [--step S] [--set k=v ...]'); return; }
+  if (o.help) { console.log('node tools/measure.mjs [--policy idle|aim|kite|all] [--pick naive|greedy|both] [--gem-range PX] [--seeds N] [--first-seed S] [--max-seconds T] [--timeline] [--step S] [--set k=v ...]'); return; }
   const names = o.policy === 'all' ? Object.keys(POLICIES) : o.policy.split(',');
   const picks = o.pick === 'both' ? Object.keys(PICKS) : o.pick.split(',');
   const { timeline, towerHp } = applySets(o.set);
@@ -258,14 +259,14 @@ export function main(argv) {
     for (const pick of picks) {
       const runs = [];
       for (let s = 0; s < o.seeds; s++) {
-        runs.push(runOne({ policy, pick, seed: o.firstSeed + s, maxSeconds: o.maxSeconds, step: o.timeline ? o.step : 0, timeline, towerHp }));
+        runs.push(runOne({ policy, pick, seed: o.firstSeed + s, maxSeconds: o.maxSeconds, step: o.timeline ? o.step : 0, timeline, towerHp, gemRange: o.gemRange }));
       }
       all[`${policy}+${pick}`] = runs;
       rows.push(summarize(runs, o.maxSeconds));
     }
   }
   const secs = Number(process.hrtime.bigint() - start) / 1e9;
-  console.log(`Seeds ${o.firstSeed}..${o.firstSeed + o.seeds - 1}, cap ${o.maxSeconds} s${o.set.length ? `, set ${o.set.join(' ')}` : ''}\n`);
+  console.log(`Seeds ${o.firstSeed}..${o.firstSeed + o.seeds - 1}, cap ${o.maxSeconds} s, gem range ${o.gemRange} px${o.set.length ? `, set ${o.set.join(' ')}` : ''}\n`);
   console.log(summaryTable(rows));
   if (o.timeline) {
     for (const bot of Object.keys(all)) {
