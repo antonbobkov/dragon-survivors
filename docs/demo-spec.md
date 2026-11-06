@@ -14,7 +14,7 @@ This document is the authority for the demo. If code and spec disagree, the code
 - Keyboard + mouse and gamepad both work from day one.
 - Game logic is headless and deterministic so it can run under `node --test` without a DOM.
 
-Change from the high-level design: the dragon does **not** body-block enemies. It flies above them and never collides with them. The player's job is to kill, kite, and collect gems. The tower is the only thing enemies touch.
+Change from the high-level design: the dragon does **not** body-block enemies. It passes over them and never collides with them. The player's job is to kill, kite, and collect gems. The tower is the only thing enemies touch.
 
 ---
 
@@ -72,7 +72,7 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 
 1. Apply intent: dragon velocity and aim direction.
 2. Move the dragon.
-3. Tether: move the tower if needed (§7.1).
+3. Tower: follow the dragon, then the tether (§7.1).
 4. Spawner: add enemies for this tick (§9).
 5. Enemies: special timers (mage cast, summon anim), AI target, move, separation, despawn.
 6. Weapons: advance cooldowns, fire, spin the ring, run mini towers.
@@ -91,7 +91,7 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 
 - Sprites are `.bmp`, 24-bit or 8-bit palette, bottom-up rows. Transparency key is pure black `(0,0,0)`, as in the original (`AddTransparent(Color(0,0,0))`).
 - A sequence is a `.txt` file listing one bmp filename per line (paths relative to the txt). The optional first line `FANCY` switches to `filename N` where N is the frame's duration in game ticks at 30 ticks per second.
-- A few files list several names on one line separated by spaces (`dragon/fly.txt`). Split on whitespace.
+- A few files list several names on one line separated by spaces (`dragon/walk.txt`). Split on whitespace.
 
 ### 3.2 Build script
 
@@ -117,7 +117,7 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 
 | Atlas name | Source | Notes |
 |---|---|---|
-| `dragon.dir` | `dragon_fly/fly.txt` | **16 facing directions, not an animation.** See §6.3. 25px. |
+| `dragon.walk` | `dragon/walk.txt` | 20px, 2-frame walk, faces right (§6.3) |
 | `knight.walk`, `knight.die` | `knight/knight.txt`, `knight/die.txt` | 16px |
 | `skelly.walk`, `skelly.die`, `skelly.summon` | `skelly/skelly.txt`, `skelly/die.txt`, `skelly/summon.txt` | summon plays when a mage spawns them |
 | `slime.walk`, `slime.die`, `slime.split` | `slime/slime_walk.txt`, `slime/slime_die.txt`, `slime/slime_reproduce.txt` | |
@@ -163,14 +163,14 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 - **Phases:** `game.phase` is `'play' | 'dying' | 'over'`. In the clock step, when tower HP is 0, the phase becomes `'dying'`, a `castle.destroy` effect spawns at the tower and sound `destroy_castle_sound` plays. During `'dying'` only effects advance; the clock, enemies, dragon and weapons are frozen. After 2 s (120 ticks) the phase becomes `'over'`. `tick()` in `'over'` changes nothing except clearing `events`. Title, pause and the level-up screen are the loop's business, not phases.
 - **Events:** `game.events` is cleared at the start of every tick. Systems push `{ type: 'sound', name }`, at most one per sound name per tick; the browser plays them. Events are output, not state.
 - **Ids:** every enemy, projectile, effect, gem and mini tower gets its `id` from one counter, `game.nextId`.
-- **Start:** the dragon at (0, 0), the tower at (0, 60), below the dragon.
+- **Start:** the dragon at (0, 0), the tower at (0, `TOWER_REST_DIST`) = (0, 40), below the dragon and at rest (§7.1), so nothing moves before the first input.
 - **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.offers` (`[]`, the level-up cards on show, §14), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`, entries `{ id, level }` in the order gained), `game.gems` (`[]`), `game.miniTowers` (`[]`), `game.spawner` (`{ budget, spawned, golem }`, `golem` true once the golem has spawned). `game.score()` = `floor(t) + kills`.
 
 | Entity | Fields |
 |---|---|
 | every drawable | `x, y, anim, frame, frameTicks` |
-| `game.dragon` | `aimX, aimY` (unit fire direction), `moveX, moveY`, `aimed` (an aim has ever been given), `dirFrame`, `bob`; `anim` is `dragon.dir` and `frame = dirFrame` |
-| `game.tower` | `hp, maxHp`; `anim` is `castle` |
+| `game.dragon` | `aimX, aimY` (unit fire direction), `moveX, moveY`, `aimed` (an aim has ever been given), `flip` (facing left, §6.3); `anim` is `dragon.walk` |
+| `game.tower` | `hp, maxHp`, `moved` (the tower moved this tick, §7.1); `anim` is `castle` |
 | `game.enemies[]` | `id, type, r, hp, gen, flip, alpha`. `type` is a key of `ENEMIES` in `content.js`: `knight`, `skeleton`, `slime`, `mage`, `ghostKnight`, `ghost`, `golem`. Mages also have `castTimer` (§8); the golem has `unkillable` and `procImmune` set to true and `hp = GOLEM_HP = 1e9`, a finite stand-in for ∞ |
 | `game.projectiles[]` | `id, kind, dx, dy` (unit), `speed, r, damage, range, travelled, hits` (ids of enemies hit, at most 8), `gen, dirFrame` (for 16-direction sprites). `kind` is `fireball` (mini-tower shots included, §10.3) or `laser` |
 | `game.effects[]` | `id, scale, alpha, flip, hold, life, done`. `scale` multiplies the standard 2× sprite scale; `life` (ticks, usually 0) is a minimum length: the effect holds its last frame until `life` ticks have passed |
@@ -191,8 +191,8 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 - **Background:** a 64×64 grass tile generated once at startup into an offscreen canvas (dark green base, 28 lighter or darker 2×2 px speckles), tiled with the camera offset. The speckles come from the tile's own `mulberry32` with a fixed seed, never from `game.rng`, so drawing cannot change a run. A faint darker ring (2 px, black at 18% alpha) of radius `TETHER_LENGTH` around the tower makes the tether rule readable.
 - **Gem:** drawn procedurally as a 6×6 px diamond, a blue edge around a pale cyan core, at 2× (12 px on screen), centred on the gem.
 - **Draw order:** background, gems, tower, mini towers, enemies sorted by y, ring fireballs, projectiles, dragon, effects, HUD, then any screen (title, pause, game over) over a 60% black overlay. Enemies are sorted by y then id in a copy owned by the renderer; the game's enemy list is never reordered, because its order is part of the sim.
-- **Sprites:** `scale` and `alpha` of effects and enemies apply as given (`scale` multiplies the 2×); `flip` mirrors around the sprite's centre. Projectiles whose anim is a 16-direction sheet (`laser.dir`, `laser.bigdir`) draw frame `dirFrame`; others draw `frame`. The dragon draws frame `dirFrame` offset by `bob` in y. Ring fireballs draw the ring weapon's `frame` at each of its `balls`. A mini tower in flight is drawn on the straight line from `(fromX, fromY)` to `(x, y)` at progress `p = 1 − lobTicks / 30`, raised by `sin(p × π) × 30` px; a landed one at `(x, y)`.
-- **Facing:** enemies flip horizontally when moving left (`ctx.scale(-1, 1)`). The dragon uses its 16-direction sheet (§6.3).
+- **Sprites:** `scale` and `alpha` of effects and enemies apply as given (`scale` multiplies the 2×); `flip` mirrors around the sprite's centre. Projectiles whose anim is a 16-direction sheet (`laser.dir`, `laser.bigdir`) draw frame `dirFrame`; others draw `frame`. The dragon draws `frame` of `dragon.walk`, mirrored when `flip`. Ring fireballs draw the ring weapon's `frame` at each of its `balls`. A mini tower in flight is drawn on the straight line from `(fromX, fromY)` to `(x, y)` at progress `p = 1 − lobTicks / 30`, raised by `sin(p × π) × 30` px; a landed one at `(x, y)`.
+- **Facing:** enemies flip horizontally when moving left (`ctx.scale(-1, 1)`). The dragon flips the same way when facing left (§6.3).
 - `draw.js` reads the game state and never writes it. Animation indices live in the entity (`anim`, `frame`, `frameTicks`) and advance during the tick, so rendering is stateless.
 
 ---
@@ -201,7 +201,7 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 
 | Constant | Value |
 |---|---|
-| `DRAGON_SPEED` | 260 px/s *unmeasured* |
+| `DRAGON_SPEED` | 87 px/s *unmeasured* |
 | `DRAGON_PICKUP_RADIUS` | 48 px *unmeasured* |
 | Collision with enemies | none |
 | HP | none (cannot die) |
@@ -214,14 +214,12 @@ Velocity = `move × DRAGON_SPEED`. Instant acceleration.
 
 Precisely: an intent with `hasAim` and a non-zero aim sets the fire direction and marks the dragon as aimed. Until the first such intent, the fire direction follows the movement direction and keeps the last one when the dragon stops; before any aim or movement it is right, (1, 0). Once aimed, movement never changes the fire direction.
 
-### 6.3 Facing sprite
-`dragon.dir` has 16 frames indexed counter-clockwise on screen starting from up: 0 = up, 4 = left, 8 = down, 12 = right. With `a = Math.atan2(dy, dx)` in screen coordinates (y down):
+### 6.3 Facing and walk animation
+The dragon walks. `dragon.walk` is a 2-frame walk (6 ticks per frame) drawn facing right; `flip` mirrors it to face left.
 
-```js
-frame = (Math.round(-a / (2 * Math.PI) * 16) + 12 + 16) % 16
-```
-
-The dragon faces the aim direction. A flying bob is faked by offsetting y by ±1 px on a 20-tick cycle: `bob` is −1 for 10 ticks, then +1 for 10 ticks, counted from `tickCount`. The bob is drawn only; the sim position does not bob.
+- **Facing,** set in step 1 after the aim: while the move has a horizontal part (`moveX ≠ 0`) the dragon faces the way it moves (`flip = moveX < 0`); otherwise, if the fire direction has a horizontal part (`aimX ≠ 0`), it faces that way (`flip = aimX < 0`); otherwise (moving or aiming straight up or down) it keeps its last facing. It starts facing right, as the default fire direction does.
+- **Walk,** in step 2: on a tick when the dragon moves (`moveX` or `moveY ≠ 0`) its walk anim advances one tick and loops; on a tick when it stands still it shows frame 0 with `frameTicks` 0, so every walk starts from frame 0.
+- There is no bob: the sprite is drawn at the dragon's position.
 
 ---
 
@@ -230,21 +228,27 @@ The dragon faces the aim direction. A flying bob is faked by offsetting y by ±1
 | Constant | Value |
 |---|---|
 | `TOWER_HP` | 100 *unmeasured* |
-| `TETHER_LENGTH` | 150 px *unmeasured* |
-| `TOWER_SPEED` | 200 px/s *unmeasured*, below dragon speed so it lags |
+| `TETHER_LENGTH` | 105 px *unmeasured* |
+| `TOWER_FOLLOW_SPEED` | 60 px/s *unmeasured*, below dragon speed so the tower lags and the tether still matters |
+| `TOWER_REST_DIST` | 40 px *unmeasured*, where the follow stops; about where the 2× dragon and castle sprites stop overlapping |
 | `TOWER_RADIUS` | 26 px, collision circle for enemies |
 | Sprite | `castle` at 2× = 60 px |
 
-### 7.1 Tether rule
-Each tick, if `dist(tower, dragon) > TETHER_LENGTH`, the tower moves toward the dragon at `TOWER_SPEED` until the distance is exactly `TETHER_LENGTH` (clamp, never overshoot). Otherwise it stays put. The tower never moves on its own.
+### 7.1 Follow and tether
+The tower always trails the dragon. Each tick, in this order:
+
+1. **Follow.** If `dist(tower, dragon) > TOWER_REST_DIST`, the tower walks straight toward the dragon by `TOWER_FOLLOW_SPEED × DT`, but never closer than `TOWER_REST_DIST` (clamp, never overshoot). A distance within 1e-6 px of `TOWER_REST_DIST` counts as at rest, so rounding never makes a resting tower creep.
+2. **Tether.** If the distance is then still above `TETHER_LENGTH`, the tower is dragged: it moves along the line to the dragon until the distance is exactly `TETHER_LENGTH`.
+
+So a dragon walking away faster than the follow speed opens the gap until the tether is tight and then drags the tower at its own speed; once the dragon stops, the tower walks up to the rest distance and stops. `tower.moved` is true on a tick when either step moved the tower, false otherwise. The tower never moves except toward the dragon.
 
 ### 7.2 Damage
 Enemies whose circle overlaps the tower circle deal `contactDps × DT` each tick (continuous, not per hit). When HP reaches 0 the run ends (§13). Tower HP does not regenerate; the Repair card restores 25. HP never goes below 0.
 
-Circles overlap when the distance between centres is less than the sum of the radii. An enemy walking at the tower stops advancing once its centre is `r + TOWER_RADIUS − 1` px from the tower's (1 px inside contact range, *unmeasured*), so it keeps dealing damage without walking into the tower. Enemies never push the tower; when the tether drags the tower into enemies they simply overlap it.
+Circles overlap when the distance between centres is less than the sum of the radii. An enemy walking at the tower stops advancing once its centre is `r + TOWER_RADIUS − 1` px from the tower's (1 px inside contact range, *unmeasured*), so it keeps dealing damage without walking into the tower. Enemies never push the tower; when the tower follows or is dragged into enemies they simply overlap it.
 
 ### 7.3 Visual
-Draw the castle with a 4 px HP bar above it: 40 px wide, 4 px above the sprite's top edge, red fill on a dark red back, proportional to `hp / maxHp`. Once the phase is `'dying'` the castle and its bar are not drawn; the `castle.destroy` effect takes their place. **Minion carriers:** while the tower is moving, the two tiny figures `royal.prince` and `royal.princess` (the pack has two) walk at its base, the minions carrying it: drawn at `tower + (∓14, 26)` px, flipped to face left when the dragon is left of the tower, each bobbing up 1 px on alternate 8-tick steps of `tickCount`, out of phase with each other. The tower counts as moving when the dragon is farther than `TETHER_LENGTH` from it, or exactly on the tether with a move that points away from the tower. Visual only, derived from state by the renderer (*unmeasured*).
+Draw the castle with a 4 px HP bar above it: 40 px wide, 4 px above the sprite's top edge, red fill on a dark red back, proportional to `hp / maxHp`. Once the phase is `'dying'` the castle and its bar are not drawn; the `castle.destroy` effect takes their place. **Minion carriers:** while the tower is moving, the two tiny figures `royal.prince` and `royal.princess` (the pack has two) walk at its base, the minions carrying it: drawn at `tower + (∓14, 26)` px, flipped to face left when the dragon is left of the tower, each bobbing up 1 px on alternate 8-tick steps of `tickCount`, out of phase with each other. The tower counts as moving when `tower.moved` is true (§7.1), so the carriers show while it follows and while it is dragged. Visual only, derived from state by the renderer (*unmeasured*).
 
 ---
 
@@ -258,13 +262,13 @@ An enemy whose HP drops to 0 or below stops being hit at once and is removed in 
 
 | Type | HP | Speed px/s | Radius | Contact DPS | XP | Sprite | Special |
 |---|---|---|---|---|---|---|---|
-| Knight | 3 | 55 | 12 | 2 | 1 | `knight` | none |
-| Skeleton | 1 | 90 | 10 | 6 | 1 | `skelly` | none (a summoned one first plays `skelly.summon`, §8.4) |
-| Slime | 2 | 70 | 12 | 8 | 1 | `slime` | on death, if `gen == 0`, spawns 2 slimes with `gen = 1`, HP 1, radius 8, at ±20 px (§8.4). Parent plays `slime.split` instead of `die`. |
-| Mage | 4 | 40 | 12 | 5 | 5 | `mage` | every `MAGE_CAST_INTERVAL = 8 s` since spawn it stops for 1 s (`spell` anim) and spawns 4 skeletons in a 40 px ring around itself, each playing `skelly.summon` once before walking. Will not cast within 80 px of the tower (§8.4). |
-| Ghost knight | 3 | 55 | 12 | 10 | 2 | `ghost.knight` | on death plays `ghost.burn` once (0.5 s, not collidable), then becomes a **Ghost** (§8.4). |
-| Ghost | 2 | 72 | 10 | 8 | 1 | `ghost.ghost` | drawn at 60% alpha. Dies normally. |
-| Mega golem | ∞ | 150 | 56 | 40 | none | `golem` | §13. Every hit pushes it 6 px away from the hitter. Immune to procs. |
+| Knight | 3 | 27.5 | 12 | 2 | 1 | `knight` | none |
+| Skeleton | 1 | 45 | 10 | 6 | 1 | `skelly` | none (a summoned one first plays `skelly.summon`, §8.4) |
+| Slime | 2 | 35 | 12 | 8 | 1 | `slime` | on death, if `gen == 0`, spawns 2 slimes with `gen = 1`, HP 1, radius 8, at ±20 px (§8.4). Parent plays `slime.split` instead of `die`. |
+| Mage | 4 | 20 | 12 | 5 | 5 | `mage` | every `MAGE_CAST_INTERVAL = 8 s` since spawn it stops for 1 s (`spell` anim) and spawns 4 skeletons in a 40 px ring around itself, each playing `skelly.summon` once before walking. Will not cast within 80 px of the tower (§8.4). |
+| Ghost knight | 3 | 27.5 | 12 | 10 | 2 | `ghost.knight` | on death plays `ghost.burn` once (0.5 s, not collidable), then becomes a **Ghost** (§8.4). |
+| Ghost | 2 | 36 | 10 | 8 | 1 | `ghost.ghost` | drawn at 60% alpha. Dies normally. |
+| Mega golem | ∞ | 75 | 56 | 40 | none | `golem` | §13. Every hit pushes it 6 px away from the hitter. Immune to procs. |
 
 All numbers *unmeasured*.
 
@@ -345,7 +349,9 @@ Fast, long range, lower damage. A laser stops at its first hit like a fireball; 
 | 4 | 1.1 | 2 | 2 | 750 | 650 |
 | 5 | 1.0 | 3 | 2 | 800 | 700 |
 
-Sprite `laser.dir` using the same 16-direction formula as the dragon, `laser.bigdir` from level 4. Radius 6 px (8 with `laser.bigdir`) *unmeasured*. Sound `laser01`.
+`laser.dir` and `laser.bigdir` have 16 frames indexed counter-clockwise on screen starting from up: 0 = up, 4 = left, 8 = down, 12 = right. A laser's `dirFrame`, with `a = Math.atan2(dy, dx)` in screen coordinates (y down), is `(Math.round(-a / (2 * Math.PI) * 16) + 12 + 16) % 16`.
+
+Sprite `laser.dir`, `laser.bigdir` from level 4. Radius 6 px (8 with `laser.bigdir`) *unmeasured*. Sound `laser01`.
 
 There is no fan: with `count` 2 the two lasers fly parallel along the aim, starting 6 px either side of the dragon perpendicular to the aim (*unmeasured*); the first at `dragon + 6 × (−aimY, aimX)`. Projectile kind `laser`. A laser rolls pierce like a fireball and never explodes or splits (§12).
 
@@ -433,7 +439,7 @@ Precisely:
 
 ## 13. Boss and run end
 
-- At 5:00 the mega golem spawns (§9). It walks at the tower at 150 px/s (faster than any other enemy, slower than the tower on its tether) and deals 40 DPS on contact. It cannot die and is never despawned. Each hit knocks it back 6 px away from the hitter, so a strong build can hold it off for a while. Hit sound `hit_golem`. Details in §8.4.
+- At 5:00 the mega golem spawns (§9). It walks at the tower at 75 px/s (faster than any other enemy and than the following tower, slower than the dragon, so only a tower dragged on the tether outruns it) and deals 40 DPS on contact. It cannot die and is never despawned. Each hit knocks it back 6 px away from the hitter, so a strong build can hold it off for a while. Hit sound `hit_golem`. Details in §8.4.
 - The run ends when tower HP reaches 0. Play `castle.destroy` and `destroy_castle_sound`, freeze the sim for 2 s, then show the game-over screen: time survived, level reached, kills, and a **Retry** button (new seed).
 - Score is `seconds survived + kills`, with seconds survived = `floor(t)` at the tick the tower fell. There is no win condition in the demo; surviving past 5:00 is the goal and the golem is what stops you.
 
@@ -529,7 +535,7 @@ Mouse aim always sets `hasAim = true`. Gamepad aim sets `hasAim` only when the s
 Details:
 
 - **Keyboard:** keys are read by `KeyboardEvent.code`, so the layout does not matter. The move vector is (right − left, down − up) normalised; opposite keys cancel. Enter (and keypad Enter) is `confirm`; Digit1–3 and Numpad1–3 are `pick` 0–2. Pause, confirm and pick are edges: one per press, never from auto-repeat.
-- **Mouse:** the position is tracked over the whole window and converted from CSS pixels to internal pixels with the canvas's bounding rect (`x = (clientX − left) × 960 / width`, likewise y). The aim is the unit vector from the dragon's screen position (its centre without the bob) to the mouse; before the mouse has moved there is no mouse aim, and a mouse exactly on the dragon gives none. Only the left button counts as a click.
+- **Mouse:** the position is tracked over the whole window and converted from CSS pixels to internal pixels with the canvas's bounding rect (`x = (clientX − left) × 960 / width`, likewise y). The aim is the unit vector from the dragon's screen position (its centre) to the mouse; before the mouse has moved there is no mouse aim, and a mouse exactly on the dragon gives none. Only the left button counts as a click.
 - **Gamepad:** the first connected pad in the browser's standard mapping. Both sticks use a radial deadzone of 0.25: inside it the stick reads zero, outside it the raw vector clamped to length 1 (the left stick is analog movement). Buttons: A (0) is `confirm`, Start (9) pauses, d-pad left/right (14/15) navigate the level-up cards; all are edges against the previous frame.
 - **Last device:** a frame counts as keyboard-and-mouse activity when a key is held or pressed, or the mouse moved or clicked; as gamepad activity when a stick is outside its deadzone or a button was newly pressed. Move and aim come only from the current device. When both are active in the same frame the keyboard and mouse win.
 
@@ -580,7 +586,8 @@ Precisely:
 `npm test`. The sim has no DOM, so tests construct `new Game({ seed })` and call `tick(intent)` directly.
 
 - **Determinism:** two games with the same seed and the same intent sequence produce identical state after 300 s of ticks (compare a JSON digest).
-- **Tether:** moving the dragon 500 px to the right leaves the tower exactly `TETHER_LENGTH` behind it.
+- **Tether:** inside the tether the tower follows the dragon and stops at `TOWER_REST_DIST`; while the dragon walks away the tower is dragged exactly `TETHER_LENGTH` behind it; `tower.moved` says whether it moved.
+- **Dragon:** facing follows the horizontal move, then the aim, then the last facing; the walk frame holds at 0 while still and advances while moving.
 - **Procs:** with `rng` stubbed to return 0, a fireball with explode chance L1 spawns an explosion that damages a second enemy in range.
 - **Level-up:** the world is frozen while offers are open (the digest does not change on ticks without a pick); the same seed and the same intents, picks included, give the same digest.
 - **Slime split:** killing a gen-0 slime yields two gen-1 slimes; killing those yields none.
@@ -597,7 +604,7 @@ Precisely:
 
 Each milestone is playable on its own.
 
-1. **Skeleton.** Atlas build, loop, input, dragon flying over grass with the 16-direction sprite, camera, tower following on the tether.
+1. **Skeleton.** Atlas build, loop, input, dragon walking over grass, camera, tower following on the tether.
 2. **Horde.** Knights spawn, walk at the tower, damage it. Separation and grid. Fireball weapon auto-firing with aim. Death animations. Game over screen.
 3. **Growth.** Gems, XP, level-up screen, all 4 weapons, all 7 buffs, procs.
 4. **Roster.** Skeleton, slime, mage, ghost knight. Timeline table. Golem at 5:00.

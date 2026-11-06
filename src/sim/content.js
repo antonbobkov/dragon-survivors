@@ -6,18 +6,19 @@ export const TICK_HZ = 60;
 export const DT = 1 / TICK_HZ;
 
 // §6 Dragon
-export const DRAGON_SPEED = 260;
+export const DRAGON_SPEED = 87;
 export const DRAGON_PICKUP_RADIUS = 48;
 export const DRAGON_START = { x: 0, y: 0 };
-export const DEFAULT_AIM = { x: 1, y: 0 }; // facing right until there is any aim or movement
-export const DRAGON_BOB_PERIOD = 20; // ticks per full bob cycle (±1 px)
+export const DEFAULT_AIM = { x: 1, y: 0 }; // firing right until there is any aim or movement
+export const DRAGON_ANIM = 'dragon.walk'; // the sprite faces right; flipped to face left (§6.3)
 
 // §7 Tower and tether
 export const TOWER_HP = 100;
-export const TETHER_LENGTH = 150;
-export const TOWER_SPEED = 200;
+export const TETHER_LENGTH = 105;
+export const TOWER_FOLLOW_SPEED = 60;
+export const TOWER_REST_DIST = 40;
 export const TOWER_RADIUS = 26;
-export const TOWER_START = { x: 0, y: 60 };
+export const TOWER_START = { x: 0, y: TOWER_REST_DIST }; // below the dragon, at rest
 export const TOWER_QUERY_MARGIN = 60; // §15: enemy vs tower grid query radius is TOWER_RADIUS + this
 export const CONTACT_INSET = 1; // enemies stop advancing this far inside contact range
 export const REPAIR_HP = 25;
@@ -26,13 +27,13 @@ export const DYING_TIME = 2; // s of 'dying' phase before 'over' (§13)
 // §8 Enemies. hp Infinity = cannot die. xp 0 = no gem.
 export const ENEMY_TYPES = ['knight', 'skeleton', 'slime', 'mage', 'ghostKnight', 'ghost', 'golem'];
 export const ENEMIES = {
-  knight:      { name: 'Knight',       hp: 3,        speed: 55, r: 12, dps: 2,  xp: 1, walk: 'knight.walk',  die: 'knight.die',  alpha: 1 },
-  skeleton:    { name: 'Skeleton',     hp: 1,        speed: 90, r: 10, dps: 6,  xp: 1, walk: 'skelly.walk',  die: 'skelly.die',  alpha: 1, summon: 'skelly.summon' },
-  slime:       { name: 'Slime',        hp: 2,        speed: 70, r: 12, dps: 8,  xp: 1, walk: 'slime.walk',   die: 'slime.die',   alpha: 1, split: 'slime.split' },
-  mage:        { name: 'Mage',         hp: 4,        speed: 40, r: 12, dps: 5,  xp: 5, walk: 'mage.walk',    die: 'mage.die',    alpha: 1, spell: 'mage.spell' },
-  ghostKnight: { name: 'Ghost knight', hp: 3,        speed: 55, r: 12, dps: 10, xp: 2, walk: 'ghost.knight', die: 'ghost.burn',  alpha: 1 },
-  ghost:       { name: 'Ghost',        hp: 2,        speed: 72, r: 10, dps: 8,  xp: 1, walk: 'ghost.ghost',  die: 'ghost.die',   alpha: 0.6 },
-  golem:       { name: 'Mega golem',   hp: Infinity, speed: 150, r: 56, dps: 40, xp: 0, walk: 'golem.walk',   die: 'golem.die',   alpha: 1, immovable: true, procImmune: true, unkillable: true },
+  knight:      { name: 'Knight',       hp: 3,        speed: 27.5, r: 12, dps: 2,  xp: 1, walk: 'knight.walk',  die: 'knight.die',  alpha: 1 },
+  skeleton:    { name: 'Skeleton',     hp: 1,        speed: 45,   r: 10, dps: 6,  xp: 1, walk: 'skelly.walk',  die: 'skelly.die',  alpha: 1, summon: 'skelly.summon' },
+  slime:       { name: 'Slime',        hp: 2,        speed: 35,   r: 12, dps: 8,  xp: 1, walk: 'slime.walk',   die: 'slime.die',   alpha: 1, split: 'slime.split' },
+  mage:        { name: 'Mage',         hp: 4,        speed: 20,   r: 12, dps: 5,  xp: 5, walk: 'mage.walk',    die: 'mage.die',    alpha: 1, spell: 'mage.spell' },
+  ghostKnight: { name: 'Ghost knight', hp: 3,        speed: 27.5, r: 12, dps: 10, xp: 2, walk: 'ghost.knight', die: 'ghost.burn',  alpha: 1 },
+  ghost:       { name: 'Ghost',        hp: 2,        speed: 36,   r: 10, dps: 8,  xp: 1, walk: 'ghost.ghost',  die: 'ghost.die',   alpha: 0.6 },
+  golem:       { name: 'Mega golem',   hp: Infinity, speed: 75,   r: 56, dps: 40, xp: 0, walk: 'golem.walk',   die: 'golem.die',   alpha: 1, immovable: true, procImmune: true, unkillable: true },
 };
 
 // §8 specials (implemented by the roster task)
@@ -163,7 +164,7 @@ export const GRID_CELL = 64;
 
 // §3.3 Every atlas anim the game uses (the procedural `gem` is not in the atlas).
 export const ATLAS_NAMES = [
-  'dragon.dir',
+  'dragon.walk',
   'knight.walk', 'knight.die',
   'skelly.walk', 'skelly.die', 'skelly.summon',
   'slime.walk', 'slime.die', 'slime.split',

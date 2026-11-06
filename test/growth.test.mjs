@@ -299,11 +299,12 @@ test('laser: never explodes or splits, even with Explode L3 and Split L3', () =>
 test('mini tower: lobbed 80 px toward the nearest enemy, silent in flight, then shoots', () => {
   const g = still();
   g.weapons = [createWeapon('miniTower', 1)];
-  const e = dummy(g, 300, 60); // walks left along y = 60 toward the tower at (0, 60)
+  const ty = g.tower.y;
+  const e = dummy(g, 300, ty); // walks left along the tower's row toward it
   g.tick({});
   assert.equal(g.miniTowers.length, 1);
   const m = g.miniTowers[0];
-  assert.deepEqual([m.x, m.y, m.fromX, m.fromY, m.lobTicks], [80, 60, 0, 60, 29]);
+  assert.deepEqual([m.x, m.y, m.fromX, m.fromY, m.lobTicks], [80, ty, 0, ty, 29]);
   run(g, 29);
   assert.equal(m.lobTicks, 0);
   assert.equal(g.projectiles.length, 0, 'no shot during the 0.5 s lob');
@@ -312,7 +313,7 @@ test('mini tower: lobbed 80 px toward the nearest enemy, silent in flight, then 
   const [p] = g.projectiles;
   // a level 1 fireball (no fireball owned in this test game: level 1 is read)
   assert.deepEqual([p.kind, p.anim, p.speed, p.range, p.r, p.damage, p.gen], ['fireball', 'fireball.anim', 420, 420, 6, 2, 0]);
-  assert.ok(near(p.x, 80 + p.speed * DT) && near(p.y, 60), 'started at the mini tower, moved one step');
+  assert.ok(near(p.x, 80 + p.speed * DT) && near(p.y, ty), 'started at the mini tower, moved one step');
   assert.ok(near(p.dx, 1) && near(p.dy, 0));
   const fired = [];
   const seen = new Set([p.id]);
@@ -331,7 +332,7 @@ test('mini tower: random direction with no enemies; no target beyond 300 px; lif
   g.rng = () => 0.25; // angle π/2: straight down
   g.tick({});
   const m = g.miniTowers[0];
-  assert.ok(near(m.x, 0) && near(m.y, 140), `${m.x}, ${m.y}`);
+  assert.ok(near(m.x, 0) && near(m.y, g.tower.y + 80), `${m.x}, ${m.y}`);
   g.weapons[0].timer = 1e9; // no further lobs
   let life = 0;
   while (g.miniTowers.length && life < 2000) { g.tick({}); life++; }
@@ -340,11 +341,12 @@ test('mini tower: random direction with no enemies; no target beyond 300 px; lif
   const k = still();
   k.weapons = [createWeapon('miniTower', 1)];
   k.rng = () => 0.25;
-  run(k, 30); // landed at (0, 140)
-  dummy(k, 0, 140 + 302); // walks up 55/60 px this tick: still beyond 300
+  run(k, 30); // landed 80 px below the tower
+  const ly = k.tower.y + 80;
+  dummy(k, 0, ly + 302); // walks up under 1 px this tick: still beyond 300
   k.tick({});
   assert.equal(k.projectiles.length, 0, 'no target beyond 300 px');
-  dummy(k, 0, 140 + 290);
+  dummy(k, 0, ly + 290);
   k.tick({});
   assert.equal(k.projectiles.length, 1, 'the nearest one inside 300 px');
   assert.ok(near(k.projectiles[0].dy, 1));
@@ -663,7 +665,7 @@ test('determinism: the same seed and intents with level-up picks give the same d
   const play = (rule) => {
     const g = new Game({ seed: 2024 });
     g.tower.hp = g.tower.maxHp = 1e6; // test only: survive to see the build grow
-    for (let i = 0; i < 75 * 60; i++) g.tick(bot(g, i, rule));
+    for (let i = 0; i < 100 * 60; i++) g.tick(bot(g, i, rule)); // level 4 by about 90 s
     return g;
   };
   const rule = (i) => i % 3;

@@ -8,7 +8,7 @@ import { setAnim, spawnEffect, animLength } from '../src/sim/effects.js';
 import { spawnProjectile, resolveHit } from '../src/sim/projectiles.js';
 import { createWeapon } from '../src/sim/weapons.js';
 import {
-  TIMELINE, MAX_ENEMIES, SPAWN_RING_RADIUS, DESPAWN_DIST, TOWER_RADIUS, GOLEM_HP, ENEMIES,
+  TIMELINE, MAX_ENEMIES, SPAWN_RING_RADIUS, DESPAWN_DIST, TOWER_RADIUS, GOLEM_HP, ENEMIES, TOWER_REST_DIST,
 } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }];
@@ -26,11 +26,11 @@ const sounded = (g, name) => g.events.some((ev) => ev.type === 'sound' && ev.nam
 
 // ---- skeleton ------------------------------------------------------------------
 
-test('skeleton: no special; walks at 90 px/s and dies with the generic skelly.die', () => {
+test('skeleton: no special; walks at its table speed and dies with the generic skelly.die', () => {
   const g = still();
   const s = createEnemy(g, 'skeleton', 0, 400);
   run(g, 60);
-  assert.ok(near(s.y, 400 - 90), `y ${s.y}`);
+  assert.ok(near(s.y, 400 - ENEMIES.skeleton.speed), `y ${s.y}`);
   assert.equal(s.anim, 'skelly.walk');
   kill(g, s);
   assert.equal(g.kills, 1);
@@ -41,7 +41,7 @@ test('skeleton: no special; walks at 90 px/s and dies with the generic skelly.di
 
 test('slime split: a gen-0 slime yields two gen-1 slimes flanking its path; those yield none', () => {
   const g = still();
-  const p = createEnemy(g, 'slime', 0, 300); // tower at (0, 60): path points up
+  const p = createEnemy(g, 'slime', 0, 300); // the tower is above: path points up
   p.flip = true;
   kill(g, p);
   assert.equal(g.kills, 1, 'the split counts as a kill');
@@ -99,7 +99,7 @@ test('mage: casts 8 s after spawn, stands still 1 s, then summons 4 skeletons on
     if (m.anim === 'mage.spell') { castTick = i; pos = [m.x, m.y]; }
   }
   assert.equal(castTick, 480, 'the cast starts when the mage is 8 s old');
-  assert.ok(near(m.y, 1000 - 40 * 479 / 60), 'it walked until the cast');
+  assert.ok(near(m.y, 1000 - ENEMIES.mage.speed * 479 / 60), 'it walked until the cast');
   run(g, 58);
   assert.deepEqual([m.x, m.y], pos, 'no movement while casting');
   assert.equal(m.anim, 'mage.spell');
@@ -138,7 +138,7 @@ test('mage: summoned skeletons stand still until skelly.summon ends, then walk; 
   run(g, len - 1);
   assert.deepEqual(sk.map((s) => [s.x, s.y]), start, 'still during the summon anim');
   assert.ok(sk.every((s) => s.anim === 'skelly.summon'));
-  assert.ok(m.y < 700 - 40 * 40 / 60 && near(m.x, mx), 'the mage walked on between the front two without pushing them');
+  assert.ok(m.y < 700 - ENEMIES.mage.speed * 40 / 60 && near(m.x, mx), 'the mage walked on between the front two without pushing them');
   g.tick({}); // the anim ends: back to walk, still no step this tick
   assert.deepEqual(sk.map((s) => [s.x, s.y]), start);
   assert.ok(sk.every((s) => s.anim === 'skelly.walk' && s.frame === 0));
@@ -309,8 +309,8 @@ test('golem: a hit knocks it 6 px away from the projectile and does not lower it
 test('golem: fireballs in play push it back; it is never despawned', () => {
   const g = still();
   g.weapons = [createWeapon('fireball', 1)];
-  g.tower.x = 0; g.tower.y = -100; // behind the dragon
-  const m = createEnemy(g, 'golem', 0, 200);
+  g.tower.x = 0; g.tower.y = -TOWER_REST_DIST; // behind the dragon, at rest so it stays put
+  const m = createEnemy(g, 'golem', 0, 300);
   const aim = { aimX: 0, aimY: 1, hasAim: true };
   let hits = 0;
   const ticks = Math.round(180 / ENEMIES.golem.speed * 60); // 180 px of walking, short of the tower
@@ -320,7 +320,7 @@ test('golem: fireballs in play push it back; it is never despawned', () => {
   }
   // it walks up 180 px; every hit from straight above pushes it 6 px down
   assert.ok(hits >= 1, `hits ${hits}`);
-  assert.ok(near(m.y, 200 - 180 + 6 * hits, 1e-6), `y ${m.y} after ${hits} hits`);
+  assert.ok(near(m.y, 300 - 180 + 6 * hits, 1e-6), `y ${m.y} after ${hits} hits`);
   assert.ok(near(m.x, 0));
   assert.equal(m.hp, GOLEM_HP);
 

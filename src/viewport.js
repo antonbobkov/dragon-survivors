@@ -24,7 +24,7 @@ export function cameraOffset(dragon, w = VIEW_W, h = VIEW_H) {
   return { x: Math.round(w / 2 - dragon.x), y: Math.round(h / 2 - dragon.y) };
 }
 
-// Where the dragon is on screen (its centre, without the drawn-only bob).
+// Where the dragon is on screen (its centre).
 export function dragonScreen(dragon, w = VIEW_W, h = VIEW_H) {
   const o = cameraOffset(dragon, w, h);
   return { x: dragon.x + o.x, y: dragon.y + o.y };

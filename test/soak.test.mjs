@@ -46,7 +46,7 @@ test('soak: 5 minutes circling the tower; the cap holds and the golem ends the r
   assert.notEqual(g.phase, 'play', 'the tower fell');
   assert.ok(g.t > golemAt, `fell at ${g.t}`);
   // The golem, not the horde alone, ends it: the tower falls soon after it arrives (it
-  // charges at 150 px/s and deals 40 DPS). With a harmless golem this run lasts to ~331 s.
+  // walks faster than the tower follows and deals 40 DPS).
   assert.ok(g.t - golemAt < 15, `fell ${(g.t - golemAt).toFixed(1)} s after the golem`);
   assert.ok(g.level > 1 && g.kills > 100, `level ${g.level}, kills ${g.kills}`);
   console.log(`# soak: peak ${peak} enemies, fell at ${g.t.toFixed(1)} s, level ${g.level}, kills ${g.kills}`);

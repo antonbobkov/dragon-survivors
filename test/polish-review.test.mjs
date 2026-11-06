@@ -6,16 +6,19 @@ import { TETHER_LENGTH } from '../src/sim/content.js';
 import { towerMoving } from '../src/render/draw.js';
 import { Accumulator, STEP_MS, MAX_TICKS_PER_FRAME } from '../src/loop.js';
 
-test('minion carriers: on the tether the tower moves only while the dragon pulls away', () => {
+test('minion carriers: on the tether the tower moves whether the dragon pulls away or stands', () => {
   const g = new Game({ seed: 1, timeline: [{ t: 0, rate: 0, weights: { knight: 100 } }] });
+  g.weapons = [];
   g.tower.x = 0; g.tower.y = 0;
   g.dragon.x = TETHER_LENGTH; g.dragon.y = 0; // exactly on the tether
-  g.dragon.moveX = 0.5; g.dragon.moveY = 0;
+  g.tick({ moveX: 0.5 });
   assert.equal(towerMoving(g), true, 'pulling away (half stick): moving');
-  g.dragon.moveX = -0.5;
-  assert.equal(towerMoving(g), false, 'flying back toward the tower: not moving');
-  g.dragon.moveX = 0; g.dragon.moveY = 1;
-  assert.equal(towerMoving(g), false, 'tangent: not moving');
+  g.dragon.x = g.tower.x + TETHER_LENGTH; g.dragon.y = g.tower.y;
+  g.tick({});
+  assert.equal(towerMoving(g), true, 'standing on the tether: the tower still follows');
+  g.dragon.x = g.tower.x + 10; g.dragon.y = g.tower.y; // inside the rest distance
+  g.tick({});
+  assert.equal(towerMoving(g), false, 'at rest: not moving');
 });
 
 test('loop: below 1x the per-frame tick cap stays at MAX_TICKS_PER_FRAME', () => {

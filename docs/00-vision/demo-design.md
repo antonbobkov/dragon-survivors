@@ -4,7 +4,7 @@
 
 ## Pitch
 
-A Vampire Survivors run with one twist: you fly an invulnerable dragon, but the thing that can die is the **tower** tethered to you. Auto-firing weapons mow down hordes; aimed weapons reward twin-stick skill; the tower drags behind you and is what the horde is actually after.
+A Vampire Survivors run with one twist: you play an invulnerable dragon, but the thing that can die is the **tower** tethered to you. Auto-firing weapons mow down hordes; aimed weapons reward twin-stick skill; the tower drags behind you and is what the horde is actually after.
 
 ## What we take from Vampire Survivors
 
@@ -16,7 +16,7 @@ A Vampire Survivors run with one twist: you fly an invulnerable dragon, but the 
 
 | Mechanic | In demo | Notes |
 |---|---|---|
-| Dragon + tethered tower | Yes | Dragon takes no damage. Tower has HP and is the lose condition. Tower follows when the dragon is further than X. Minions carrying it: stretch goal (visual only). |
+| Dragon + tethered tower | Yes | Dragon takes no damage. Tower has HP and is the lose condition. Tower always trails the dragon, slower than it, and is dragged when the tether is tight. Minions carrying it: visual only. |
 | Twin-stick controls | Yes | Left stick / WASD moves. Right stick / mouse aims. |
 | Aimed vs. auto weapons | Yes | Fireball (aimed, from dragon). Laser (aimed, fast, from dragon). Mini tower (auto, fires your fireball from the tower). Ring (auto, orbits the dragon). |
 | Proc-chance buffs | Yes, 3 | Explode chance, split chance, pierce chance. |
@@ -37,7 +37,7 @@ A Vampire Survivors run with one twist: you fly an invulnerable dragon, but the 
 
 ## Asset map (all from the dragongame pack)
 
-- **Player:** `dragon_fly` (16-frame fly cycle, 25px), `dragon` perch frames.
+- **Player:** `dragon` walk (2 frames, 20px, mirrored to face left); `dragon_fly` (16-direction fly sheet, 25px) is not used.
 - **Tower:** `castle` (30px) plus its destruction animation for the lose moment.
 - **Enemies:** `knight`, `skelly`, `slime` + `megaslime`, `mage` (walk, die, spell), `ghostnight` (24 frames: knight, burn, ghost), `golem` (64px, 7-frame walk, 21-frame death). All 16px except golem and megaslime.
 - **Weapons and FX:** `fireball` (8px), `fireball_big`, `laser_big` + `laserball`, `explosion`, `laser_explosion`, `burn`.

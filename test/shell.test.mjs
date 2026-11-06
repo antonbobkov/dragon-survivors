@@ -274,9 +274,11 @@ test('game-over lines show time, level, kills and score', () => {
   assert.deepEqual(gameOverLines(g), ['Time   0:02', 'Level  1', 'Kills  7', `Score  ${2 + 7}`]);
 });
 
-test('minion carriers: shown at the tower base only while the tether pulls it (§7.3)', () => {
+test('minion carriers: shown at the tower base only while it moves (§7.3)', () => {
   const g = new Game({ seed: 3, timeline: [{ t: 0, rate: 0, weights: { knight: 100 } }] });
   assert.deepEqual(minionSprites(g), [], 'standing tower: no carriers');
+  g.tick({});
+  assert.deepEqual(minionSprites(g), [], 'the run starts at rest');
   for (let i = 0; i < 120; i++) g.tick({ moveX: 1 });
   assert.ok(towerMoving(g));
   const m = minionSprites(g);
@@ -285,10 +287,10 @@ test('minion carriers: shown at the tower base only while the tether pulls it (�
   assert.ok(m[0].x < g.tower.x && m[1].x > g.tower.x);
   assert.notEqual(m[0].y, m[1].y, 'they bob out of phase');
   for (const x of m) assert.ok(atlas.anims[x.anim], `${x.anim} in the atlas`);
-  // Flying back: the tower still catches up while the dragon is beyond the tether, then stops.
-  g.tick({ moveX: -1 });
-  assert.ok(towerMoving(g), 'still beyond the tether');
-  for (let i = 0; i < 30; i++) g.tick({ moveX: -1 });
+  // The dragon stops: the tower keeps walking up to the rest distance, then stops.
+  g.tick({});
+  assert.ok(towerMoving(g), 'still following');
+  for (let i = 0; i < 90; i++) g.tick({});
   assert.equal(towerMoving(g), false);
   assert.deepEqual(minionSprites(g), []);
   const before = g.digest();
