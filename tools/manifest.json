@@ -16,6 +16,7 @@
     { "name": "ghost.knight", "list": "ghostnight/ghost_knight.txt" },
     { "name": "ghost.burn", "list": "ghostnight/ghost_knight_burn.txt" },
     { "name": "ghost.ghost", "list": "ghostnight/ghost.txt" },
+    { "name": "ghost.die", "list": "ghostnight/ghost_burn.txt" },
     { "name": "golem.walk", "list": "golem/golem.txt" },
     { "name": "golem.die", "list": "golem/golem_death.txt" },
     { "name": "fireball.anim", "list": "fireball/fireball.txt" },

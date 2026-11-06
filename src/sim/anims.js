@@ -12,6 +12,7 @@ export const ANIMS = {
   'fireball.anim': { ticks: [6, 6, 6, 6, 6, 6, 6, 6] },
   'fireball.big': { ticks: [6, 6] },
   'ghost.burn': { ticks: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2] },
+  'ghost.die': { ticks: [6, 6, 6, 6, 6, 6, 6, 6, 6] },
   'ghost.ghost': { ticks: [6, 6] },
   'ghost.knight': { ticks: [6, 6] },
   'golem.die': { ticks: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6] },
