@@ -77,14 +77,14 @@ export const CARD_ICONS = {
 
 const NEW_WEAPON_TEXT = {
   fireball: 'Aimed fireballs',
-  laser: 'Fast aimed laser, pierces enemies',
-  miniTower: 'Lobs turrets that shoot enemies',
+  laser: 'Fast long-range aimed laser',
+  miniTower: 'Lobs turrets that shoot your fireball',
   ring: 'Fireballs orbit the dragon',
 };
 
 // Short labels of weapon stats, in the order an upgrade lists its changes (first 3 shown).
 const STAT_LABELS = [
-  ['damage', 'dmg'], ['count', 'count'], ['maxHits', 'hits'], ['maxActive', 'max'],
+  ['damage', 'dmg'], ['count', 'count'], ['maxActive', 'max'],
   ['duration', 'life'], ['fireRate', 'rate'], ['cooldown', 'cd'], ['orbit', 'orbit'],
   ['spin', 'spin'], ['rehit', 'rehit'], ['spread', 'spread'], ['speed', 'speed'], ['range', 'range'],
 ];
@@ -100,7 +100,7 @@ function buffText(id, level) {
     case 'speed': return `+${pct(v)} shot speed and range`;
     case 'explode': return `${pct(v)} chance to explode`;
     case 'split': return `${pct(v)} chance to split in two`;
-    case 'pierce': return `${pct(v)} pierce, laser +${BUFFS.pierce.laserHits[level - 1]} hit${level > 1 ? 's' : ''}`;
+    case 'pierce': return `${pct(v)} chance to pierce`;
     default: return '';
   }
 }

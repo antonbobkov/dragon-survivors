@@ -1,6 +1,6 @@
 // Projectiles: movement, range expiry (§2.1 step 7) and hits on enemies with procs (step 8, §12).
 import {
-  DT, MAX_HITS_MEMORY, PROJECTILE_KINDS, EXPLODE_RADIUS, EXPLOSION_SPRITE_PX,
+  DT, MAX_HITS_MEMORY, PROJECTILE_KINDS, EXPLODE_RADIUS, EXPLOSION_ANIM, EXPLOSION_SPRITE_PX,
   SPLIT_ANGLE, SPLIT_MAX_GEN,
 } from './content.js';
 import { dirFrame } from './dragon.js';
@@ -10,8 +10,7 @@ import { buffMods } from './weapons.js';
 
 const SPRITE_SCALE = 2; // §5: every sprite is drawn at 2× source size
 
-// p: { kind, x, y, dx, dy (unit), speed, range, r, damage, anim, gen?, hits?, maxHits? }
-// `maxHits` (lasers) is how many enemies it passes through; `hitCount` counts them.
+// p: { kind, x, y, dx, dy (unit), speed, range, r, damage, anim, gen?, hits? }
 export function spawnProjectile(game, p) {
   const proj = {
     id: game.nextId++, kind: p.kind, x: p.x, y: p.y, dx: p.dx, dy: p.dy,
@@ -19,7 +18,6 @@ export function spawnProjectile(game, p) {
     hits: p.hits ? p.hits.slice() : [], gen: p.gen ?? 0, dirFrame: dirFrame(p.dx, p.dy),
     anim: p.anim, frame: 0, frameTicks: 0,
   };
-  if (p.maxHits !== undefined) { proj.maxHits = p.maxHits; proj.hitCount = 0; }
   game.projectiles.push(proj);
   return proj;
 }
@@ -44,13 +42,12 @@ export function stepProjectiles(game) {
 // §12, after the damage: explode, split and pierce rolls, in that order. A roll draws from
 // game.rng only when the projectile's kind can have that proc and its chance buff is owned,
 // and never against a proc-immune enemy (the golem). Returns true when the projectile
-// survives the hit: a pierce roll, or a laser that has not yet used up its maxHits.
+// survives the hit, which only a won pierce roll does.
 export function rollProcs(game, p, e) {
   const kind = PROJECTILE_KINDS[p.kind];
-  let survives = false;
-  if (p.maxHits !== undefined) survives = ++p.hitCount < p.maxHits;
-  if (!kind || e.procImmune) return survives;
+  if (!kind || e.procImmune) return false;
   const mods = buffMods(game);
+  let survives = false;
   if (kind.explode && mods.explode > 0 && game.rng() < mods.explode) explode(game, p, e, mods);
   if (kind.split && p.gen < SPLIT_MAX_GEN && mods.split > 0 && game.rng() < mods.split) split(game, p, e);
   if (kind.pierce && mods.pierce > 0 && game.rng() < mods.pierce) survives = true;
@@ -62,7 +59,6 @@ export function rollProcs(game, p, e) {
 // The sprite is scaled so its diameter matches the circle.
 export function explode(game, p, hit, mods) {
   const R = EXPLODE_RADIUS * mods.area;
-  const kind = PROJECTILE_KINDS[p.kind];
   const cx = p.x, cy = p.y;
   const src = { x: cx, y: cy };
   for (const e of game.grid.nearby(cx, cy, R + game.grid.maxR, scratchExplode)) {
@@ -73,33 +69,30 @@ export function explode(game, p, hit, mods) {
     e.hp -= p.damage;
     onEnemyHit(game, e, src);
   }
-  const scale = (2 * R) / (EXPLOSION_SPRITE_PX[kind.explosion] * SPRITE_SCALE);
-  spawnEffect(game, kind.explosion, cx, cy, { scale });
+  const scale = (2 * R) / (EXPLOSION_SPRITE_PX * SPRITE_SCALE);
+  spawnEffect(game, EXPLOSION_ANIM, cx, cy, { scale });
   game.sound('explosion01');
 }
 
 // Two fireballs at ±SPLIT_ANGLE from the parent's direction, from the hit point: same damage,
-// radius and speed, the parent's remaining range, gen + 1, and the enemy just hit already in
-// their hits. They first move and collide on the next tick.
+// radius, speed and sprite, the parent's remaining range, gen + 1, and the enemy just hit
+// already in their hits. They first move and collide on the next tick.
 export function split(game, p, hit) {
   const base = Math.atan2(p.dy, p.dx);
-  const anim = p.kind === 'fireball' ? p.anim : 'fireball.anim';
   for (const s of [-1, 1]) {
     const a = base + s * SPLIT_ANGLE * Math.PI / 180;
     spawnProjectile(game, {
       kind: 'fireball', x: p.x, y: p.y, dx: Math.cos(a), dy: Math.sin(a),
       speed: p.speed, range: Math.max(0, p.range - p.travelled), r: p.r, damage: p.damage,
-      anim, gen: p.gen + 1, hits: [hit.id],
+      anim: p.anim, gen: p.gen + 1, hits: [hit.id],
     });
   }
 }
 
-// Damage, hit effect, memory of the hit, procs. Returns true if the projectile survives.
+// Damage, memory of the hit, procs; no hit effect. Returns true if the projectile survives.
 export function resolveHit(game, p, e) {
   e.hp -= p.damage;
   onEnemyHit(game, e, p);
-  const kind = PROJECTILE_KINDS[p.kind];
-  if (kind && kind.hitEffect) spawnEffect(game, kind.hitEffect, p.x, p.y);
   if (p.hits.length >= MAX_HITS_MEMORY) p.hits.shift();
   p.hits.push(e.id);
   return rollProcs(game, p, e);

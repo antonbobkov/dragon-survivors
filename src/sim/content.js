@@ -75,7 +75,7 @@ export const WEAPONS = {
   fireball: {
     name: 'Fireball', aimed: true,
     anim: 'fireball.anim', bigAnim: 'fireball.big', bigFrom: 4, r: 6, bigR: 8,
-    hitEffect: 'explosion.small', sound: 'shoot01',
+    sound: 'shoot01',
     levels: [
       { cooldown: 0.9, damage: 2, count: 1, spread: 0,  speed: 420, range: 420 },
       { cooldown: 0.8, damage: 2, count: 1, spread: 0,  speed: 420, range: 420 },
@@ -88,27 +88,26 @@ export const WEAPONS = {
     name: 'Laser', aimed: true,
     anim: 'laser.dir', bigAnim: 'laser.bigdir', bigFrom: 4, r: 6, bigR: 8,
     offset: 6, // with count 2: two parallel lasers, ±offset px perpendicular to the aim
-    hitEffect: 'explosion.laser', sound: 'laser01',
+    sound: 'laser01',
     levels: [
-      { cooldown: 1.4, damage: 1, count: 1, speed: 700, range: 600, maxHits: 3 },
-      { cooldown: 1.3, damage: 1, count: 1, speed: 700, range: 600, maxHits: 4 },
-      { cooldown: 1.2, damage: 2, count: 1, speed: 750, range: 650, maxHits: 5 },
-      { cooldown: 1.1, damage: 2, count: 2, speed: 750, range: 650, maxHits: 6 },
-      { cooldown: 1.0, damage: 3, count: 2, speed: 800, range: 700, maxHits: 8 },
+      { cooldown: 1.4, damage: 1, count: 1, speed: 700, range: 600 },
+      { cooldown: 1.3, damage: 1, count: 1, speed: 700, range: 600 },
+      { cooldown: 1.2, damage: 2, count: 1, speed: 750, range: 650 },
+      { cooldown: 1.1, damage: 2, count: 2, speed: 750, range: 650 },
+      { cooldown: 1.0, damage: 3, count: 2, speed: 800, range: 700 },
     ],
   },
   miniTower: {
     name: 'Mini tower', aimed: false,
     anim: 'castle', scale: 0.5,
     lobDist: 80, lobTime: 0.5, lobHeight: 30,
-    shotSpeed: 380, shotRange: 300, targetRadius: 300, shotR: 6, shotAnim: 'fireball.anim',
-    hitEffect: 'explosion.small',
+    targetRadius: 300, // each shot is a copy of the dragon's fireball (§10.3)
     levels: [
-      { cooldown: 6, duration: 8,  fireRate: 0.8, damage: 2, maxActive: 1 },
-      { cooldown: 6, duration: 10, fireRate: 0.7, damage: 2, maxActive: 2 },
-      { cooldown: 5, duration: 10, fireRate: 0.6, damage: 3, maxActive: 2 },
-      { cooldown: 5, duration: 12, fireRate: 0.5, damage: 3, maxActive: 3 },
-      { cooldown: 4, duration: 14, fireRate: 0.4, damage: 4, maxActive: 4 },
+      { cooldown: 6, duration: 8,  fireRate: 0.8, maxActive: 1 },
+      { cooldown: 6, duration: 10, fireRate: 0.7, maxActive: 2 },
+      { cooldown: 5, duration: 10, fireRate: 0.6, maxActive: 2 },
+      { cooldown: 5, duration: 12, fireRate: 0.5, maxActive: 3 },
+      { cooldown: 4, duration: 14, fireRate: 0.4, maxActive: 4 },
     ],
   },
   ring: {
@@ -135,17 +134,17 @@ export const BUFFS = {
   speed:    { name: 'Projectile speed', icon: 'icon.speed',   kind: 'stat',   levels: [0.2, 0.4, 0.6] },
   explode:  { name: 'Explode chance',   icon: 'icon.explode', kind: 'chance', levels: [0.2, 0.35, 0.5] },
   split:    { name: 'Split chance',     icon: 'icon.split',   kind: 'chance', levels: [0.2, 0.35, 0.5] },
-  pierce:   { name: 'Pierce chance',    icon: 'icon.laser',   kind: 'chance', levels: [0.2, 0.35, 0.5], laserHits: [1, 2, 3] },
+  pierce:   { name: 'Pierce chance',    icon: 'icon.laser',   kind: 'chance', levels: [0.2, 0.35, 0.5] },
 };
 
-// §12 Procs. Which procs each projectile kind can roll (the laser's pierce is its maxHits),
-// its hit effect and its explosion sprite.
+// §12 Procs. Which procs each projectile kind can roll; mini-tower shots are fireballs.
+// No hit spawns an effect: explosions come only from the Explode proc.
 export const PROJECTILE_KINDS = {
-  fireball: { hitEffect: 'explosion.small', explosion: 'explosion.big', explode: true, split: true, pierce: true },
-  laser:    { hitEffect: 'explosion.laser', explosion: 'explosion.laserbig', explode: true, split: false, pierce: false },
-  miniShot: { hitEffect: 'explosion.small', explosion: 'explosion.big', explode: true, split: true, pierce: true },
+  fireball: { explode: true, split: true, pierce: true },
+  laser:    { explode: false, split: false, pierce: true },
 };
-export const EXPLOSION_SPRITE_PX = { 'explosion.big': 57, 'explosion.laserbig': 64 }; // source frame width
+export const EXPLOSION_ANIM = 'explosion.big';
+export const EXPLOSION_SPRITE_PX = 57; // source frame width of EXPLOSION_ANIM
 export const EXPLODE_RADIUS = 60;
 export const SPLIT_ANGLE = 45; // degrees either side of the parent's direction
 export const SPLIT_MAX_GEN = 2; // projectiles with gen >= this cannot split

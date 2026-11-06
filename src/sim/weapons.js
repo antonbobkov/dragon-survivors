@@ -1,7 +1,7 @@
 // Weapon slots, cooldowns and firing (§10), stat buffs (§11), the ring and mini towers.
 import { WEAPONS, BUFFS, DT } from './content.js';
 import { spawnProjectile } from './projectiles.js';
-import { advanceAnim, spawnEffect } from './effects.js';
+import { advanceAnim } from './effects.js';
 import { onEnemyHit } from './enemies.js';
 
 const EPS = 1e-9;
@@ -25,15 +25,14 @@ export function weaponLevel(w) {
 // Multipliers from stat buffs and probabilities from chance buffs (§11).
 // damage: multiply then round up (buffDamage); cooldown: multiplies every cooldown and
 // fireRate; area: projectile radius, explosion radius, ring orbit; speed: projectile
-// speed and range. pierceHits: extra laser hits from the pierce buff.
+// speed and range.
 export function buffMods(game) {
-  const m = { damage: 1, cooldown: 1, area: 1, speed: 1, explode: 0, split: 0, pierce: 0, pierceHits: 0 };
+  const m = { damage: 1, cooldown: 1, area: 1, speed: 1, explode: 0, split: 0, pierce: 0 };
   for (const b of game.buffs) {
     const def = BUFFS[b.id];
     const v = def.levels[b.level - 1];
     if (def.kind === 'stat') m[b.id] = 1 + v;
     else m[b.id] = v;
-    if (b.id === 'pierce') m.pierceHits = def.laserHits[b.level - 1];
   }
   return m;
 }
@@ -51,30 +50,45 @@ function ready(w, cooldown) {
   return true;
 }
 
+// The stats of one fireball at weapon level `level` with the current buffs: what the dragon
+// fires (§10.1) and what every mini-tower shot copies (§10.3).
+export function fireballShot(level, mods) {
+  const def = WEAPONS.fireball;
+  const L = def.levels[level - 1];
+  const big = level >= def.bigFrom;
+  return {
+    kind: 'fireball',
+    speed: L.speed * mods.speed, range: L.range * mods.speed,
+    r: (big ? def.bigR : def.r) * mods.area,
+    damage: buffDamage(L.damage, mods),
+    anim: big ? def.bigAnim : def.anim,
+  };
+}
+
+// The level of the dragon's fireball. It is the starting weapon and cannot be lost; a game
+// without it (only a test can build one) reads level 1.
+export function fireballLevel(game) {
+  const w = game.weapons.find((x) => x.id === 'fireball');
+  return w ? w.level : 1;
+}
+
 // §10.1. `count` fireballs in the aim direction, evenly across a fan `spread` degrees wide.
 export function fireFireball(game, w, mods) {
   const L = weaponLevel(w);
   if (!ready(w, L.cooldown * mods.cooldown)) return;
-  const def = WEAPONS.fireball;
   const d = game.dragon;
   const base = Math.atan2(d.aimY, d.aimX);
-  const big = w.level >= def.bigFrom;
   const spreadRad = L.spread * DEG;
+  const stats = fireballShot(w.level, mods);
   for (let i = 0; i < L.count; i++) {
     const a = L.count === 1 ? base : base - spreadRad / 2 + (spreadRad * i) / (L.count - 1);
-    spawnProjectile(game, {
-      kind: 'fireball', x: d.x, y: d.y, dx: Math.cos(a), dy: Math.sin(a),
-      speed: L.speed * mods.speed, range: L.range * mods.speed,
-      r: (big ? def.bigR : def.r) * mods.area,
-      damage: buffDamage(L.damage, mods),
-      anim: big ? def.bigAnim : def.anim,
-    });
+    spawnProjectile(game, { ...stats, x: d.x, y: d.y, dx: Math.cos(a), dy: Math.sin(a) });
   }
-  game.sound(def.sound);
+  game.sound(WEAPONS.fireball.sound);
 }
 
 // §10.2. No fan: with count 2 the lasers are parallel, ±offset px perpendicular to the aim.
-// A laser survives until it has hit maxHits (+ the pierce buff's extra hits) enemies.
+// A laser is used up by its first hit unless it wins a pierce roll (§12).
 export function fireLaser(game, w, mods) {
   const L = weaponLevel(w);
   if (!ready(w, L.cooldown * mods.cooldown)) return;
@@ -90,7 +104,6 @@ export function fireLaser(game, w, mods) {
       r: (big ? def.bigR : def.r) * mods.area,
       damage: buffDamage(L.damage, mods),
       anim: big ? def.bigAnim : def.anim,
-      maxHits: L.maxHits + mods.pierceHits,
     });
   }
   game.sound(def.sound);
@@ -135,8 +148,8 @@ function lobMiniTower(game, L) {
 
 const scratch = [];
 
-// In flight a mini tower only counts down its lob. Landed, it shoots at the nearest enemy
-// within targetRadius every fireRate seconds and lives `duration` seconds from landing.
+// In flight a mini tower only counts down its lob. Landed, it shoots a fireball at the nearest
+// enemy within targetRadius every fireRate seconds and lives `duration` seconds from landing.
 function stepMiniTowers(game, L, mods) {
   const def = WEAPONS.miniTower;
   const list = game.miniTowers;
@@ -160,11 +173,8 @@ function stepMiniTowers(game, L, mods) {
       if (best) {
         const d = Math.sqrt(bestD2);
         const dx = d > 0 ? (best.x - m.x) / d : 0, dy = d > 0 ? (best.y - m.y) / d : 1;
-        spawnProjectile(game, {
-          kind: 'miniShot', x: m.x, y: m.y, dx, dy,
-          speed: def.shotSpeed * mods.speed, range: def.shotRange * mods.speed,
-          r: def.shotR * mods.area, damage: buffDamage(L.damage, mods), anim: def.shotAnim,
-        });
+        // A copy of the dragon's fireball at its current level: one shot, no fan, no sound.
+        spawnProjectile(game, { ...fireballShot(fireballLevel(game), mods), x: m.x, y: m.y, dx, dy });
         m.timer += L.fireRate * mods.cooldown - DT;
       }
     }
@@ -190,7 +200,7 @@ export function spinRing(game, w, mods) {
 }
 
 // Step 8: every ring fireball hits every live enemy it overlaps that is off its rehit
-// timer. No procs; the golem is knocked back from the fireball.
+// timer. No procs and no hit effect; the golem is knocked back from the fireball.
 export function collideRing(game) {
   let mods = null;
   for (const w of game.weapons) {
@@ -211,7 +221,6 @@ export function collideRing(game) {
         e.hp -= damage;
         onEnemyHit(game, e, b);
         w.rehit[e.id] = game.tickCount + rehitTicks;
-        spawnEffect(game, WEAPONS.fireball.hitEffect, b.x, b.y);
       }
     }
   }
