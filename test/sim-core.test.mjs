@@ -5,9 +5,9 @@ import { createEnemy, separate } from '../src/sim/enemies.js';
 import { createWeapon } from '../src/sim/weapons.js';
 import { rateAt, rowIndexAt, pickType } from '../src/sim/spawner.js';
 import { advanceAnim, setAnim, spawnEffect, animLength } from '../src/sim/effects.js';
-import { dirFrame, bobAt } from '../src/sim/dragon.js';
+import { dirFrame } from '../src/sim/dragon.js';
 import {
-  DT, TIMELINE, TETHER_LENGTH, TOWER_RADIUS, MAX_ENEMIES, DESPAWN_DIST, SPAWN_RING_RADIUS, ENEMIES, GOLEM_HP,
+  DT, TIMELINE, TETHER_LENGTH, TOWER_RADIUS, DRAGON_SPEED, TOWER_REST_DIST, TOWER_FOLLOW_SPEED, MAX_ENEMIES, DESPAWN_DIST, SPAWN_RING_RADIUS, ENEMIES, GOLEM_HP,
 } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }];
@@ -67,9 +67,9 @@ test('intent: missing or partial intent is all zeros; move clamped, aim normalis
 
 test('dragon: moves at DRAGON_SPEED, starts at the origin with the tower below it', () => {
   const g = quietGame();
-  assert.deepEqual([g.dragon.x, g.dragon.y, g.tower.x, g.tower.y], [0, 0, 0, 60]);
+  assert.deepEqual([g.dragon.x, g.dragon.y, g.tower.x, g.tower.y], [0, 0, 0, TOWER_REST_DIST]);
   run(g, 60, { moveX: 0, moveY: -1 });
-  assert.ok(Math.abs(g.dragon.y + 260) < 1e-9);
+  assert.ok(Math.abs(g.dragon.y + DRAGON_SPEED) < 1e-9);
 });
 
 test('dragon: aim fallback order is aim, last aim, movement, default', () => {
@@ -85,7 +85,7 @@ test('dragon: aim fallback order is aim, last aim, movement, default', () => {
   assert.deepEqual([g.dragon.aimX, g.dragon.aimY], [-1, 0], 'aim wins over movement');
   g.tick({ moveX: 0, moveY: 1 });
   assert.deepEqual([g.dragon.aimX, g.dragon.aimY], [-1, 0], 'after aiming once: last aim, not movement');
-  assert.equal(g.dragon.dirFrame, 4);
+  assert.equal(g.dragon.flip, true, 'faces the aim when not moving horizontally');
 });
 
 test('dragon: fireball fires along the current aim', () => {
@@ -98,39 +98,40 @@ test('dragon: fireball fires along the current aim', () => {
   assert.ok(g.events.some((e) => e.type === 'sound' && e.name === 'shoot01'));
 });
 
-test('dragon: 16-direction frame formula and bob', () => {
+test('16-direction frame formula (laser sheets, §10.2)', () => {
   assert.equal(dirFrame(0, -1), 0);
   assert.equal(dirFrame(-1, 0), 4);
   assert.equal(dirFrame(0, 1), 8);
   assert.equal(dirFrame(1, 0), 12);
   assert.equal(dirFrame(-1, -1), 2);
-  const bobs = Array.from({ length: 40 }, (_, i) => bobAt(i));
-  assert.deepEqual(bobs.slice(0, 20), [...Array(10).fill(-1), ...Array(10).fill(1)]);
-  assert.deepEqual(bobs.slice(20), bobs.slice(0, 20));
 });
 
 // ---- tower --------------------------------------------------------------------
 
-test('tether: inside the tether the tower does not move', () => {
+test('tether: at rest the tower does not move', () => {
   const g = quietGame();
-  run(g, 20, { moveX: 1, moveY: 0 }); // 86.7 px right: still within 150 of (0, 60)
-  assert.deepEqual([g.tower.x, g.tower.y], [0, 60]);
+  run(g, 60, {});
+  assert.deepEqual([g.tower.x, g.tower.y], [0, TOWER_REST_DIST]);
+  assert.equal(g.tower.moved, false);
 });
 
 test('tether: moving the dragon 500 px right leaves the tower exactly TETHER_LENGTH behind', () => {
   const g = quietGame();
   g.weapons = [];
-  const full = Math.floor(500 / (260 * DT));
+  const full = Math.floor(500 / (DRAGON_SPEED * DT));
   run(g, full, { moveX: 1, moveY: 0 });
-  g.tick({ moveX: (500 - g.dragon.x) / (260 * DT), moveY: 0 });
+  g.tick({ moveX: (500 - g.dragon.x) / (DRAGON_SPEED * DT), moveY: 0 });
   assert.ok(Math.abs(g.dragon.x - 500) < 1e-9);
   const d = () => Math.hypot(g.dragon.x - g.tower.x, g.dragon.y - g.tower.y);
-  assert.ok(d() > TETHER_LENGTH, 'the tower lags while the dragon flies');
-  run(g, 180, {});
-  assert.ok(Math.abs(d() - TETHER_LENGTH) < 1e-9, `distance ${d()}`);
+  assert.ok(Math.abs(d() - TETHER_LENGTH) < 1e-9, `dragged on the tether: distance ${d()}`);
   assert.ok(g.tower.x < g.dragon.x, 'tower trails behind');
+  assert.equal(g.tower.moved, true);
+  // Once the dragon stops, the tower walks up to the rest distance and stops there.
+  run(g, Math.ceil((TETHER_LENGTH - TOWER_REST_DIST) / (TOWER_FOLLOW_SPEED * DT)) + 1, {});
+  assert.ok(Math.abs(d() - TOWER_REST_DIST) < 1e-9, `at rest: distance ${d()}`);
+  assert.equal(g.tower.moved, false);
   const before = [g.tower.x, g.tower.y];
-  run(g, 30, { moveX: -1, moveY: 0 }); // back toward the tower: no movement
+  run(g, 30, {});
   assert.deepEqual([g.tower.x, g.tower.y], before);
 });
 
@@ -147,8 +148,8 @@ test('contact: one knight overlapping the tower for 1 s removes its contact DPS 
 test('contact: an enemy walks to the tower and stops just inside contact range', () => {
   const g = quietGame();
   g.weapons = [];
-  const k = createEnemy(g, 'knight', 200, 60);
-  run(g, 60 * 5, {});
+  const k = createEnemy(g, 'knight', 200, g.tower.y);
+  run(g, Math.ceil(200 / ENEMIES.knight.speed / DT) + 60, {}); // long enough to walk 200 px
   const dist = Math.hypot(k.x - g.tower.x, k.y - g.tower.y);
   assert.ok(Math.abs(dist - (12 + TOWER_RADIUS - 1)) < 1e-9, `dist ${dist}`);
   assert.equal(k.flip, true, 'walked left');

@@ -1,7 +1,7 @@
 {
   "sourceRoot": "E:/code/dragongame/assets",
   "entries": [
-    { "name": "dragon.dir", "list": "dragon_fly/fly.txt" },
+    { "name": "dragon.walk", "list": "dragon/walk.txt" },
     { "name": "knight.walk", "list": "knight/knight.txt" },
     { "name": "knight.die", "list": "knight/die.txt" },
     { "name": "skelly.walk", "list": "skelly/skelly.txt" },

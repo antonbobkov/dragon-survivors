@@ -13,7 +13,7 @@ export const GEM_COLORS = { edge: '#2a7fd4', core: '#9be8ff' };
 export const TOWER_BAR = { w: 40, h: 4, gap: 4, back: '#3a0d0d', fill: '#e03a3a' };
 
 // Anims that are 16-direction sheets: projectiles pick their frame by `dirFrame`.
-export const DIR_ANIMS = new Set(['dragon.dir', 'laser.dir', 'laser.bigdir']);
+export const DIR_ANIMS = new Set(['laser.dir', 'laser.bigdir']);
 
 // 6 px gem diamond: 1 = edge colour, 2 = core colour.
 const GEM_PIXELS = [
@@ -88,18 +88,12 @@ export function miniTowerDrawPos(m) {
   };
 }
 
-// §7.3 minion carriers: while the tether is pulling the tower, the prince and the princess
-// walk at its base, one each side, bobbing out of phase. Derived from state only: the
-// tower moves on a tick when the dragon is beyond the tether, or on it and still moving.
+// §7.3 minion carriers: while the tower is moving, the prince and the princess walk at
+// its base, one each side, bobbing out of phase. Derived from state only: the tether
+// step records whether the tower moved this tick in `tower.moved`.
 export const MINIONS = { anims: ['royal.prince', 'royal.princess'], dx: 14, dy: 26, bobTicks: 8 };
-const TETHER_EPS = 1e-6;
 export function towerMoving(game) {
-  const d = game.dragon, t = game.tower;
-  const dist = Math.hypot(d.x - t.x, d.y - t.y);
-  if (dist > TETHER_LENGTH + TETHER_EPS) return true;
-  if (dist < TETHER_LENGTH - 0.01) return false;
-  // On the tether: moving if the dragon's move has a component away from the tower.
-  return (d.moveX || 0) * (d.x - t.x) + (d.moveY || 0) * (d.y - t.y) > 0;
+  return game.tower.moved === true;
 }
 export function minionSprites(game) {
   if (game.phase !== 'play' || !towerMoving(game)) return [];
@@ -210,7 +204,7 @@ export function createRenderer({ atlas, makeCanvas }) {
     }
 
     const d = game.dragon;
-    drawAnim(ctx, atlas, d.anim, d.frame, d.x + o.x, d.y + o.y + d.bob);
+    drawAnim(ctx, atlas, d.anim, d.frame, d.x + o.x, d.y + o.y, { flip: d.flip });
 
     for (const fx of game.effects) {
       drawAnim(ctx, atlas, fx.anim, fx.frame, fx.x + o.x, fx.y + o.y, { flip: fx.flip, alpha: fx.alpha, scale: fx.scale });

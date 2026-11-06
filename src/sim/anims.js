@@ -4,7 +4,7 @@ export const ANIMS = {
   'burn': { ticks: [6, 6, 6, 6, 6, 6] },
   'castle': { ticks: [6] },
   'castle.destroy': { ticks: [6, 6, 6, 6, 6, 6, 6, 6, 6] },
-  'dragon.dir': { ticks: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6] },
+  'dragon.walk': { ticks: [6, 6] },
   'explosion.big': { ticks: [6, 6, 6, 6, 6, 6] },
   'explosion.laser': { ticks: [6, 6, 6, 6, 6, 6] },
   'explosion.laserbig': { ticks: [6, 6, 6, 6, 6, 6] },
