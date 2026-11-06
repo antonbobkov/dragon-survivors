@@ -1,6 +1,6 @@
 # T-015: Mages shoot green orbs at the dragon
 
-**Source:** [owner play-test 1](../../reports/feedback/2026-11-06-owner-playtest-1.md), item 6 · **Model:** Opus · **Depends on:** T-013 (dragon speed, facing), T-014 (projectile code)
+**Source:** [owner play-test 1](../../../reports/feedback/2026-11-06-owner-playtest-1.md), item 6 · **Model:** Opus · **Depends on:** T-013 (dragon speed, facing), T-014 (projectile code)
 
 ## Why
 
