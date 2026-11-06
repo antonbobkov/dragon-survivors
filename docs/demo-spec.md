@@ -35,6 +35,7 @@ dragon-survivors/
       draw.js             world rendering (background, entities, effects)
       hud.js              timer, tower HP bar, XP bar, weapon/buff icons
       screens.js          title, pause, level-up cards, game over
+      debug.js            debug overlay: collision circles, loop and entity stats (§19)
     sim/                  no DOM, no canvas, no Date. Pure state + tick.
       game.js             Game state, tick order, run timeline
       rng.js              seeded PRNG (mulberry32)
@@ -147,14 +148,14 @@ Sounds copied as-is from the pack root: `shoot01`, `laser01`, `explosion01`, `ex
 - Precisely: each animation frame adds the time since the previous frame to an accumulator and runs `floor(acc / (1000/60 ms))` ticks, keeping the remainder. If more than 4 are owed, 4 run and the rest are dropped (not banked), so a stall or a hidden tab never fast-forwards. The first frame runs none. While ticks are stopped (title, pause) no time is banked, and starting or resuming a run begins with an empty accumulator.
 - Intents are built once per frame. The edge fields `confirm` and `pick` are held until the next tick runs and given to that tick only, so a frame that runs no tick (high refresh rates) loses no press. Every tick of a frame gets the frame's move and aim.
 - After each tick the browser plays that tick's `game.events` sounds (they are cleared by the next tick).
-- `Game.tick(intent)` is the only entry point into the sim. `intent` is `{ moveX, moveY, aimX, aimY, hasAim, confirm, pick }` with move and aim as unit vectors or zero, `pick` in `{0,1,2,-1}`.
+- `Game.tick(intent)` is the only entry point into the sim. `intent` is `{ moveX, moveY, aimX, aimY, hasAim, confirm, pick }` with move and aim as unit vectors or zero, `pick` in `{0,1,2,-1}`, plus an optional `debug` command (§19).
 - All randomness goes through `game.rng` (mulberry32, seed passed to the `Game` constructor). Tests pass a fixed seed.
 
 ### 4.1 Sim state
 
 The sim's state is plain data on the `Game` object. The loop and the renderer read it and never write it (the loop only calls `tick`).
 
-- **Construction:** `new Game({ seed, timeline })`. `timeline` defaults to the §9 table in `content.js`; tests may pass their own rows.
+- **Construction:** `new Game({ seed, timeline, debug })`. `timeline` defaults to the §9 table in `content.js`; tests may pass their own rows. `debug` (default false) makes the sim honour `intent.debug` (§19).
 - **RNG:** `game.rng` is a plain function returning a float in `[0, 1)`. Every random draw calls `game.rng()` at the point of use, never a reference cached at construction, so a test can replace it (`game.rng = () => 0`).
 - **Units and clock:** positions in world px, speeds in px/s, `DT = 1/60`. `game.tickCount` is an integer and `game.t = tickCount × DT` seconds, so time never drifts.
 - **Intent:** exactly the shape in §4. A missing, partial or non-finite field reads as 0, `false` or `-1` (`pick`). A move vector longer than 1 is normalised; a non-zero aim is normalised; `hasAim` is false when the aim is zero. The sim ignores `confirm`; `pick` is read only while level-up offers are open (§14). The loop turns a gamepad A press on the level-up screen into the `pick` of the highlighted card.
@@ -563,6 +564,14 @@ A voice counts from its start until its buffer's duration has passed, on the aud
 
 Query parameter `?debug=1` exposes the App as `window.app` for the console (read it; only the loop calls `tick`) and enables: collision circles, tick time and entity counts, keys F1–F4 to grant each weapon at level 5, F5 to jump to 4:50, `+` and `-` to change game speed. `?seed=N` fixes the RNG.
 
+Precisely:
+
+- **Debug commands travel in the intent.** The page builds every `Game` with `{ debug: true }`; F1–F4 (fireball, laser, mini tower, ring) and F5 become `intent.debug = { grant: '<weapon id>' }` or `{ jumpTo: 290 }` on the next tick that runs, like `pick`. A `Game` built without `debug` ignores the field, so a normal run cannot be changed by it, and a replay of the same intents, debug commands included, gives the same digest. A malformed command is ignored. Commands are read only on a tick that advances the world (not while level-up offers are open, nor in `'dying'` or `'over'`), before step 1 of §2.1; the tick then runs as usual.
+- **Grant** sets the weapon to level 5 if owned, else adds it at level 5 when a weapon slot is free (it fires on that tick's weapons step). It does not use a level-up.
+- **Jump** sets `tickCount` to `round(jumpTo / DT)` and `t` with it, only forward. Nothing in between is simulated: the spawner reads its rate and weights from the new `t`, its budget is unchanged, and the golem spawns at 5:00 as usual.
+- **Game speed** is the loop's: `+` / `-` (also keypad) step through 0.25×, 0.5×, 1×, 2×, 4×. The accumulator adds `real time × speed`, and above 1× the cap of 4 ticks per frame scales with the speed (16 at 4×), so 4× runs 4 ticks per 60 Hz frame. The sim is untouched.
+- **Overlay** (`render/debug.js`, drawn from game state and loop stats only): circles for enemies (`r`), the tower (`TOWER_RADIUS`), projectiles, ring fireballs, landed mini towers' 300 px target radius and the dragon's pickup radius; at the top right the average ms per tick (smoothed), ticks run in the last frame, the game speed, the counts of enemies, projectiles, gems and effects, `t` and the seed. With `debug`, the browser defaults of F1–F5, `+` and `-` are suppressed.
+
 ---
 
 ## 20. Testing
@@ -577,7 +586,7 @@ Query parameter `?debug=1` exposes the App as `window.app` for the console (read
 - **Ghost:** killing a ghost knight yields a ghost after the burn effect finishes.
 - **Mage:** a mage starts casting 8 s after it spawns and has spawned 4 skeletons 1 s later, unless within 80 px of the tower.
 - **Timeline:** at t = 300 s the golem exists; at t = 0 only knights spawn.
-- **Soak:** run 5 minutes with a scripted dragon that circles the tower. Assert no exceptions, the spawner never spawns above the cap (§8.2), and the tower eventually dies.
+- **Soak:** run 5 minutes with a scripted dragon that circles the tower. Assert no exceptions, the spawner never spawns above the cap (§8.2), and the tower eventually dies. The test holds the tower at full HP until the golem has spawned, so the run reaches 5:00 whatever the balance; the horde reaches the cap on the way, and the golem then ends the run. It stays in the default suite (a few seconds).
 - **Atlas:** `build-atlas.mjs` run on the manifest produces every name the game asks for. `content.js` lists its required atlas names and the test cross-checks them.
 - **Balance instrument:** `node tools/measure.mjs` plays headless runs with three bot policies over a pool of seeds (16 by default, a 180 s cap) and prints median, min and max survival time, kills and level as Markdown. `idle` gives no input (fires right); `aim` stands still and aims at the enemy nearest the tower; `kite` circles the tower at 120 px and aims the same way. When level-up offers are open every policy picks card 0. `--timeline` adds tower HP, enemies alive, kills and spawned over time; `--set` runs a what-if (a timeline rate, the tower HP, an enemy field) without editing `content.js`. A test runs one short seed per policy.
 

@@ -16,6 +16,13 @@ const PAUSE_KEYS = ['Escape', 'KeyP'];
 const CONFIRM_KEYS = ['Enter', 'NumpadEnter'];
 const PICK_KEYS = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 };
 
+// §19 debug keys (read always, acted on only by a debug App): F1–F4 grant a weapon at
+// level 5, F5 jumps to 4:50, + / - change game speed.
+export const DEBUG_GRANT_KEYS = { F1: 'fireball', F2: 'laser', F3: 'miniTower', F4: 'ring' };
+export const DEBUG_JUMP_KEY = 'F5';
+export const DEBUG_SPEED_KEYS = { Equal: 1, NumpadAdd: 1, Minus: -1, NumpadSubtract: -1 };
+export const DEBUG_KEYS = new Set([...Object.keys(DEBUG_GRANT_KEYS), DEBUG_JUMP_KEY, ...Object.keys(DEBUG_SPEED_KEYS)]);
+
 // Keys whose browser default (scrolling) is suppressed.
 export const CAPTURED_KEYS = new Set([
   ...Object.values(MOVE_KEYS).flat(), ...PAUSE_KEYS, ...CONFIRM_KEYS, 'Space', ...Object.keys(PICK_KEYS),
@@ -50,7 +57,8 @@ const anyHeld = (held, codes) => codes.some((c) => held.has(c));
 //   dragon: { x, y } dragon position on screen (internal px),
 // }
 // state: from createInputState(); updated in place (device, previous pad buttons).
-// Returns { intent, device, pause, confirm, pick, nav, click }; pause/confirm/pick/nav are edges.
+// Returns { intent, device, pause, confirm, pick, nav, click, debug }; pause/confirm/pick/nav
+// are edges, and so is debug: { grant: weapon id or null, jump: bool, speed: -1 | 0 | 1 }.
 export function readFrame(raw, state) {
   const held = raw.held || new Set();
   const pressed = raw.pressed || [];
@@ -93,10 +101,16 @@ export function readFrame(raw, state) {
   for (const c of pressed) if (c in PICK_KEYS) pick = PICK_KEYS[c];
   const nav = (padEdge(PAD.RIGHT) ? 1 : 0) - (padEdge(PAD.LEFT) ? 1 : 0);
   const click = clicks.length ? clicks[clicks.length - 1] : null;
+  const debug = { grant: null, jump: false, speed: 0 };
+  for (const c of pressed) {
+    if (c in DEBUG_GRANT_KEYS) debug.grant = DEBUG_GRANT_KEYS[c];
+    if (c === DEBUG_JUMP_KEY) debug.jump = true;
+    if (c in DEBUG_SPEED_KEYS) debug.speed += DEBUG_SPEED_KEYS[c];
+  }
 
   return {
     intent: { moveX, moveY, aimX, aimY, hasAim, confirm, pick },
-    device: state.device, pause, confirm, pick, nav, click,
+    device: state.device, pause, confirm, pick, nav, click, debug,
   };
 }
 
@@ -111,8 +125,9 @@ export function padSnapshot(nav) {
   return null;
 }
 
-// DOM glue. Returns { poll(dragonScreenPos) -> raw snapshot, onGesture(fn) }.
-export function attachInput(canvas, win) {
+// DOM glue. Returns { poll(dragonScreenPos) -> raw snapshot, onGesture(fn) }. With
+// `debug`, the debug keys' browser defaults (help, reload) are suppressed too.
+export function attachInput(canvas, win, { debug = false } = {}) {
   const held = new Set();
   let pressed = [];
   let clicks = [];
@@ -122,7 +137,7 @@ export function attachInput(canvas, win) {
   const gesture = () => { for (const fn of gestureFns) fn(); };
 
   win.addEventListener('keydown', (e) => {
-    if (CAPTURED_KEYS.has(e.code)) e.preventDefault();
+    if (CAPTURED_KEYS.has(e.code) || (debug && DEBUG_KEYS.has(e.code))) e.preventDefault();
     held.add(e.code);
     if (!e.repeat) pressed.push(e.code);
     gesture();

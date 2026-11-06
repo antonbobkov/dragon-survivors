@@ -1,5 +1,5 @@
 // Game state, the tick order of §2.1 (one method per step), clock and game over.
-import { DT, TIMELINE, DYING_TIME } from './content.js';
+import { DT, TIMELINE, DYING_TIME, WEAPON_IDS, WEAPON_MAX_LEVEL, WEAPON_SLOTS } from './content.js';
 import { mulberry32 } from './rng.js';
 import { Grid } from './grid.js';
 import { createDragon, applyIntent, moveDragon } from './dragon.js';
@@ -28,9 +28,20 @@ export function normalizeIntent(intent) {
   return { moveX, moveY, aimX, aimY, hasAim: i.hasAim === true && al > 0, confirm: i.confirm === true, pick };
 }
 
+// §19: the optional `intent.debug` command, `{ grant: <weapon id> }` or `{ jumpTo: <s> }`,
+// or null when absent or malformed. Honoured only by a Game built with `{ debug: true }`.
+export function normalizeDebug(intent) {
+  const d = intent && intent.debug;
+  if (!d || typeof d !== 'object') return null;
+  if (WEAPON_IDS.includes(d.grant)) return { grant: d.grant };
+  if (typeof d.jumpTo === 'number' && Number.isFinite(d.jumpTo)) return { jumpTo: d.jumpTo };
+  return null;
+}
+
 export class Game {
-  constructor({ seed = 1, timeline = TIMELINE } = {}) {
+  constructor({ seed = 1, timeline = TIMELINE, debug = false } = {}) {
     this.seed = seed;
+    this.debug = debug === true; // §19: debug commands in the intent are honoured only then
     this.rng = mulberry32(seed);
     this.timeline = timeline;
     this.tickCount = 0;
@@ -77,6 +88,7 @@ export class Game {
     }
     const it = normalizeIntent(intent);
     if (this.offers.length > 0) { this.stepPick(it); return; } // the world is frozen
+    if (this.debug) this.stepDebug(normalizeDebug(intent)); // §19, before step 1
     this.stepIntent(it);       // 1
     this.stepDragon();         // 2
     this.stepTether();         // 3
@@ -100,6 +112,24 @@ export class Game {
     this.pendingLevelUps--;
     this.sound('powerup');
     this.offers = this.pendingLevelUps > 0 ? rollOffers(this) : [];
+  }
+  // §19 debug command, applied before step 1 of a world-advancing tick; the tick then runs
+  // as usual. grant: the weapon at level 5 (added if not owned and a slot is free).
+  // jumpTo: sets the clock forward to that time (never back); the spawner reads its row
+  // from the clock, nothing in between is simulated.
+  stepDebug(cmd) {
+    if (!cmd) return;
+    if (cmd.grant) {
+      const w = this.weapons.find((x) => x.id === cmd.grant);
+      if (w) w.level = WEAPON_MAX_LEVEL;
+      else if (this.weapons.length < WEAPON_SLOTS) this.weapons.push(createWeapon(cmd.grant, WEAPON_MAX_LEVEL));
+    } else if (cmd.jumpTo !== undefined) {
+      const ticks = Math.round(cmd.jumpTo / DT);
+      if (ticks > this.tickCount) {
+        this.tickCount = ticks;
+        this.t = ticks * DT;
+      }
+    }
   }
   // 1. Dragon velocity and aim. `confirm` is the loop's business; `pick` is read by stepPick.
   stepIntent(intent) { applyIntent(this, intent); }
