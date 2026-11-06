@@ -1,6 +1,6 @@
 # T-014: Weapon rules: no free explosions, no free pierce, shared fireball
 
-**Source:** [owner play-test 1](../../reports/feedback/2026-11-06-owner-playtest-1.md), items 3, 4, 5, 8 · **Model:** Opus · **Depends on:** nothing open
+**Source:** [owner play-test 1](../../../reports/feedback/2026-11-06-owner-playtest-1.md), items 3, 4, 5, 8 · **Model:** Opus · **Depends on:** nothing open
 
 ## Why
 
