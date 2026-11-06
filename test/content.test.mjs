@@ -33,7 +33,7 @@ test('content: dragon and tower constants match §6 and §7', () => {
   const consts = Object.fromEntries([...tableAfter('## 6. Dragon'), ...tableAfter('## 7. Tower')]
     .filter((r) => r[0].startsWith('`'))
     .map((r) => [r[0].replace(/`/g, ''), num(r[1])]));
-  for (const name of ['DRAGON_SPEED', 'DRAGON_PICKUP_RADIUS', 'TOWER_HP', 'TETHER_LENGTH', 'TOWER_FOLLOW_SPEED', 'TOWER_REST_DIST', 'TOWER_RADIUS']) {
+  for (const name of ['DRAGON_SPEED', 'DRAGON_PICKUP_RADIUS', 'DRAGON_RADIUS', 'TOWER_HP', 'TETHER_LENGTH', 'TOWER_FOLLOW_SPEED', 'TOWER_REST_DIST', 'TOWER_RADIUS']) {
     assert.equal(C[name], consts[name], name);
   }
 });
@@ -45,6 +45,15 @@ test('content: inline constants match the spec text', () => {
   assert.equal(C.SPAWN_RING_RADIUS, 560);
   assert.equal(C.xpToNext(1), 8);
   assert.equal(C.xpToNext(10), 35);
+});
+
+test('content: mage orb constants match §8.5', () => {
+  const rows = tableAfter('### 8.5');
+  const consts = Object.fromEntries(rows.filter((r) => r[0].startsWith('`')).map((r) => [r[0].replace(/`/g, ''), num(r[1])]));
+  for (const name of ['MAGE_ORB_RANGE', 'MAGE_ORB_INTERVAL', 'MAGE_ORB_SPEED', 'MAGE_ORB_DAMAGE']) assert.equal(C[name], consts[name], name);
+  const orb = rows.find((r) => r[0] === 'Orb')[1];
+  assert.equal(orb, `radius ${C.MAGE_ORB_R} px, flies ${C.MAGE_ORB_TRAVEL} px, sprite \`${C.MAGE_ORB_ANIM}\`, hit sound \`${C.MAGE_ORB_SOUND}\``);
+  assert.ok(C.SOUND_NAMES.includes(C.MAGE_ORB_SOUND));
 });
 
 test('content: enemy table matches §8', () => {
@@ -121,7 +130,7 @@ test('content: ATLAS_NAMES lists every §3.3 atlas name and every anim content r
   const used = [];
   for (const e of Object.values(C.ENEMIES)) used.push(e.walk, e.die, e.summon, e.split, e.spell);
   for (const w of Object.values(C.WEAPONS)) used.push(w.anim, w.bigAnim);
-  used.push(C.EXPLOSION_ANIM);
+  used.push(C.EXPLOSION_ANIM, C.MAGE_ORB_ANIM);
   for (const b of Object.values(C.BUFFS)) used.push(b.icon);
   used.push(C.DRAGON_ANIM, 'castle.destroy');
   for (const a of used.filter(Boolean)) assert.ok(C.ATLAS_NAMES.includes(a), a);

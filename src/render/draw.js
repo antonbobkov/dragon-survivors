@@ -149,7 +149,7 @@ export function createRenderer({ atlas, makeCanvas }) {
   }
 
   // Draw order (§5): background, gems, tower, mini towers, enemies by y, ring fireballs,
-  // projectiles, dragon, effects. The HUD and screens draw on top.
+  // projectiles, enemy shots (mage orbs), dragon, effects. The HUD and screens draw on top.
   function drawWorld(ctx, game) {
     ctx.imageSmoothingEnabled = false;
     const o = cameraOffset(game.dragon);
@@ -201,6 +201,10 @@ export function createRenderer({ atlas, makeCanvas }) {
     for (const p of game.projectiles) {
       const f = DIR_ANIMS.has(p.anim) ? p.dirFrame : p.frame;
       drawAnim(ctx, atlas, p.anim, f, p.x + o.x, p.y + o.y);
+    }
+
+    for (const s of game.enemyShots || []) {
+      drawAnim(ctx, atlas, s.anim, s.frame, s.x + o.x, s.y + o.y);
     }
 
     const d = game.dragon;

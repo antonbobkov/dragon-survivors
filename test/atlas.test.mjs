@@ -2,14 +2,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inflateSync } from 'node:zlib';
 import { decodeBmp } from '../tools/lib/bmp.mjs';
 import { crc32, encodePng, pngSize } from '../tools/lib/png.mjs';
-import { packShelves, parseSequence, formatAnimsJs } from '../tools/build-atlas.mjs';
+import { packShelves, parseSequence, formatAnimsJs, parseSwap, swapChannels, resolveEntries, buildAtlas } from '../tools/build-atlas.mjs';
 import { ANIMS } from '../src/sim/anims.js';
 
 const ROOT = new URL('..', import.meta.url);
@@ -196,7 +196,67 @@ test('packShelves: no overlap (including padding), inside the atlas, determinist
   assert.throws(() => packShelves([{ key: 'wide', w: 300, h: 4 }], 256, 1), /wider/);
 });
 
+// ---------- colour swap ----------
+
+test('swap: parseSwap takes two different channels of r, g, b; swapChannels swaps them in every pixel', () => {
+  assert.equal(parseSwap(undefined), null);
+  assert.deepEqual(parseSwap('rg'), [0, 1]);
+  assert.deepEqual(parseSwap('bg'), [2, 1]);
+  for (const bad of ['rr', 'ra', 'r', 'rgb', '', 3]) assert.throws(() => parseSwap(bad), /bad swap/, String(bad));
+  const rgba = new Uint8Array([10, 20, 30, 255, 1, 2, 3, 0]);
+  assert.deepEqual([...swapChannels(rgba, [0, 1])], [20, 10, 30, 255, 2, 1, 3, 0]);
+});
+
+test('swap: an entry with "swap" gets #<swap> frame keys, packed apart from the originals, channels swapped', () => {
+  const manifest = { entries: [
+    { name: 'a', files: ['dir/x.bmp'] },
+    { name: 'b', files: ['dir/x.bmp'], swap: 'rg' },
+  ] };
+  const entries = resolveEntries(manifest, '/unused');
+  assert.deepEqual(entries.get('a').map((f) => f.key), ['dir/x.bmp']);
+  assert.deepEqual(entries.get('b').map((f) => [f.key, f.file, f.swap]), [['dir/x.bmp#rg', 'dir/x.bmp', 'rg']]);
+  assert.throws(() => resolveEntries({ entries: [{ name: 'c', file: 'x.bmp', swap: 'gg' }] }, '/unused'), /bad swap/);
+
+  const src = mkdtempSync(join(tmpdir(), 'atlas-swap-'));
+  try {
+    mkdirSync(join(src, 'dir'));
+    const ORANGE = [250, 120, 10];
+    writeFileSync(join(src, 'dir/x.bmp'), makeBmp({ width: 2, height: 1, bits: 24, rows: [[ORANGE, BLACK]] }));
+    const out = buildAtlas(manifest, src);
+    const json = JSON.parse(out.atlasJson);
+    assert.deepEqual(Object.keys(json.frames).sort(), ['dir/x.bmp', 'dir/x.bmp#rg']);
+    assert.deepEqual(json.anims.b.frames, ['dir/x.bmp#rg']);
+    const png = readPng(out.png);
+    const pixel = (key, x) => { const r = json.frames[key]; const o = (r.y * png.width + r.x + x) * 4; return [...png.rgba.subarray(o, o + 4)]; };
+    assert.deepEqual(pixel('dir/x.bmp', 0), [250, 120, 10, 255]);
+    assert.deepEqual(pixel('dir/x.bmp#rg', 0), [120, 250, 10, 255]);
+    assert.deepEqual(pixel('dir/x.bmp#rg', 1), [0, 0, 0, 0], 'the key colour stays transparent');
+  } finally {
+    rmSync(src, { recursive: true, force: true });
+  }
+});
+
 // ---------- committed outputs ----------
+
+test('atlas.png: orb.green is fireball.anim with red and green swapped, frame for frame', () => {
+  const png = readPng(atlasPng);
+  const orb = atlas.anims['orb.green'], fb = atlas.anims['fireball.anim'];
+  assert.deepEqual(orb.frames, fb.frames.map((f) => `${f}#rg`));
+  assert.deepEqual(orb.ticks, fb.ticks);
+  let opaque = 0;
+  orb.frames.forEach((key, i) => {
+    const a = atlas.frames[key], b = atlas.frames[fb.frames[i]];
+    assert.deepEqual([a.w, a.h], [b.w, b.h]);
+    for (let y = 0; y < a.h; y++) {
+      for (let x = 0; x < a.w; x++) {
+        const p = ((a.y + y) * png.width + a.x + x) * 4, q = ((b.y + y) * png.width + b.x + x) * 4;
+        assert.deepEqual([png.rgba[p], png.rgba[p + 1], png.rgba[p + 2], png.rgba[p + 3]], [png.rgba[q + 1], png.rgba[q], png.rgba[q + 2], png.rgba[q + 3]], `${key} (${x}, ${y})`);
+        if (png.rgba[p + 3]) opaque++;
+      }
+    }
+  });
+  assert.ok(opaque > 0);
+});
 
 test('atlas.json: every manifest name is an anim, every anim frame is a frame, ticks line up', () => {
   for (const e of manifest.entries) assert.ok(atlas.anims[e.name], `anim ${e.name} missing from atlas.json`);
@@ -242,7 +302,7 @@ test('sprite sizes match spec §3.3', () => {
   };
   const expected = {
     'dragon.walk': '20x20', 'knight.walk': '16x16', 'golem.walk': '64x64', 'golem.die': '64x64',
-    'fireball.anim': '8x8', 'fireball.big': '12x12', 'laser.dir': '8x8', 'laser.bigdir': '12x12',
+    'fireball.anim': '8x8', 'fireball.big': '12x12', 'orb.green': '8x8', 'laser.dir': '8x8', 'laser.bigdir': '12x12',
     castle: '30x30', 'explosion.small': '30x30', 'explosion.big': '57x57', 'explosion.laser': '45x45',
     'explosion.laserbig': '64x64', burn: '16x16', 'icon.nuke': '9x9',
   };

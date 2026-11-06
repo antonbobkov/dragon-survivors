@@ -84,23 +84,50 @@ export function formatAnimsJs(anims) {
   return lines.join('\n') + '\n';
 }
 
-/** Resolve the manifest into anims: name -> [{ key, ticks }], key = path relative to the source root. */
+/**
+ * Colour channel swap of a manifest entry (`"swap": "rg"`): two distinct channels of r, g, b.
+ * Returns [i, j] channel indexes, or null when the entry has no swap.
+ */
+export function parseSwap(swap) {
+  if (swap === undefined) return null;
+  const m = typeof swap === 'string' && /^([rgb])([rgb])$/.exec(swap);
+  if (!m || m[1] === m[2]) throw new Error(`bad swap "${swap}" (two different channels of r, g, b, like "rg")`);
+  return ['rgb'.indexOf(m[1]), 'rgb'.indexOf(m[2])];
+}
+
+/** Swap two channels of every pixel of an RGBA buffer in place. */
+export function swapChannels(rgba, [i, j]) {
+  for (let p = 0; p < rgba.length; p += 4) {
+    const v = rgba[p + i];
+    rgba[p + i] = rgba[p + j];
+    rgba[p + j] = v;
+  }
+  return rgba;
+}
+
+/**
+ * Resolve the manifest into anims: name -> [{ key, file, swap, ticks }]. `file` is the BMP path
+ * relative to the source root; `key` is the frame key, the same path, plus `#<swap>` for an
+ * entry with a channel swap so recoloured frames do not collide with the originals.
+ */
 export function resolveEntries(manifest, sourceRoot) {
   const anims = new Map();
-  const add = (name, frames) => {
-    if (anims.has(name)) throw new Error(`duplicate manifest name "${name}"`);
-    if (!frames.length) throw new Error(`manifest entry "${name}" has no frames`);
-    anims.set(name, frames);
+  const add = (e, frames) => {
+    if (anims.has(e.name)) throw new Error(`duplicate manifest name "${e.name}"`);
+    if (!frames.length) throw new Error(`manifest entry "${e.name}" has no frames`);
+    parseSwap(e.swap);
+    const suffix = e.swap ? `#${e.swap}` : '';
+    anims.set(e.name, frames.map((f) => ({ key: f.file + suffix, file: f.file, swap: e.swap, ticks: f.ticks })));
   };
   for (const e of manifest.entries) {
     if (e.list) {
       const dir = posix.dirname(e.list);
       const text = readFileSync(join(sourceRoot, e.list), 'utf8');
-      add(e.name, parseSequence(text).map((f) => ({ key: posix.normalize(posix.join(dir, f.file)), ticks: f.ticks })));
+      add(e, parseSequence(text).map((f) => ({ file: posix.normalize(posix.join(dir, f.file)), ticks: f.ticks })));
     } else if (e.files) {
-      add(e.name, e.files.map((f) => ({ key: posix.normalize(f), ticks: DEFAULT_TICKS })));
+      add(e, e.files.map((f) => ({ file: posix.normalize(f), ticks: DEFAULT_TICKS })));
     } else if (e.file) {
-      add(e.name, [{ key: posix.normalize(e.file), ticks: DEFAULT_TICKS }]);
+      add(e, [{ file: posix.normalize(e.file), ticks: DEFAULT_TICKS }]);
     } else {
       throw new Error(`manifest entry "${e.name}" needs list, files or file`);
     }
@@ -113,15 +140,18 @@ export function buildAtlas(manifest, sourceRoot) {
   const entries = resolveEntries(manifest, sourceRoot);
   const decoded = new Map();
   for (const frames of entries.values()) {
-    for (const { key } of frames) {
+    for (const { key, file, swap } of frames) {
       if (decoded.has(key)) continue;
-      const path = join(sourceRoot, key);
-      if (!existsSync(path)) throw new Error(`missing frame ${key} (looked in ${sourceRoot})`);
+      const path = join(sourceRoot, file);
+      if (!existsSync(path)) throw new Error(`missing frame ${file} (looked in ${sourceRoot})`);
+      let d;
       try {
-        decoded.set(key, decodeBmp(readFileSync(path)));
+        d = decodeBmp(readFileSync(path));
       } catch (e) {
-        throw new Error(`${key}: ${e.message}`);
+        throw new Error(`${file}: ${e.message}`);
       }
+      if (swap) swapChannels(d.rgba, parseSwap(swap));
+      decoded.set(key, d);
     }
   }
   const { width, height, placed } = packShelves([...decoded].map(([key, d]) => ({ key, w: d.width, h: d.height })));
