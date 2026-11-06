@@ -19,6 +19,10 @@ if (!name) {
   process.exit(1);
 }
 renameSync(join(workDir, name), join(archiveDir, name));
+// The file moves one level deeper (docs/work/ -> docs/archive/tasks/): rebase its relative links.
+const archived = join(archiveDir, name);
+writeFileSync(archived, readFileSync(archived, 'utf8').replace(/\]\((?![a-z]+:|#|\/)([^)\s]+)\)/gi, (m, link) =>
+  link.startsWith('../') ? `](../${link})` : `](../../work/${link})`));
 
 const backlogPath = join(ROOT, 'docs/backlog.md');
 const backlog = readFileSync(backlogPath, 'utf8');

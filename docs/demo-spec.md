@@ -60,7 +60,7 @@ dragon-survivors/
   docs/
 ```
 
-Serve with any static server (`python -m http.server` or `npx serve`). The only build step is `node tools/build-atlas.mjs`, which reads `E:\code\dragongame\assets` (path set in `manifest.json`) and writes into `assets/`, plus `node tools/copy-sounds.mjs` for the WAVs. `npm run build:assets` runs both. The outputs are committed, so the game and CI never need the pack.
+Serve with any static server (`python -m http.server` or `npx serve`). The only build step is `node tools/build-atlas.mjs`, which reads `E:\code\dragongame\assets` (path set in `manifest.json`) and writes into `assets/`, plus `node tools/copy-sounds.mjs` for the WAVs. `npm run build:assets` runs both. The outputs are committed, so the game and the tests never need the pack.
 
 ### 2.1 Tick order
 

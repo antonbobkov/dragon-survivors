@@ -1,6 +1,6 @@
 # T-001: Asset pipeline
 
-**Source:** [demo-spec.md](../demo-spec.md) §3, milestone 1 · **Model:** Sonnet · **Depends on:** nothing
+**Source:** [demo-spec.md](../../demo-spec.md) §3, milestone 1 · **Model:** Sonnet · **Depends on:** nothing
 
 ## Why
 
@@ -43,4 +43,4 @@ The game draws everything from one atlas built from the dragongame BMPs, and the
 ## Done means
 
 - `npm run gate` green, generated files committed, spec §3 corrected where the assets differ.
-- Commit body per [agent-workflow.md](../process/agent-workflow.md) § The life of a task, with `Closes: T-001`.
+- Commit body per [agent-workflow.md](../../process/agent-workflow.md) § The life of a task, with `Closes: T-001`.
