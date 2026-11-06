@@ -18,7 +18,7 @@ A Vampire Survivors run with one twist: you fly an invulnerable dragon, but the 
 |---|---|---|
 | Dragon + tethered tower | Yes | Dragon takes no damage. Tower has HP and is the lose condition. Tower follows when the dragon is further than X. Minions carrying it: stretch goal (visual only). |
 | Twin-stick controls | Yes | Left stick / WASD moves. Right stick / mouse aims. |
-| Aimed vs. auto weapons | Yes | Fireball (aimed, from dragon). Laser (aimed, pierces, from dragon). Mini tower (auto, fires from the tower). Ring (auto, orbits the dragon). |
+| Aimed vs. auto weapons | Yes | Fireball (aimed, from dragon). Laser (aimed, fast, from dragon). Mini tower (auto, fires your fireball from the tower). Ring (auto, orbits the dragon). |
 | Proc-chance buffs | Yes, 3 | Explode chance, split chance, pierce chance. |
 | VS-style stat buffs | Yes, 4 | Damage, cooldown, area, projectile speed. |
 | Animated enemies with death effects | Yes | Every enemy uses its walk and die animation from the asset pack. |
@@ -54,4 +54,4 @@ Meta progression between runs, multiple stages, weapon evolutions, elemental dam
 
 - **Engine.** Not chosen. Assumption until the owner says otherwise: browser, HTML canvas, TypeScript, no framework. BMPs get converted to a PNG sprite sheet at build time. Fastest to iterate and to share a demo link.
 - **Tether distance and tower HP.** Judgement numbers, marked *unmeasured* until play-tested.
-- **Why fireball over laser** (Peter's open question). Demo answer: fireball gets the explode proc, laser gets pierce by default. Both exist; the buff cards decide which carries the build.
+- **Why fireball over laser** (Peter's open question). Demo answer: the fireball can explode and split; the laser is faster and longer-ranged but never explodes. Neither pierces without the Pierce buff. The buff cards decide which carries the build.
