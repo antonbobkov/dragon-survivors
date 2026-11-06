@@ -8,6 +8,7 @@
     "check": "node tools/check.mjs",
     "test": "node --test \"test/**/*.test.mjs\"",
     "gate": "node tools/check.mjs && node --test \"test/**/*.test.mjs\"",
+    "measure": "node tools/measure.mjs",
     "build:assets": "node tools/build-atlas.mjs && node tools/copy-sounds.mjs",
     "serve": "python -m http.server 8000"
   }
