@@ -1,27 +1,44 @@
-// Balance instrument: plays headless Game runs with scripted bot policies over a pool of
-// seeds and prints Markdown tables (survival time, kills, level).
+// Balance instrument: plays headless Game runs with scripted bots over a pool of seeds and
+// prints Markdown tables (survival time, kills, level).
 //
-// Usage: node tools/measure.mjs [--policy idle|aim|kite|all] [--seeds N] [--first-seed S]
-//                               [--max-seconds T] [--timeline] [--step S] [--set k=v ...]
+// Usage: node tools/measure.mjs [--policy idle|aim|kite|all] [--pick naive|greedy|both]
+//                               [--seeds N] [--first-seed S] [--max-seconds T]
+//                               [--timeline] [--step S] [--set k=v ...]
 //
-// Defaults: all three policies, 16 seeds (1..16), 180 s cap. A run that reaches the cap is
-// reported as surviving the cap (shown as ">=T"). Survival time is game.t at the tick the
-// tower fell (the phase leaves 'play'). With --timeline, a second table per policy shows,
-// every --step seconds (default 10), the median over seeds of tower HP, enemies alive,
-// kills and spawned so far (a run that has fallen counts with its final values).
+// A bot is a movement policy plus a level-up pick rule, named `<policy>+<pick>`.
+// Defaults: all three policies with both pick rules, 16 seeds (1..16), 420 s cap (7:00).
+// A run that reaches the cap is reported as surviving the cap (shown as ">=T"). Survival
+// time is game.t at the tick the tower fell (the phase leaves 'play'). With --timeline, a
+// second table per bot shows, every --step seconds (default 30), the median over seeds of
+// tower HP, enemies alive, kills, spawned so far and level (a run that has fallen counts
+// with its final values).
+//
+// Movement policies (all aim at the enemy nearest the tower, except idle):
+//   idle  no input at all: the fireball fires right, no gems are collected.
+//   aim   holds station 60 px above the tower; flies to gems (below).
+//   kite  circles the tower at 120 px; flies to gems (below).
+// Gems: when a gem lies within GEM_RANGE px of the tower, aim and kite fly to the one
+// nearest the dragon instead of their own movement (a gem that has started homing follows
+// the dragon by itself, so it is not chased).
+//
+// Pick rules (only while `game.offers` is non-empty; the pick tick does not advance time):
+//   naive   card 0.
+//   greedy  Repair when tower HP < 40%; else a new weapon while a slot is free; else the
+//           upgrade of the highest-level weapon below 5; else a buff (upgrade an owned one
+//           first, then a new one); else card 0.
 //
 // --set runs a what-if without editing content.js (repeatable): `rate.<row t>=<v>` sets a
 // timeline row's rate (row t in seconds), `towerHp=<v>` the starting tower HP, and
 // `<enemy>.<field>=<v>` a field of ENEMIES, for example `knight.dps=2` (this mutates the
 // table for the rest of the process, so only the CLI does it).
-//
-// Policies return an intent for one tick. Once level-ups exist (`game.offers` non-empty)
-// every policy picks card 0, so a later task can reuse them unchanged.
 import { Game } from '../src/sim/game.js';
 import { DT, TIMELINE, ENEMIES } from '../src/sim/content.js';
 import { pathToFileURL } from 'node:url';
 
 const KITE_RADIUS = 120;
+const STATION = { x: 0, y: -60 }; // aim's station relative to the tower (the start layout)
+export const GEM_RANGE = 250;
+const REPAIR_BELOW = 0.4;
 
 // Nearest live enemy to the tower (ties to the lower list index), or null.
 function nearestToTower(game) {
@@ -42,51 +59,104 @@ function aimAt(game, e) {
   return { aimX: e.x - d.x, aimY: e.y - d.y, hasAim: true };
 }
 
-// Level-up seam: pick card 0 when offers are open, else no pick.
-const pickOf = (game) => (game.offers && game.offers.length ? 0 : -1);
+// The non-homing gem nearest the dragon among those within GEM_RANGE of the tower, or null.
+export function gemTarget(game) {
+  const d = game.dragon, t = game.tower;
+  let best = null, bestD2 = Infinity;
+  for (const g of game.gems) {
+    if (g.homing) continue;
+    if (Math.hypot(g.x - t.x, g.y - t.y) > GEM_RANGE) continue;
+    const d2 = (g.x - d.x) ** 2 + (g.y - d.y) ** 2;
+    if (d2 < bestD2) { best = g; bestD2 = d2; }
+  }
+  return best;
+}
 
+// Unit move toward (x, y), or zero when within `stop` px.
+function toward(game, x, y, stop = 2) {
+  const d = game.dragon;
+  const dx = x - d.x, dy = y - d.y;
+  const l = Math.hypot(dx, dy);
+  return l <= stop ? { moveX: 0, moveY: 0 } : { moveX: dx / l, moveY: dy / l };
+}
+
+function kiteMove(game) {
+  const d = game.dragon, t = game.tower;
+  let rx = d.x - t.x, ry = d.y - t.y;
+  let rl = Math.hypot(rx, ry);
+  if (rl < 1e-9) { rx = 1; ry = 0; rl = 1; }
+  rx /= rl; ry /= rl;
+  const tx = ry, ty = -rx; // tangent, counter-clockwise on screen
+  const k = Math.max(-1, Math.min(1, (KITE_RADIUS - rl) / 30));
+  const mx = tx + rx * k * 2, my = ty + ry * k * 2;
+  const ml = Math.hypot(mx, my);
+  return { moveX: mx / ml, moveY: my / ml };
+}
+
+// Movement policies: game -> intent without `pick`.
 export const POLICIES = {
-  // No move, no aim: fires in the default direction (right).
-  idle: (game) => ({ pick: pickOf(game) }),
-  // Stationary, aims at the enemy nearest the tower.
-  aim: (game) => ({ ...aimAt(game, nearestToTower(game)), pick: pickOf(game) }),
-  // Circles the tower counter-clockwise on screen at KITE_RADIUS px, aiming at the enemy
-  // nearest the tower. Steering: tangent plus a radial correction toward the radius.
+  idle: () => ({}),
+  aim: (game) => {
+    const gem = gemTarget(game);
+    const t = game.tower;
+    const move = gem ? toward(game, gem.x, gem.y, 0) : toward(game, t.x + STATION.x, t.y + STATION.y);
+    return { ...move, ...aimAt(game, nearestToTower(game)) };
+  },
   kite: (game) => {
-    const d = game.dragon, t = game.tower;
-    let rx = d.x - t.x, ry = d.y - t.y;
-    let rl = Math.hypot(rx, ry);
-    if (rl < 1e-9) { rx = 1; ry = 0; rl = 1; }
-    rx /= rl; ry /= rl;
-    const tx = ry, ty = -rx; // tangent
-    const k = Math.max(-1, Math.min(1, (KITE_RADIUS - rl) / 30));
-    const mx = tx + rx * k * 2, my = ty + ry * k * 2;
-    const ml = Math.hypot(mx, my);
-    return { moveX: mx / ml, moveY: my / ml, ...aimAt(game, nearestToTower(game)), pick: pickOf(game) };
+    const gem = gemTarget(game);
+    const move = gem ? toward(game, gem.x, gem.y, 0) : kiteMove(game);
+    return { ...move, ...aimAt(game, nearestToTower(game)) };
   },
 };
 
-// One run. Returns { seed, policy, survived, capped, kills, level, spawned, samples }.
-export function runOne({ policy, seed, maxSeconds = 180, step = 0, timeline, towerHp } = {}) {
-  const fn = POLICIES[policy];
-  if (!fn) throw new Error(`unknown policy "${policy}"`);
+const indexWhere = (offers, fn) => offers.findIndex(fn);
+
+// Pick rules: game (with offers open) -> card index.
+export const PICKS = {
+  naive: () => 0,
+  greedy: (game) => {
+    const o = game.offers;
+    const tw = game.tower;
+    let i;
+    if (tw.hp < REPAIR_BELOW * tw.maxHp && (i = indexWhere(o, (c) => c.kind === 'repair')) >= 0) return i;
+    if ((i = indexWhere(o, (c) => c.kind === 'weapon' && c.level === 1)) >= 0) return i;
+    let best = -1, bestLevel = -1;
+    o.forEach((c, k) => { if (c.kind === 'weapon' && c.level > bestLevel) { best = k; bestLevel = c.level; } });
+    if (best >= 0) return best;
+    if ((i = indexWhere(o, (c) => c.kind === 'buff' && c.level > 1)) >= 0) return i;
+    if ((i = indexWhere(o, (c) => c.kind === 'buff')) >= 0) return i;
+    return 0;
+  },
+};
+
+// The intent of bot `policy` + `pick` for one tick.
+export function botIntent(game, policy, pick = 'naive') {
+  const p = POLICIES[policy], k = PICKS[pick];
+  if (!p) throw new Error(`unknown policy "${policy}"`);
+  if (!k) throw new Error(`unknown pick rule "${pick}"`);
+  return { ...p(game), pick: game.offers.length ? k(game) : -1 };
+}
+
+// One run. Returns { seed, policy, pick, bot, survived, capped, kills, level, spawned, samples }.
+export function runOne({ policy, pick = 'naive', seed, maxSeconds = 420, step = 0, timeline, towerHp } = {}) {
+  botIntent(new Game({ seed: 1 }), policy, pick); // validates the names
   const game = new Game(timeline ? { seed, timeline } : { seed });
   if (towerHp) { game.tower.hp = towerHp; game.tower.maxHp = towerHp; }
   const maxTicks = Math.round(maxSeconds / DT);
   const stepTicks = step > 0 ? Math.round(step / DT) : 0;
   const samples = [];
-  const sample = () => samples.push({ t: game.t, hp: game.tower.hp, alive: game.enemies.length, kills: game.kills, spawned: game.spawner.spawned });
+  const sample = () => samples.push({ t: game.t, hp: game.tower.hp, alive: game.enemies.length, kills: game.kills, spawned: game.spawner.spawned, level: game.level });
   // Ticks spent with offers open do not advance the clock; bound them so a broken pick
   // flow cannot hang the instrument.
   let guard = maxTicks * 4 + 1000;
   while (game.phase === 'play' && game.tickCount < maxTicks && guard-- > 0) {
     const before = game.tickCount;
-    game.tick(fn(game));
+    game.tick(botIntent(game, policy, pick));
     if (stepTicks && game.tickCount !== before && game.tickCount % stepTicks === 0) sample();
   }
   const capped = game.phase === 'play';
   return {
-    seed, policy, survived: game.t, capped, kills: game.kills, level: game.level,
+    seed, policy, pick, bot: `${policy}+${pick}`, survived: game.t, capped, kills: game.kills, level: game.level,
     spawned: game.spawner.spawned, samples,
   };
 }
@@ -100,48 +170,50 @@ export function median(xs) {
 
 const fmtT = (x, capped) => (capped ? '>=' : '') + x.toFixed(1);
 
-// Summary row for one policy's runs.
+// Summary row for one bot's runs. `golem` counts runs that reached 5:00.
 export function summarize(runs, maxSeconds) {
   const ts = runs.map((r) => r.survived);
   const med = median(ts), min = Math.min(...ts), max = Math.max(...ts);
   const capT = (x) => x >= maxSeconds - DT / 2;
   return {
-    policy: runs[0].policy, seeds: runs.length,
+    policy: runs[0].bot || runs[0].policy, seeds: runs.length,
     median: med, min, max, capped: runs.filter((r) => r.capped).length,
+    golem: runs.filter((r) => r.survived >= 300 - DT / 2).length,
     medianText: fmtT(med, capT(med)), minText: fmtT(min, capT(min)), maxText: fmtT(max, capT(max)),
     kills: median(runs.map((r) => r.kills)), level: median(runs.map((r) => r.level)),
   };
 }
 
 export function summaryTable(rows) {
-  const out = ['| Policy | Seeds | Median s | Min s | Max s | Reached cap | Kills (median) | Level (median) |', '|---|---|---|---|---|---|---|---|'];
-  for (const r of rows) out.push(`| ${r.policy} | ${r.seeds} | ${r.medianText} | ${r.minText} | ${r.maxText} | ${r.capped} | ${r.kills} | ${r.level} |`);
+  const out = ['| Bot | Seeds | Median s | Min s | Max s | Reached 5:00 | Reached cap | Kills (median) | Level (median) |', '|---|---|---|---|---|---|---|---|---|'];
+  for (const r of rows) out.push(`| ${r.policy} | ${r.seeds} | ${r.medianText} | ${r.minText} | ${r.maxText} | ${r.golem} | ${r.capped} | ${r.kills} | ${r.level} |`);
   return out.join('\n');
 }
 
 // Median over seeds at each sample time; a fallen run contributes its final values.
 export function timelineTable(runs, step, maxSeconds) {
-  const out = [`| t s | Tower HP | Enemies alive | Kills | Spawned |`, '|---|---|---|---|---|'];
+  const out = [`| t s | Tower HP | Enemies alive | Kills | Spawned | Level |`, '|---|---|---|---|---|---|'];
   for (let t = step; t <= maxSeconds + 1e-9; t += step) {
     const at = runs.map((r) => {
       const s = r.samples.filter((x) => x.t <= t + 1e-9);
       const last = s[s.length - 1];
       if (last && Math.abs(last.t - t) < 1e-6) return last;
-      return { hp: 0, alive: last ? last.alive : 0, kills: r.kills, spawned: r.spawned, fallen: true };
+      return { hp: 0, alive: last ? last.alive : 0, kills: r.kills, spawned: r.spawned, level: r.level, fallen: true };
     });
     const fallen = at.filter((x) => x.fallen).length;
     const m = (k) => median(at.map((x) => x[k]));
-    out.push(`| ${Math.round(t)} | ${m('hp').toFixed(0)} | ${m('alive')} | ${m('kills')} | ${m('spawned')}${fallen ? ` (${fallen} fallen)` : ''} |`);
+    out.push(`| ${Math.round(t)} | ${m('hp').toFixed(0)} | ${m('alive')} | ${m('kills')} | ${m('spawned')}${fallen ? ` (${fallen} fallen)` : ''} | ${m('level')} |`);
     if (fallen === runs.length) break;
   }
   return out.join('\n');
 }
 
 function parseArgs(argv) {
-  const o = { policy: 'all', seeds: 16, firstSeed: 1, maxSeconds: 180, timeline: false, step: 10, set: [] };
+  const o = { policy: 'all', pick: 'both', seeds: 16, firstSeed: 1, maxSeconds: 420, timeline: false, step: 30, set: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i], v = argv[i + 1];
     if (a === '--policy') { o.policy = v; i++; }
+    else if (a === '--pick') { o.pick = v; i++; }
     else if (a === '--seeds') { o.seeds = Number(v); i++; }
     else if (a === '--first-seed') { o.firstSeed = Number(v); i++; }
     else if (a === '--max-seconds') { o.maxSeconds = Number(v); i++; }
@@ -176,26 +248,29 @@ export function applySets(sets) {
 
 export function main(argv) {
   const o = parseArgs(argv);
-  if (o.help) { console.log('node tools/measure.mjs [--policy idle|aim|kite|all] [--seeds N] [--first-seed S] [--max-seconds T] [--timeline] [--step S] [--set k=v ...]'); return; }
+  if (o.help) { console.log('node tools/measure.mjs [--policy idle|aim|kite|all] [--pick naive|greedy|both] [--seeds N] [--first-seed S] [--max-seconds T] [--timeline] [--step S] [--set k=v ...]'); return; }
   const names = o.policy === 'all' ? Object.keys(POLICIES) : o.policy.split(',');
+  const picks = o.pick === 'both' ? Object.keys(PICKS) : o.pick.split(',');
   const { timeline, towerHp } = applySets(o.set);
   const rows = [], all = {};
   const start = process.hrtime.bigint();
   for (const policy of names) {
-    const runs = [];
-    for (let s = 0; s < o.seeds; s++) {
-      runs.push(runOne({ policy, seed: o.firstSeed + s, maxSeconds: o.maxSeconds, step: o.timeline ? o.step : 0, timeline, towerHp }));
+    for (const pick of picks) {
+      const runs = [];
+      for (let s = 0; s < o.seeds; s++) {
+        runs.push(runOne({ policy, pick, seed: o.firstSeed + s, maxSeconds: o.maxSeconds, step: o.timeline ? o.step : 0, timeline, towerHp }));
+      }
+      all[`${policy}+${pick}`] = runs;
+      rows.push(summarize(runs, o.maxSeconds));
     }
-    all[policy] = runs;
-    rows.push(summarize(runs, o.maxSeconds));
   }
   const secs = Number(process.hrtime.bigint() - start) / 1e9;
   console.log(`Seeds ${o.firstSeed}..${o.firstSeed + o.seeds - 1}, cap ${o.maxSeconds} s${o.set.length ? `, set ${o.set.join(' ')}` : ''}\n`);
   console.log(summaryTable(rows));
   if (o.timeline) {
-    for (const policy of names) {
-      console.log(`\n**${policy}** (median over seeds, every ${o.step} s)\n`);
-      console.log(timelineTable(all[policy], o.step, o.maxSeconds));
+    for (const bot of Object.keys(all)) {
+      console.log(`\n**${bot}** (median over seeds, every ${o.step} s)\n`);
+      console.log(timelineTable(all[bot], o.step, o.maxSeconds));
     }
   }
   console.log(`\n(${secs.toFixed(1)} s wall)`);
