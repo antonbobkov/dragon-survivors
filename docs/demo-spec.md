@@ -235,7 +235,7 @@ The dragon walks. `dragon.walk` is a 2-frame walk (6 ticks per frame) drawn faci
 | `TOWER_HP` | 100 *unmeasured* |
 | `TETHER_LENGTH` | 105 px *unmeasured* |
 | `TOWER_FOLLOW_SPEED` | 60 px/s *unmeasured*, below dragon speed so the tower lags and the tether still matters |
-| `TOWER_REST_DIST` | 40 px *unmeasured*, where the follow stops; about where the 2× dragon and castle sprites stop overlapping |
+| `TOWER_REST_DIST` | 50 px *unmeasured*, where the follow stops; the 2× dragon (40 px) and the castle (60 px) just touch when one is straight above the other |
 | `TOWER_RADIUS` | 26 px, collision circle for enemies |
 | Sprite | `castle` at 2× = 60 px |
 

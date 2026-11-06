@@ -12,16 +12,18 @@ const still = () => { const g = new Game({ seed: 1, timeline: QUIET }); g.weapon
 const firstShotTick = (g, max = 400) => { for (let i = 1; i <= max; i++) { g.tick({}); if (g.enemyShots.length) return i; } return -1; };
 
 test('orbs: out of range the timer holds, so the spawn offset still staggers mages walking into range', () => {
-  // Two mages walk toward the dragon side by side from just outside range; offsets 30 and 120 ticks.
+  // Two mages walk down side by side from just outside range, mirrored about the line through
+  // the dragon and the tower below it, so they enter range on the same tick whatever the
+  // rest distance, and far enough apart that separation never pushes one; offsets 30 and 120 ticks.
   const g = still();
-  const a = createEnemy(g, 'mage', MAGE_ORB_RANGE + 30, -5);
-  const b = createEnemy(g, 'mage', MAGE_ORB_RANGE + 30, 5);
+  const a = createEnemy(g, 'mage', -20, -(MAGE_ORB_RANGE + 30));
+  const b = createEnemy(g, 'mage', 20, -(MAGE_ORB_RANGE + 30));
   a.orbTimer = 30; b.orbTimer = 120;
   const fired = new Map();
   for (let i = 1; i <= 600 && fired.size < 2; i++) {
     g.tick({});
     for (const o of g.enemyShots) {
-      const who = Math.abs(o.y - a.y) < Math.abs(o.y - b.y) ? 'a' : 'b';
+      const who = Math.abs(o.x - a.x) < Math.abs(o.x - b.x) ? 'a' : 'b';
       if (!fired.has(who)) fired.set(who, i);
     }
   }

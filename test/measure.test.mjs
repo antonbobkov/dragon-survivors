@@ -7,7 +7,7 @@ import {
 } from '../tools/measure.mjs';
 import { Game } from '../src/sim/game.js';
 import { spawnOrb } from '../src/sim/enemyShots.js';
-import { TIMELINE, TETHER_LENGTH } from '../src/sim/content.js';
+import { TIMELINE, TETHER_LENGTH, TOWER_REST_DIST } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }]; // no enemies, so no gems and no orbs
 
@@ -77,7 +77,7 @@ test('measure: the bots stay anchored to HOME while the tower follows (no drift)
     const r = Math.hypot(g.dragon.x - HOME.x, g.dragon.y - HOME.y);
     assert.ok(Math.hypot(g.tower.x - g.dragon.x, g.tower.y - g.dragon.y) <= TETHER_LENGTH + 1e-9, `${policy}: tower within the tether`);
     if (policy === 'aim') {
-      assert.ok(r < 1e-9 && maxD < 50, `aim stands on HOME: ${r}, max ${maxD}`);
+      assert.ok(r < 1e-9 && maxD <= TOWER_REST_DIST + 1e-6, `aim stands on HOME: ${r}, max ${maxD}`);
       assert.equal(moved, 0, 'aim: the tower comes to rest');
     } else {
       assert.ok(Math.abs(r - KITE_RADIUS) < 3, `kite circles HOME at ${KITE_RADIUS}: ${r}`);
