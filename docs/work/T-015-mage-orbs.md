@@ -30,3 +30,10 @@ Edit `docs/backlog.md`, merge or push.
 ## Done means
 
 `npm run gate` green; orbs visible in the browser; commit `T-015: …` with `Closes: T-015`.
+
+## What T-013 and T-014 left you
+
+- Dragon: `dragon.walk` sprite (20 px, faces right, `flip` for left), speed 87, no bob; `dirFrame()` still lives in `dragon.js` (lasers use it).
+- Tower: always follows at 60 px/s to a 40 px rest distance, dragged at the 105 px tether; `tower.moved` in the snapshot. Starts at (0, 40).
+- Projectiles: only kinds `fireball` and `laser` (`PROJECTILE_KINDS`); no hit effects; mini-tower shots are fireballs built by `fireballShot(level, mods)` in `weapons.js`. Keep enemy orbs out of `game.projectiles` (separate `game.enemyShots`).
+- Enemy speeds are halved: mage 20 px/s.

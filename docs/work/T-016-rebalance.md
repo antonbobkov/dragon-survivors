@@ -21,3 +21,10 @@ Edit `docs/backlog.md`, merge or push.
 ## Done means
 
 `npm run gate` green; spec and content agree; report written; commit `T-016: …` with `Closes: T-016`.
+
+## What T-013, T-014 and T-015 left you
+
+- **The measure bots are stale (T-013 finding):** `aim` holds 60 px above the tower and `kite` circles at 120 px (outside the new 105 px tether). With a following tower both targets move: the tower moved on 95–97% of ticks and the aim pair drifted ~2400 px up the map; bots that keep moving outrun the 75 px/s golem, so 3–8 of 16 runs reach the 420 s cap with thousands of kills. Redesign the bots for the new tether (for example: `aim` stands still and lets the tower come to rest; `kite` circles at ~80 px, inside the tether) before trusting any number.
+- **T-014 measurement:** without built-in laser pierce, greedy builds lost ~90 s of median survival (unconfirmed cause; probe it).
+- **Visual (T-013):** at the 40 px rest distance the 2× dragon overlaps the top of the castle; the carriers show almost all the time because the tower almost always moves. `TOWER_REST_DIST` and `TOWER_FOLLOW_SPEED` are *unmeasured* and yours to tune for feel as well as numbers (≥ 50 px removes the overlap).
+- **Golem (D-5 still open):** 75 px/s catches a following tower (60) but not a dragged one (87). Report how often the bots escape it; do not add a golem rule unless a target needs it, and then say so.
