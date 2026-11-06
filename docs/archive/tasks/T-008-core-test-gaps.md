@@ -1,6 +1,6 @@
 # T-008: Close the sim-core test gaps found in review
 
-**Source:** [T-002 review](../../reports/reviews/2026-11-06-T-002-review.md), finding 2 · **Model:** Sonnet · **Depends on:** T-004 merged (it edits the same modules)
+**Source:** [T-002 review](../../../reports/reviews/2026-11-06-T-002-review.md), finding 2 · **Model:** Sonnet · **Depends on:** T-004 merged (it edits the same modules)
 
 ## Why
 
