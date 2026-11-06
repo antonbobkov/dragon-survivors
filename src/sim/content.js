@@ -166,7 +166,7 @@ export const MAX_HITS_MEMORY = 8;
 export const GEM_SPEED = 500;
 export const GEM_COLLECT_RADIUS = 12;
 export const MAX_GEMS = 600;
-export const xpToNext = (level) => 5 + 3 * level;
+export const xpToNext = (level) => 3 + 3 * level;
 // A full build is offered Repair only while tower HP is below this fraction of max HP.
 export const REPAIR_OFFER_BELOW = 0.5;
 export const CARD_COUNT = 3;

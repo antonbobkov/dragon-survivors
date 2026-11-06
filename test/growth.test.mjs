@@ -82,8 +82,11 @@ test('gems: XP overflow carries over and several level-ups queue in one tick', (
   gemAt(g, 0, 0, 5);
   gemAt(g, 0, 0, 30);
   g.tick({});
-  // 42 XP: 8 (L1) + 11 (L2) + 14 (L3) leaves 9 of the 17 for L4
-  assert.deepEqual([g.level, g.pendingLevelUps, g.xp], [4, 3, 9]);
+  // 42 XP spent level by level, the overflow carried over (with 3 + 3 × level: 6 + 9 + 12 + 15)
+  let level = 1, xp = 42;
+  while (xp >= xpToNext(level)) xp -= xpToNext(level++);
+  assert.ok(level - 1 >= 2, 'several level-ups');
+  assert.deepEqual([g.level, g.pendingLevelUps, g.xp], [level, level - 1, xp]);
   assert.equal(g.offers.length, 3);
 });
 

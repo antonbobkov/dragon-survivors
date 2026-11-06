@@ -477,7 +477,7 @@ Precisely:
 ## 14. XP, gems, level-up
 
 - Each enemy drops a gem worth its `XP` value at its death position. Gems are static. A gem within `DRAGON_PICKUP_RADIUS` moves toward the dragon at 500 px/s and is collected on contact. Sound `pickup`. Gems never expire. `MAX_GEMS = 600`; when exceeded, the oldest gem's value is merged into the gem nearest to it.
-- XP to next level: `xpToNext(level) = 5 + 3 × level` (level 1 needs 8, level 10 needs 35). *unmeasured*.
+- XP to next level: `xpToNext(level) = 3 + 3 × level` (level 1 needs 6, level 10 needs 33). *unmeasured*.
 - On level-up the sim increments `game.pendingLevelUps`. The loop sees it and shows the level-up screen. Several pending level-ups are shown one after the other.
 
 Gems precisely:
