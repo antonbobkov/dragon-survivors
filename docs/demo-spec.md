@@ -271,7 +271,7 @@ An enemy whose HP drops to 0 or below stops being hit at once and is removed in 
 | Skeleton | 1 | 45 | 10 | 6 | 1 | `skelly` | none (a summoned one first plays `skelly.summon`, §8.4) |
 | Slime | 2 | 35 | 12 | 8 | 1 | `slime` | on death, if `gen == 0`, spawns 2 slimes with `gen = 1`, HP 1, radius 8, at ±20 px (§8.4). Parent plays `slime.split` instead of `die`. |
 | Mage | 4 | 20 | 12 | 5 | 5 | `mage` | every `MAGE_CAST_INTERVAL = 8 s` since spawn it stops for 1 s (`spell` anim) and spawns 4 skeletons in a 40 px ring around itself, each playing `skelly.summon` once before walking. Will not cast within 80 px of the tower (§8.4). Fires a green orb at the dragon every 3 s while within 320 px of it (§8.5). |
-| Ghost knight | 3 | 27.5 | 12 | 10 | 2 | `ghost.knight` | on death plays `ghost.burn` once (0.5 s, not collidable), then becomes a **Ghost** (§8.4). |
+| Ghost knight | 10 | 27.5 | 12 | 10 | 2 | `ghost.knight` | on death plays `ghost.burn` once (0.5 s, not collidable), then becomes a **Ghost** (§8.4). |
 | Ghost | 2 | 36 | 10 | 8 | 1 | `ghost.ghost` | drawn at 60% alpha. Dies normally. |
 | Mega golem | ∞ | 75 | 56 | 40 | none | `golem` | §13. Every hit pushes it `GOLEM_KNOCKBACK = 1` px away from the hitter. Immune to procs. |
 
