@@ -69,3 +69,5 @@ Edit `docs/backlog.md`, merge, push `main`.
 - A projectile hits at most one enemy per tick (nearest, ties to the lower id). The grid stores enemy centres; queries add the largest stored radius.
 - The aim (`dragon.aimX/aimY`) is always a unit vector.
 - The enemy count may briefly exceed `MAX_ENEMIES` (slime children, ghosts, golem); only the spawner respects the cap.
+- **Browser side (T-003):** screen flow and ticking live in `src/app.js` (no DOM, tested in `test/shell.test.mjs`); viewport maths in `src/viewport.js`. The renderer already draws `game.gems`, `game.miniTowers` and ring `w.balls` if present. Gamepad d-pad edges arrive as `nav`; a pick or confirm press is held until the next tick runs, so sending the pick through `tick` works at any frame rate. `?debug=1` exposes the App as `window.app`.
+- **In parallel:** T-009 is tuning early-game numbers (timeline rate, knight DPS, tower HP, knight HP) in `content.js` and the spec. Do not change those numbers; expect a small merge in `content.js`.
