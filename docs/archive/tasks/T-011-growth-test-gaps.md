@@ -1,6 +1,6 @@
 # T-011: Close the growth test gaps found in review
 
-**Source:** [T-005 review](../../reports/reviews/2026-11-06-T-005-review.md), finding 4 · **Model:** Sonnet · **Depends on:** T-005 (merged)
+**Source:** [T-005 review](../../../reports/reviews/2026-11-06-T-005-review.md), finding 4 · **Model:** Sonnet · **Depends on:** T-005 (merged)
 
 ## Why
 
