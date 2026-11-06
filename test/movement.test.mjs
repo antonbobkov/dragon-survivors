@@ -122,7 +122,7 @@ test('dragon: facing follows the horizontal move, then the aim x, then the last 
   assert.equal(g.dragon.flip, false, 'walking right while aiming left: the move wins');
   g.tick({ aimX: -1, aimY: 0.2, hasAim: true });
   assert.equal(g.dragon.flip, true, 'standing: faces the aim');
-  g.tick({ moveY: 1, aimX: 0.3, aimY: 1, hasAim: true });
+  g.tick({ moveY: 1, aimX: 0.6, aimY: 1, hasAim: true });
   assert.equal(g.dragon.flip, false, 'walking straight down: faces the aim');
   g.tick({ moveY: -1, aimX: 0, aimY: -1, hasAim: true });
   assert.equal(g.dragon.flip, false, 'straight up, aiming straight up: keeps the last facing');

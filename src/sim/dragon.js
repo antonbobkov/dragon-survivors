@@ -1,5 +1,5 @@
 // Dragon: movement, aim with fallbacks, facing and walk animation (§6).
-import { DRAGON_SPEED, DRAGON_START, DEFAULT_AIM, DRAGON_ANIM, DT } from './content.js';
+import { FACING_DEADZONE, DRAGON_SPEED, DRAGON_START, DEFAULT_AIM, DRAGON_ANIM, DT } from './content.js';
 import { advanceAnim } from './effects.js';
 
 export function createDragon() {
@@ -20,11 +20,11 @@ export function dirFrame(dx, dy) {
   return (Math.round(-a / (2 * Math.PI) * 16) + 12 + 16) % 16;
 }
 
-// §6.3: facing left or right. The horizontal move wins, then the fire direction's x,
-// else the last facing.
+// §6.3: facing left or right. A clearly horizontal move wins, then a clearly horizontal
+// fire direction, else the last facing (so stick noise around straight up never flickers).
 export function facingFlip(d) {
-  if (d.moveX !== 0) return d.moveX < 0;
-  if (d.aimX !== 0) return d.aimX < 0;
+  if (Math.abs(d.moveX) >= FACING_DEADZONE) return d.moveX < 0;
+  if (Math.abs(d.aimX) >= FACING_DEADZONE) return d.aimX < 0;
   return d.flip;
 }
 

@@ -203,6 +203,7 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 |---|---|
 | `DRAGON_SPEED` | 87 px/s *unmeasured* |
 | `DRAGON_PICKUP_RADIUS` | 48 px *unmeasured* |
+| `FACING_DEADZONE` | 0.3 *unmeasured* |
 | Collision with enemies | none |
 | HP | none (cannot die) |
 
@@ -217,7 +218,7 @@ Precisely: an intent with `hasAim` and a non-zero aim sets the fire direction an
 ### 6.3 Facing and walk animation
 The dragon walks. `dragon.walk` is a 2-frame walk (6 ticks per frame) drawn facing right; `flip` mirrors it to face left.
 
-- **Facing,** set in step 1 after the aim: while the move has a horizontal part (`moveX ≠ 0`) the dragon faces the way it moves (`flip = moveX < 0`); otherwise, if the fire direction has a horizontal part (`aimX ≠ 0`), it faces that way (`flip = aimX < 0`); otherwise (moving or aiming straight up or down) it keeps its last facing. It starts facing right, as the default fire direction does.
+- **Facing,** set in step 1 after the aim: while the move is clearly horizontal (`|moveX| ≥ FACING_DEADZONE`) the dragon faces the way it moves (`flip = moveX < 0`); otherwise, if the fire direction is clearly horizontal (`|aimX| ≥ FACING_DEADZONE`), it faces that way (`flip = aimX < 0`); otherwise (moving or aiming roughly up or down) it keeps its last facing, so stick noise around straight up or down never flickers it. It starts facing right, as the default fire direction does.
 - **Walk,** in step 2: on a tick when the dragon moves (`moveX` or `moveY ≠ 0`) its walk anim advances one tick and loops; on a tick when it stands still it shows frame 0 with `frameTicks` 0, so every walk starts from frame 0.
 - There is no bob: the sprite is drawn at the dragon's position.
 
@@ -462,7 +463,7 @@ Gems precisely:
 
 - A gem is `{ id, x, y, value, homing }`, dropped in the deaths step before the death effect. Enemies worth no XP (the golem) drop nothing.
 - When a drop would make more than `MAX_GEMS`, the oldest gem is removed and its value added to the remaining gem nearest to it (ties: lower id), the new one included. No XP is lost.
-- In the gems step each gem whose centre is within `DRAGON_PICKUP_RADIUS` of the dragon starts homing and keeps homing until collected, even if the dragon flies away: it moves 500 px/s straight at the dragon (never past it). A gem whose centre is then within `GEM_COLLECT_RADIUS = 12` px (*unmeasured*) of the dragon is collected: its value is added to `xp`, it is removed, and sound `pickup` plays.
+- In the gems step each gem whose centre is within `DRAGON_PICKUP_RADIUS` of the dragon starts homing and keeps homing until collected, even if the dragon walks away: it moves 500 px/s straight at the dragon (never past it). A gem whose centre is then within `GEM_COLLECT_RADIUS = 12` px (*unmeasured*) of the dragon is collected: its value is added to `xp`, it is removed, and sound `pickup` plays.
 - After collecting, while `xp >= xpToNext(level)`: `xp` drops by that amount, `level` goes up by one and so does `pendingLevelUps`. The overflow carries over and several level-ups can queue in one tick. `level` is the level reached, so the HUD and the game-over screen already count queued level-ups.
 
 Level-up flow, the only entry point being `tick(intent)`:

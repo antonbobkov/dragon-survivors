@@ -33,7 +33,7 @@ test('content: dragon and tower constants match §6 and §7', () => {
   const consts = Object.fromEntries([...tableAfter('## 6. Dragon'), ...tableAfter('## 7. Tower')]
     .filter((r) => r[0].startsWith('`'))
     .map((r) => [r[0].replace(/`/g, ''), num(r[1])]));
-  for (const name of ['DRAGON_SPEED', 'DRAGON_PICKUP_RADIUS', 'TOWER_HP', 'TETHER_LENGTH', 'TOWER_FOLLOW_SPEED', 'TOWER_REST_DIST', 'TOWER_RADIUS']) {
+  for (const name of ['DRAGON_SPEED', 'DRAGON_PICKUP_RADIUS', 'FACING_DEADZONE', 'TOWER_HP', 'TETHER_LENGTH', 'TOWER_FOLLOW_SPEED', 'TOWER_REST_DIST', 'TOWER_RADIUS']) {
     assert.equal(C[name], consts[name], name);
   }
 });

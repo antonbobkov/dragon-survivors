@@ -8,6 +8,7 @@ export const DT = 1 / TICK_HZ;
 // §6 Dragon
 export const DRAGON_SPEED = 87;
 export const DRAGON_PICKUP_RADIUS = 48;
+export const FACING_DEADZONE = 0.3; // |moveX| / |aimX| below this does not turn the dragon (§6.3)
 export const DRAGON_START = { x: 0, y: 0 };
 export const DEFAULT_AIM = { x: 1, y: 0 }; // firing right until there is any aim or movement
 export const DRAGON_ANIM = 'dragon.walk'; // the sprite faces right; flipped to face left (§6.3)

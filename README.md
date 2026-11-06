@@ -1,6 +1,6 @@
 # Dragon Survivors
 
-A Vampire Survivors-style demo: fly an invulnerable dragon, keep the tethered tower alive, survive the horde past 5:00.
+A Vampire Survivors-style demo: walk an invulnerable dragon, keep the tethered tower alive, survive the horde past 5:00.
 
 **Play it:** <https://antonbobkov.github.io/dragon-survivors/> (GitHub Pages, deployed from `main`).
 
