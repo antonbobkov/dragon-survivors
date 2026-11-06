@@ -18,15 +18,16 @@ export function initialOrbTimer(game) {
 
 // Step 5, once per mage per enemies step, after its cast logic and before it walks.
 // `casting` is true on every tick of a cast (the start and the last tick included).
-// The timer counts down to 0 and then waits there; a mage that is not casting and is
-// within MAGE_ORB_RANGE of the dragon fires and the timer restarts at the interval.
+// The timer counts down only while the dragon is within MAGE_ORB_RANGE (so the spawn offset
+// still staggers a pack that walks into range together), keeps counting during a cast,
+// and waits at 0; a mage that is not casting fires and the timer restarts at the interval.
 export function stepMageOrb(game, e, casting) {
-  if (e.orbTimer > 0) e.orbTimer--;
-  if (e.orbTimer > 0 || casting) return;
   const d = game.dragon;
   let dx = d.x - e.x, dy = d.y - e.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist > MAGE_ORB_RANGE) return;
+  if (dist > MAGE_ORB_RANGE) return; // out of range: the timer holds
+  if (e.orbTimer > 0) e.orbTimer--;
+  if (e.orbTimer > 0 || casting) return;
   if (dist > 0) { dx /= dist; dy /= dist; } else { dx = 0; dy = 1; }
   spawnOrb(game, e.x, e.y, dx, dy);
   e.orbTimer = MAGE_ORB_INTERVAL_TICKS;
