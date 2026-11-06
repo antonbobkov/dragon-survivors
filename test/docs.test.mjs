@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 
 const backlog = readFileSync(new URL('../docs/backlog.md', import.meta.url), 'utf8');
-const rows = [...backlog.matchAll(/^\| (T-\d{3}) \|.*\| (\w+) \|$/gm)].map((m) => ({ id: m[1], status: m[2] }));
+const rows = [...backlog.matchAll(/^\| (T-\d{3}) \|.*\| ([\w ]+) \|$/gm)].map((m) => ({ id: m[1], status: m[2] }));
 const work = readdirSync(new URL('../docs/work/', import.meta.url)).filter((f) => /^T-\d{3}-.*\.md$/.test(f));
 
 test('backlog ids are unique', () => {
