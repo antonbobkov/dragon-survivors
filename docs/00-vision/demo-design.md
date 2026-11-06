@@ -1,6 +1,6 @@
 # Dragon Survivors: demo design (high level)
 
-**Written:** 2026-11-06 · **Scope:** a 5-minute playable demo · **Source:** [peter_ideas.md](../peter_ideas.md), the dragongame asset pack at `E:\code\dragongame\assets`
+**Written:** 2026-11-06 · **Scope:** a 5-minute playable demo · **Source:** [peter-ideas.md](peter-ideas.md), the dragongame asset pack at `E:\code\dragongame\assets`
 
 ## Pitch
 

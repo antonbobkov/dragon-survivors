@@ -1,0 +1,14 @@
+{
+  "name": "dragon-survivors",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Dragon Survivors demo: plain JS + canvas, no dependencies",
+  "scripts": {
+    "check": "node tools/check.mjs",
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "gate": "node tools/check.mjs && node --test \"test/**/*.test.mjs\"",
+    "build:assets": "node tools/build-atlas.mjs && node tools/copy-sounds.mjs",
+    "serve": "python -m http.server 8000"
+  }
+}

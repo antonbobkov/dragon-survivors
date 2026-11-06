@@ -1,0 +1,12 @@
+# Backlog
+
+Every open task, one table. Only the orchestrator edits this file. Work files live in [work/](work/); closed tasks move to [archive/tasks/](archive/tasks/).
+
+| Id | Task | Source | Depends on | Model | Status |
+|---|---|---|---|---|---|
+| T-001 | Asset pipeline: BMP → atlas, sounds, generated anims | spec §3, milestone 1 | — | Sonnet | open |
+| T-002 | Headless sim core: dragon, tether, knights, spawner, fireball, game over | spec §2.1, §4–9, §10.1, §13, §15; milestones 1–2 | — | Opus | open |
+| T-003 | Browser shell: loop, input, assets, audio, rendering, HUD, title and game-over screens | spec §4–5, §16–18; milestones 1–2 | T-001, T-002 | Opus | planned |
+| T-004 | Roster: skeleton, slime, mage, ghost knight, golem at 5:00 | spec §8, §9, §13; milestone 4 | T-002 | Opus | planned |
+| T-005 | Growth: gems, XP, level-up cards, laser, mini tower, ring, buffs, procs | spec §10–12, §14; milestone 3 | T-003 | Opus | planned |
+| T-006 | Polish: debug tools, soak test, balance instrument | spec §19–20; milestone 5 | T-004, T-005 | Opus | planned |
