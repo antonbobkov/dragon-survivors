@@ -1,6 +1,6 @@
 # T-004: Roster: skeleton, slime, mage, ghost knight, golem
 
-**Source:** [demo-spec.md](../demo-spec.md) milestone 4 · **Model:** Opus · **Depends on:** T-002 (sim core)
+**Source:** [demo-spec.md](../../demo-spec.md) milestone 4 · **Model:** Opus · **Depends on:** T-002 (sim core)
 
 ## Why
 
