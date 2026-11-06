@@ -70,13 +70,13 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 2. Move the dragon.
 3. Tether: move the tower if needed (§7.1).
 4. Spawner: add enemies for this tick (§9).
-5. Enemies: AI target, move, separation, despawn, special timers (mage cast, ghost transition).
+5. Enemies: special timers (mage cast, summon anim), AI target, move, separation, despawn.
 6. Weapons: advance cooldowns, fire, spin the ring, run mini towers.
 7. Projectiles: move, expire by range.
 8. Collisions: projectile vs enemy, ring vs enemy, enemy vs tower.
-9. Deaths: play death animations, drop gems, split slimes, turn ghost knights into ghosts.
+9. Deaths: play death animations, drop gems, split slimes, start ghost knight burns.
 10. Gems: attract and collect, add XP, queue level-ups.
-11. Effects: advance one-shot animations, remove finished ones.
+11. Effects: advance one-shot animations, remove finished ones; a finished ghost burn becomes a ghost.
 12. Clock: advance `t`, spawn the golem at 5:00, check tower HP for game over.
 
 ---
@@ -156,16 +156,16 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 - **Events:** `game.events` is cleared at the start of every tick. Systems push `{ type: 'sound', name }`, at most one per sound name per tick; the browser plays them. Events are output, not state.
 - **Ids:** every enemy, projectile and effect gets its `id` from one counter, `game.nextId`.
 - **Start:** the dragon at (0, 0), the tower at (0, 60), below the dragon.
-- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`), `game.spawner` (`{ budget, spawned }`). `game.score()` = `floor(t) + kills`.
+- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`), `game.spawner` (`{ budget, spawned, golem }`, `golem` true once the golem has spawned). `game.score()` = `floor(t) + kills`.
 
 | Entity | Fields |
 |---|---|
 | every drawable | `x, y, anim, frame, frameTicks` |
 | `game.dragon` | `aimX, aimY` (unit fire direction), `moveX, moveY`, `aimed` (an aim has ever been given), `dirFrame`, `bob`; `anim` is `dragon.dir` and `frame = dirFrame` |
 | `game.tower` | `hp, maxHp`; `anim` is `castle` |
-| `game.enemies[]` | `id, type, r, hp, gen, flip, alpha`. `type` is a key of `ENEMIES` in `content.js`: `knight`, `skeleton`, `slime`, `mage`, `ghostKnight`, `ghost`, `golem` |
+| `game.enemies[]` | `id, type, r, hp, gen, flip, alpha`. `type` is a key of `ENEMIES` in `content.js`: `knight`, `skeleton`, `slime`, `mage`, `ghostKnight`, `ghost`, `golem`. Mages also have `castTimer` (§8); the golem has `unkillable` and `procImmune` set to true and `hp = GOLEM_HP = 1e9`, a finite stand-in for ∞ |
 | `game.projectiles[]` | `id, kind, dx, dy` (unit), `speed, r, damage, range, travelled, hits` (ids of enemies hit, at most 8), `gen, dirFrame` (for 16-direction sprites) |
-| `game.effects[]` | `id, scale, alpha, flip, hold, done`. `scale` multiplies the standard 2× sprite scale |
+| `game.effects[]` | `id, scale, alpha, flip, hold, life, done`. `scale` multiplies the standard 2× sprite scale; `life` (ticks, usually 0) is a minimum length: the effect holds its last frame until `life` ticks have passed |
 
 - **Animation:** `anim` is an atlas anim name, `frame` the frame index, `frameTicks` the ticks already spent on that frame; frame durations come from `ANIMS` in `anims.js`. Looping anims (walks, projectiles) wrap. A non-looping anim finishes once its last frame has been shown for its full duration and then stays on that frame. An effect is removed in the effects step of the tick its anim finishes, unless it has `hold` (the `castle.destroy` effect holds, so the ruin stays on screen).
 - **Digest:** `game.digest()` is an 8-hex-digit FNV-1a hash of a canonical JSON of `game.snapshot()` (sorted keys, numbers rounded to 1e-6; events, the rng and the grid excluded). Same seed and same intents give the same digest.
@@ -246,10 +246,10 @@ An enemy whose HP drops to 0 or below stops being hit at once and is removed in 
 | Type | HP | Speed px/s | Radius | Contact DPS | XP | Sprite | Special |
 |---|---|---|---|---|---|---|---|
 | Knight | 3 | 55 | 12 | 10 | 1 | `knight` | none |
-| Skeleton | 1 | 90 | 10 | 6 | 1 | `skelly` | none |
-| Slime | 2 | 70 | 12 | 8 | 1 | `slime` | on death, if `gen == 0`, spawns 2 slimes with `gen = 1`, HP 1, radius 8, at ±20 px. Parent plays `slime.split` instead of `die`. |
-| Mage | 4 | 40 | 12 | 5 | 5 | `mage` | every `MAGE_CAST_INTERVAL = 8 s` since spawn it stops for 1 s (`spell` anim) and spawns 4 skeletons in a 40 px ring around itself, each playing `skelly.summon` once before walking. Will not cast within 80 px of the tower. |
-| Ghost knight | 3 | 55 | 12 | 10 | 2 | `ghost.knight` | on death plays `ghost.burn` once (0.5 s, not collidable), then becomes a **Ghost**. |
+| Skeleton | 1 | 90 | 10 | 6 | 1 | `skelly` | none (a summoned one first plays `skelly.summon`, §8.4) |
+| Slime | 2 | 70 | 12 | 8 | 1 | `slime` | on death, if `gen == 0`, spawns 2 slimes with `gen = 1`, HP 1, radius 8, at ±20 px (§8.4). Parent plays `slime.split` instead of `die`. |
+| Mage | 4 | 40 | 12 | 5 | 5 | `mage` | every `MAGE_CAST_INTERVAL = 8 s` since spawn it stops for 1 s (`spell` anim) and spawns 4 skeletons in a 40 px ring around itself, each playing `skelly.summon` once before walking. Will not cast within 80 px of the tower (§8.4). |
+| Ghost knight | 3 | 55 | 12 | 10 | 2 | `ghost.knight` | on death plays `ghost.burn` once (0.5 s, not collidable), then becomes a **Ghost** (§8.4). |
 | Ghost | 2 | 72 | 10 | 8 | 1 | `ghost.ghost` | drawn at 60% alpha. Dies normally. |
 | Mega golem | ∞ | 30 | 56 | 40 | none | `golem` | §13. Every hit pushes it 6 px away from the hitter. Immune to procs. |
 
@@ -261,10 +261,20 @@ Enemies push apart so they do not stack. For each enemy, query the grid for neig
 All enemies move first, then separation runs once over the enemy list in order, each enemy reading its neighbours' current positions. The 6 neighbours are the first 6 overlapping ones in grid order. Against an immovable neighbour an enemy moves the whole overlap, since the neighbour will not move its half. Two enemies at exactly the same point separate along x, the lower id to the left.
 
 ### 8.2 Cap
-`MAX_ENEMIES = 400`. The spawner does not spawn above the cap. The cap exists for performance, not design. While the cap is reached the budget does not bank up: it is clamped to at most 1, so freeing slots never releases a burst.
+`MAX_ENEMIES = 400`. The spawner does not spawn above the cap, and a mage summons only as many skeletons as fit under it. Enemies that continue one that just died (the two slime children, the ghost after a burn) and the golem are always added, so the count can pass the cap by those; the spawner then waits until it is below again. The golem counts toward the cap like any enemy. The cap exists for performance, not design. While the cap is reached the budget does not bank up: it is clamped to at most 1, so freeing slots never releases a burst.
 
 ### 8.3 Despawn
-An enemy farther than `DESPAWN_DIST = 1400 px` from the tower is removed silently and its spawn budget refunded, so kiting cannot starve the horde. The check runs at the end of the enemies step; the refund adds 1 to the budget, so the enemy reappears on the ring on the next spawner step. A despawn is not a kill and drops no gem.
+An enemy farther than `DESPAWN_DIST = 1400 px` from the tower is removed silently and its spawn budget refunded, so kiting cannot starve the horde. The check runs at the end of the enemies step; the refund adds 1 to the budget, so the enemy reappears on the ring on the next spawner step. A despawn is not a kill and drops no gem. The golem is never despawned.
+
+### 8.4 Specials
+
+Specials run in the enemies step before the enemy walks; a busy enemy (a casting mage, a summoning skeleton) does not walk that tick but still takes part in separation and can be hit.
+
+- **Slime split.** When a `gen == 0` slime dies it counts as a kill, plays `death01` and drops its gem like any enemy, but its effect is `slime.split` (with its `flip` and `alpha`) instead of `slime.die`. Two slimes with `gen = 1`, HP 1 and radius 8 appear in the deaths step. With `u` the unit direction from the parent to the tower (`(0, 1)` if the parent is at the tower centre), the first appears at `parent + 20 × (−u.y, u.x)` and the second at `parent − 20 × (−u.y, u.x)`, so they flank its path. They inherit nothing else and drop their own gems when killed. A `gen = 1` slime dies normally.
+- **Mage cast.** A mage's `castTimer` counts enemies steps since it spawned, or since its last cast started. When it reaches `MAGE_CAST_INTERVAL` (480 ticks) the timer restarts at 0 and a cast starts, unless the mage's centre is less than 80 px from the tower's centre at that moment: then the cast is skipped and the mage walks on. A cast lasts 60 ticks (1 s) counting the tick it starts; the mage stands still and loops `mage.spell`. At the end of its last cast tick it returns to `mage.walk` and summons 4 skeletons 40 px from its centre, at 45°, 135°, 225° and 315° from its direction toward the tower, so it walks on between the front two. Casts therefore start every 8 s; the 1 s cast is part of the 8 s. The summon has no sound (`death02` is not used).
+- **Summoned skeletons** start on `skelly.summon` frame 0. They join the enemy list at once (separation, collisions, the cap) but first act on the next tick. While `skelly.summon` plays they do not walk; they can be hit and damaged and they do touch the tower. On the tick the anim ends they switch to `skelly.walk` and walk from the next tick on.
+- **Ghost knight burn.** A dying ghost knight counts as a kill, plays `death01` and drops its gem; its effect is `ghost.burn` with its `flip` and `alpha` and `life` 30 ticks (0.5 s): the anim is 22 ticks long and holds its last frame for the rest. The burn is an effect, so it is not hit and does not touch the tower. In the effects step of the tick it finishes, the burn is removed and a ghost appears at its position with its `flip`. The ghost is added even when the cap is full. No ghost rises once the phase is no longer `'play'`.
+- **Golem.** It spawns with `hp = GOLEM_HP` and `unkillable`; it never dies and never despawns. On every damaging hit, after the damage, its HP is restored to `GOLEM_HP` and it moves 6 px along the unit direction from the hitting projectile's position (for the ring, the ring fireball; for an explosion, its centre) to the golem's centre, `(0, 1)` if they coincide, and sound `hit_golem` plays. The knockback is applied at once, before the next separation. `procImmune` marks it as immune to procs (§12). It is immovable in separation (§8.1) and deals 40 DPS on contact (§7.2).
 
 ---
 
@@ -286,7 +296,7 @@ The spawner uses `t` at the start of the tick. The weights are those of the last
 | 4:00 | 10 | 25 | 25 | 20 | 10 | 20 |
 | 5:00 | 12 + golem | 25 | 25 | 20 | 10 | 20 |
 
-*unmeasured*. At 5:00 the mega golem spawns on the ring on the far side of the tower from the dragon and `ohno` plays. The timeline keeps running after 5:00 (rate stays at 12) until the tower falls.
+*unmeasured*. At 5:00 the mega golem spawns on the ring on the far side of the tower from the dragon and `ohno` plays: in the clock step of the first tick where `t >= 300` (the `t` of the timeline row marked `golem`; a timeline without such a row has no golem), once per run, at `dragon + 560 px × normalize(tower − dragon)`, or straight below the dragon if dragon and tower coincide. It ignores the cap. The timeline keeps running after 5:00 (rate stays at 12) until the tower falls.
 
 ---
 
@@ -383,7 +393,7 @@ Resolved in `projectiles.js` when a projectile hits an enemy, in this order: dam
 
 ## 13. Boss and run end
 
-- At 5:00 the mega golem spawns (§9). It walks at the tower at 30 px/s and deals 40 DPS on contact. It cannot die. Each hit knocks it back 6 px, so a strong build can hold it off for a while. Hit sound `hit_golem`.
+- At 5:00 the mega golem spawns (§9). It walks at the tower at 30 px/s and deals 40 DPS on contact. It cannot die and is never despawned. Each hit knocks it back 6 px away from the hitter, so a strong build can hold it off for a while. Hit sound `hit_golem`. Details in §8.4.
 - The run ends when tower HP reaches 0. Play `castle.destroy` and `destroy_castle_sound`, freeze the sim for 2 s, then show the game-over screen: time survived, level reached, kills, and a **Retry** button (new seed).
 - Score is `seconds survived + kills`, with seconds survived = `floor(t)` at the tick the tower fell. There is no win condition in the demo; surviving past 5:00 is the goal and the golem is what stops you.
 
@@ -468,9 +478,9 @@ Query parameter `?debug=1` enables: collision circles, tick time and entity coun
 - **Procs:** with `rng` stubbed to return 0, a fireball with explode chance L1 spawns an explosion that damages a second enemy in range.
 - **Slime split:** killing a gen-0 slime yields two gen-1 slimes; killing those yields none.
 - **Ghost:** killing a ghost knight yields a ghost after the burn effect finishes.
-- **Mage:** after 8 s a mage has spawned 4 skeletons unless within 80 px of the tower.
+- **Mage:** a mage starts casting 8 s after it spawns and has spawned 4 skeletons 1 s later, unless within 80 px of the tower.
 - **Timeline:** at t = 300 s the golem exists; at t = 0 only knights spawn.
-- **Soak:** run 5 minutes with a scripted dragon that circles the tower. Assert no exceptions, enemy count never exceeds the cap, and the tower eventually dies.
+- **Soak:** run 5 minutes with a scripted dragon that circles the tower. Assert no exceptions, the spawner never spawns above the cap (§8.2), and the tower eventually dies.
 - **Atlas:** `build-atlas.mjs` run on the manifest produces every name the game asks for. `content.js` lists its required atlas names and the test cross-checks them.
 
 ---

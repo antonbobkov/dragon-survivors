@@ -1,5 +1,7 @@
 // One-shot animations (§2.1 step 11) and the shared anim helper.
 import { ANIMS } from './anims.js';
+import { ENEMIES } from './content.js';
+import { riseGhost } from './enemies.js';
 
 export function animTicks(name) {
   const a = ANIMS[name];
@@ -36,28 +38,35 @@ export function animLength(name) {
 }
 
 // Spawn a non-colliding one-shot effect. `hold` keeps it on its last frame instead of removing it.
+// `life` (ticks, default 0) makes it last at least that long, holding its last frame until then.
 export function spawnEffect(game, anim, x, y, opts = {}) {
   const fx = {
     id: game.nextId++, anim, frame: 0, frameTicks: 0, x, y,
     scale: opts.scale ?? 1, alpha: opts.alpha ?? 1, flip: opts.flip ?? false,
-    hold: opts.hold ?? false, done: false,
+    hold: opts.hold ?? false, life: opts.life ?? 0, done: false,
   };
   game.effects.push(fx);
   return fx;
 }
 
-// Hook: called once when an effect finishes, before it is removed.
-// The roster task (T-004) uses it to turn a finished ghost.burn into a ghost.
-export function onEffectDone(game, fx) {}
+// Called once when an effect finishes, before it is removed: a finished ghost burn
+// becomes a ghost.
+export function onEffectDone(game, fx) {
+  if (fx.anim === ENEMIES.ghostKnight.die) riseGhost(game, fx);
+}
 
 export function stepEffects(game) {
   const list = game.effects;
   let n = 0;
   for (let i = 0; i < list.length; i++) {
     const fx = list[i];
-    if (!fx.done && advanceAnim(fx, false)) {
-      fx.done = true;
-      onEffectDone(game, fx);
+    if (!fx.done) {
+      const animEnded = advanceAnim(fx, false);
+      if (fx.life > 0) fx.life--;
+      if (animEnded && fx.life === 0) {
+        fx.done = true;
+        onEffectDone(game, fx);
+      }
     }
     if (!fx.done || fx.hold) list[n++] = fx;
   }

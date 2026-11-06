@@ -3,7 +3,7 @@ import { SPAWN_RING_RADIUS, MAX_ENEMIES, DT } from './content.js';
 import { createEnemy } from './enemies.js';
 
 export function createSpawner() {
-  return { budget: 0, spawned: 0 };
+  return { budget: 0, spawned: 0, golem: false };
 }
 
 // Index of the last row with row.t <= t (weights switch at the boundary).
@@ -55,6 +55,20 @@ export function stepSpawner(game) {
   if (game.enemies.length >= MAX_ENEMIES && sp.budget > 1) sp.budget = 1;
 }
 
-// Hook for the roster task (T-004), called from the clock step: at GOLEM_TIME spawn the
-// mega golem on the ring on the far side of the tower from the dragon, sound `ohno`.
-export function spawnGolemIfDue(game) {}
+// Called from the clock step after `t` advances. On the first tick where `t` reaches a
+// timeline row marked `golem` (5:00 in the default table), spawn the mega golem once, on
+// the spawn ring on the far side of the tower from the dragon, sound `ohno`. It ignores
+// the cap.
+export function spawnGolemIfDue(game) {
+  const sp = game.spawner;
+  if (sp.golem) return;
+  const row = game.timeline.find((r) => r.golem);
+  if (!row || game.t < row.t) return;
+  sp.golem = true;
+  const d = game.dragon, t = game.tower;
+  let ux = t.x - d.x, uy = t.y - d.y;
+  const len = Math.sqrt(ux * ux + uy * uy);
+  if (len > 0) { ux /= len; uy /= len; } else { ux = 0; uy = 1; }
+  createEnemy(game, 'golem', d.x + SPAWN_RING_RADIUS * ux, d.y + SPAWN_RING_RADIUS * uy);
+  game.sound('ohno');
+}
