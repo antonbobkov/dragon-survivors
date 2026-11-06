@@ -4,7 +4,6 @@ Every open task, one table. Only the orchestrator edits this file. Work files li
 
 | Id | Task | Source | Depends on | Model | Status |
 |---|---|---|---|---|---|
-| T-002 | Headless sim core: dragon, tether, knights, spawner, fireball, game over | spec §2.1, §4–9, §10.1, §13, §15; milestones 1–2 | — | Opus | open |
 | T-003 | Browser shell: loop, input, assets, audio, rendering, HUD, title and game-over screens | spec §4–5, §16–18; milestones 1–2 | T-001, T-002 | Opus | planned |
 | T-004 | Roster: skeleton, slime, mage, ghost knight, golem at 5:00 | spec §8, §9, §13; milestone 4 | T-002 | Opus | planned |
 | T-005 | Growth: gems, XP, level-up cards, laser, mini tower, ring, buffs, procs | spec §10–12, §14; milestone 3 | T-003 | Opus | planned |

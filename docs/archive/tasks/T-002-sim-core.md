@@ -1,6 +1,6 @@
 # T-002: Headless sim core
 
-**Source:** [demo-spec.md](../demo-spec.md) milestones 1–2 · **Model:** Opus · **Depends on:** nothing (runs in parallel with T-001)
+**Source:** [demo-spec.md](../../demo-spec.md) milestones 1–2 · **Model:** Opus · **Depends on:** nothing (runs in parallel with T-001)
 
 ## Why
 
@@ -38,14 +38,14 @@ Implement under `src/sim/` (no DOM, see the purity check in `tools/check.mjs`):
 - **Intent:** exactly spec §4. A missing or partial intent is treated as all zeros.
 - **Digest:** `game.digest()` returns a short string hash (for example FNV-1a over a canonical JSON of the state, numbers rounded to 1e-6) used by the determinism test.
 - **Spawn ring centre** is the dragon position (the camera follows the dragon).
-- **Enemy facing:** `flip = true` when the enemy's x-velocity is negative (spec §5; open decision D-1 in [decisions.md](../decisions.md) may remove it later).
+- **Enemy facing:** `flip = true` when the enemy's x-velocity is negative (spec §5; open decision D-1 in [decisions.md](../../decisions.md) may remove it later).
 - **Death:** a killed enemy is removed from `game.enemies` in the deaths step, `kills++`, and a non-colliding effect plays its `die` anim at its position with the same `flip`. Gems are T-005: leave a single function call point (`dropGem(enemy)`, empty for now).
 - Removing entities: no `splice` in hot loops; compact arrays in place or rebuild.
 
 ## Spec edits this task makes
 
 - New subsection **§4.1 Sim state** with the decided interface above (RNG function, phases, events, entity fields, digest) as plain spec text.
-- Any gap you resolve under the [ambiguity protocol](../process/ambiguity-protocol.md), in its own section.
+- Any gap you resolve under the [ambiguity protocol](../../process/ambiguity-protocol.md), in its own section.
 
 ## Spec sections to read (whole)
 
@@ -72,4 +72,4 @@ Edit `docs/backlog.md`, merge, push `main`, add dependencies, touch `src/sim/ani
 
 ## Done means
 
-`npm run gate` green; the spec has §4.1; the commit body follows [agent-workflow.md](../process/agent-workflow.md) with `Closes: T-002`.
+`npm run gate` green; the spec has §4.1; the commit body follows [agent-workflow.md](../../process/agent-workflow.md) with `Closes: T-002`.
