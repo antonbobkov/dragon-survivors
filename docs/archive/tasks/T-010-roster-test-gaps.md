@@ -1,6 +1,6 @@
 # T-010: Close the roster test gaps found in review
 
-**Source:** [T-004 review](../../reports/reviews/2026-11-06-T-004-review.md), finding 4 · **Model:** Sonnet · **Depends on:** T-005 merged (it edits the same modules)
+**Source:** [T-004 review](../../../reports/reviews/2026-11-06-T-004-review.md), finding 4 · **Model:** Sonnet · **Depends on:** T-005 merged (it edits the same modules)
 
 ## Why
 
