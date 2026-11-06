@@ -100,7 +100,7 @@ function buffText(id, level) {
     case 'speed': return `+${pct(v)} shot speed and range`;
     case 'explode': return `${pct(v)} chance to explode`;
     case 'split': return `${pct(v)} chance to split in two`;
-    case 'pierce': return `${pct(v)} pierce, laser +${BUFFS.pierce.laserHits[level - 1]} hit${level > 1 ? "s" : ""}`;
+    case 'pierce': return `${pct(v)} pierce, laser +${BUFFS.pierce.laserHits[level - 1]} hit${level > 1 ? 's' : ''}`;
     default: return '';
   }
 }

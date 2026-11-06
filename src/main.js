@@ -8,7 +8,7 @@ import { App } from './app.js';
 import { VIEW_W, VIEW_H, fitScale, dragonScreen } from './viewport.js';
 import { createRenderer } from './render/draw.js';
 import { drawHud, shadowText } from './render/hud.js';
-import { drawTitle, drawPause, drawGameOver } from './render/screens.js';
+import { drawTitle, drawPause, drawGameOver, drawLevelUp } from './render/screens.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -71,6 +71,7 @@ async function boot() {
     drawHud(ctx, game, atlas);
     if (app.screen === 'paused') drawPause(ctx);
     else if (game.phase === 'over') drawGameOver(ctx, game);
+    else if (app.levelUpOpen()) drawLevelUp(ctx, game, atlas, app.cardSel);
   });
 }
 

@@ -1,7 +1,8 @@
-// Screen flow and ticking (§4, §13): title -> play <-> paused, game over -> Retry.
-// No DOM: main.js feeds it timestamps and input frames, so it is tested under node.
-// Only `game.tick(intent)` enters the sim.
+// Screen flow and ticking (§4, §13, §14): title -> play <-> paused, level-up cards, game
+// over -> Retry. No DOM: main.js feeds it timestamps and input frames, so it is tested
+// under node. Only `game.tick(intent)` enters the sim.
 import { Accumulator } from './loop.js';
+import { cardAt } from './render/screens.js';
 
 export class App {
   // makeGame(seed) -> Game; fixedSeed: the ?seed=N value or null; randomSeed() -> a new seed;
@@ -15,16 +16,31 @@ export class App {
     this.game = makeGame(this.nextSeed());
     this.screen = 'title'; // 'title' | 'play' | 'paused'
     this.pending = { confirm: false, pick: -1 };
+    this.cardSel = 0; // highlighted level-up card (d-pad + A), reset for every new set of offers
+    this.seenOffers = null;
   }
 
   nextSeed() {
     return this.fixedSeed ?? this.randomSeed();
   }
 
-  // Ticks run only while playing (title and pause stop them; the sim itself freezes in
-  // 'dying' and 'over').
+  // Ticks run only while playing (title and pause stop them). The sim itself freezes in
+  // 'dying' and 'over', and while level-up offers are open.
   ticking() {
     return this.screen === 'play';
+  }
+
+  // The level-up screen shows while the running game has offers open.
+  levelUpOpen() {
+    return this.screen === 'play' && this.game.phase === 'play' && this.game.offers.length > 0;
+  }
+
+  // A new set of offers starts with the first card highlighted.
+  syncOffers() {
+    if (this.game.offers !== this.seenOffers) {
+      this.seenOffers = this.game.offers;
+      this.cardSel = 0;
+    }
   }
 
   start() {
@@ -63,6 +79,21 @@ export class App {
       this.screen = 'paused';
       return;
     }
+    if (this.levelUpOpen()) {
+      // §14.1: keys 1/2/3, a click on a card, or d-pad left/right + A. The pick reaches the
+      // sim through the next tick's intent, and the sim applies it.
+      this.syncOffers();
+      const n = this.game.offers.length;
+      if (input.nav) this.cardSel = Math.max(0, Math.min(n - 1, this.cardSel + input.nav));
+      let pick = input.pick >= 0 && input.pick < n ? input.pick : -1;
+      if (input.confirm) pick = this.cardSel;
+      if (input.click) {
+        const i = cardAt(input.click.x, input.click.y, n);
+        if (i >= 0) pick = i;
+      }
+      if (pick >= 0) this.pending.pick = pick;
+      return;
+    }
     // Edge-triggered fields wait for the next tick, so a frame that runs no tick loses none.
     if (input.confirm) this.pending.confirm = true;
     if (input.pick >= 0) this.pending.pick = input.pick;
@@ -79,6 +110,7 @@ export class App {
       this.game.tick(intent);
       for (const ev of this.game.events) if (ev.type === 'sound') this.audio.play(ev.name);
     }
+    this.syncOffers();
     return n;
   }
 }
