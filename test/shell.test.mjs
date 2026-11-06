@@ -169,7 +169,7 @@ test('the same seed and the same intent stream through the App give the same dig
 function busyGame() {
   const g = new Game({ seed: 3 });
   for (let i = 0; i < 2000; i++) {
-    g.tick({ moveX: i % 300 < 150 ? 1 : -1, aimX: 0, aimY: 1, hasAim: true });
+    g.tick({ moveX: i % 300 < 150 ? 1 : -1, aimX: 0, aimY: 1, hasAim: true, pick: 0 });
     if (i > 600 && g.enemies.length > 1 && g.projectiles.length > 0) break;
   }
   return g;

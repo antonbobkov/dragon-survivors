@@ -6,10 +6,11 @@ import { createDragon, applyIntent, moveDragon } from './dragon.js';
 import { createTower, stepTether, collideTower } from './tower.js';
 import { stepEnemies, stepDeaths } from './enemies.js';
 import { createSpawner, stepSpawner, spawnGolemIfDue } from './spawner.js';
-import { createWeapon, stepWeapons } from './weapons.js';
+import { createWeapon, stepWeapons, collideRing } from './weapons.js';
 import { stepProjectiles, collideProjectiles } from './projectiles.js';
 import { stepEffects, spawnEffect } from './effects.js';
 import { stepGems } from './gems.js';
+import { applyCard, rollOffers } from './levelup.js';
 
 const DYING_TICKS = Math.round(DYING_TIME / DT);
 
@@ -43,12 +44,15 @@ export class Game {
     this.enemies = [];
     this.projectiles = [];
     this.effects = [];
+    this.gems = [];
+    this.miniTowers = [];
     this.spawner = createSpawner();
     this.grid = new Grid();
     this.kills = 0;
     this.level = 1;
     this.xp = 0;
     this.pendingLevelUps = 0;
+    this.offers = []; // the current level-up cards while pendingLevelUps > 0 (§14)
     this.weapons = [createWeapon('fireball', 1)];
     this.buffs = [];
   }
@@ -72,6 +76,7 @@ export class Game {
       return;
     }
     const it = normalizeIntent(intent);
+    if (this.offers.length > 0) { this.stepPick(it); return; } // the world is frozen
     this.stepIntent(it);       // 1
     this.stepDragon();         // 2
     this.stepTether();         // 3
@@ -86,7 +91,17 @@ export class Game {
     this.stepClock();          // 12
   }
 
-  // 1. Dragon velocity and aim. `confirm` and `pick` belong to the level-up flow (T-005).
+  // §14: while offers are open no step runs; a valid `pick` applies that card, and the
+  // next offers are rolled if level-ups remain.
+  stepPick(intent) {
+    const card = this.offers[intent.pick];
+    if (!card) return;
+    applyCard(this, card);
+    this.pendingLevelUps--;
+    this.sound('powerup');
+    this.offers = this.pendingLevelUps > 0 ? rollOffers(this) : [];
+  }
+  // 1. Dragon velocity and aim. `confirm` is the loop's business; `pick` is read by stepPick.
   stepIntent(intent) { applyIntent(this, intent); }
   // 2.
   stepDragon() { moveDragon(this); }
@@ -96,19 +111,20 @@ export class Game {
   stepSpawner() { stepSpawner(this); }
   // 5. Special timers (mage cast, summon anim), AI, move, separation, despawn (§8).
   stepEnemies() { stepEnemies(this); }
-  // 6. §10; laser, mini tower and ring are T-005 hooks in weapons.js.
+  // 6. §10: cooldowns, firing, ring positions, mini towers.
   stepWeapons() { stepWeapons(this); }
   // 7.
   stepProjectiles() { stepProjectiles(this); }
-  // 8. Projectile vs enemy, ring vs enemy (T-005, inside spinRing), enemy vs tower.
+  // 8. Projectile vs enemy (with procs), ring vs enemy, enemy vs tower.
   stepCollisions() {
     this.grid.build(this.enemies);
     collideProjectiles(this);
+    collideRing(this);
     collideTower(this);
   }
-  // 9. Deaths, slime split, ghost knight burn (§8.4); gems are T-005's dropGem.
+  // 9. Deaths, gems, slime split, ghost knight burn (§8.4).
   stepDeaths() { stepDeaths(this); }
-  // 10. T-005.
+  // 10. §14: attract and collect gems, queue level-ups and roll offers.
   stepGems() { stepGems(this); }
   // 11.
   stepEffects() { stepEffects(this); }
@@ -122,6 +138,8 @@ export class Game {
       this.dyingTicks = 0;
       spawnEffect(this, 'castle.destroy', this.tower.x, this.tower.y, { hold: true });
       this.sound('destroy_castle_sound');
+      this.offers = []; // a level-up queued on the tick the tower fell is dropped
+      this.pendingLevelUps = 0;
     }
   }
 
@@ -130,9 +148,9 @@ export class Game {
     return {
       seed: this.seed, tickCount: this.tickCount, phase: this.phase, dyingTicks: this.dyingTicks,
       nextId: this.nextId, kills: this.kills, level: this.level, xp: this.xp,
-      pendingLevelUps: this.pendingLevelUps, spawner: this.spawner,
+      pendingLevelUps: this.pendingLevelUps, offers: this.offers, spawner: this.spawner,
       dragon: this.dragon, tower: this.tower, enemies: this.enemies,
-      projectiles: this.projectiles, effects: this.effects,
+      projectiles: this.projectiles, effects: this.effects, gems: this.gems, miniTowers: this.miniTowers,
       weapons: this.weapons, buffs: this.buffs,
     };
   }

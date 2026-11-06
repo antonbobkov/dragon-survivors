@@ -346,7 +346,7 @@ test('determinism: a mixed-roster run is identical for the same seed, and every 
     { t: 0, rate: 6, weights: { knight: 10, skeleton: 10, slime: 30, mage: 30, ghostKnight: 30 } },
     { t: 10, rate: 6, weights: { knight: 10, skeleton: 10, slime: 30, mage: 30, ghostKnight: 30 }, golem: true },
   ];
-  const script = (i) => ({ moveX: Math.cos(i * 0.02), moveY: Math.sin(i * 0.02), aimX: Math.cos(i * 0.05), aimY: Math.sin(i * 0.05), hasAim: true });
+  const script = (i) => ({ moveX: Math.cos(i * 0.02), moveY: Math.sin(i * 0.02), aimX: Math.cos(i * 0.05), aimY: Math.sin(i * 0.05), hasAim: true, pick: 0 }); // pick: level-ups do not freeze the run
   const play = () => {
     const g = new Game({ seed: 77, timeline: ALL });
     g.tower.hp = 1e9;

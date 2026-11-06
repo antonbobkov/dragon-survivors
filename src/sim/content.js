@@ -86,7 +86,8 @@ export const WEAPONS = {
   },
   laser: {
     name: 'Laser', aimed: true,
-    anim: 'laser.dir', bigAnim: 'laser.bigdir', bigFrom: 4,
+    anim: 'laser.dir', bigAnim: 'laser.bigdir', bigFrom: 4, r: 6, bigR: 8,
+    offset: 6, // with count 2: two parallel lasers, ±offset px perpendicular to the aim
     hitEffect: 'explosion.laser', sound: 'laser01',
     levels: [
       { cooldown: 1.4, damage: 1, count: 1, speed: 700, range: 600, maxHits: 3 },
@@ -100,7 +101,8 @@ export const WEAPONS = {
     name: 'Mini tower', aimed: false,
     anim: 'castle', scale: 0.5,
     lobDist: 80, lobTime: 0.5, lobHeight: 30,
-    shotSpeed: 380, shotRange: 300, targetRadius: 300,
+    shotSpeed: 380, shotRange: 300, targetRadius: 300, shotR: 6, shotAnim: 'fireball.anim',
+    hitEffect: 'explosion.small',
     levels: [
       { cooldown: 6, duration: 8,  fireRate: 0.8, damage: 2, maxActive: 1 },
       { cooldown: 6, duration: 10, fireRate: 0.7, damage: 2, maxActive: 2 },
@@ -136,7 +138,14 @@ export const BUFFS = {
   pierce:   { name: 'Pierce chance',    icon: 'icon.laser',   kind: 'chance', levels: [0.2, 0.35, 0.5], laserHits: [1, 2, 3] },
 };
 
-// §12 Procs
+// §12 Procs. Which procs each projectile kind can roll (the laser's pierce is its maxHits),
+// its hit effect and its explosion sprite.
+export const PROJECTILE_KINDS = {
+  fireball: { hitEffect: 'explosion.small', explosion: 'explosion.big', explode: true, split: true, pierce: true },
+  laser:    { hitEffect: 'explosion.laser', explosion: 'explosion.laserbig', explode: true, split: false, pierce: false },
+  miniShot: { hitEffect: 'explosion.small', explosion: 'explosion.big', explode: true, split: true, pierce: true },
+};
+export const EXPLOSION_SPRITE_PX = { 'explosion.big': 57, 'explosion.laserbig': 64 }; // source frame width
 export const EXPLODE_RADIUS = 60;
 export const SPLIT_ANGLE = 45; // degrees either side of the parent's direction
 export const SPLIT_MAX_GEN = 2; // projectiles with gen >= this cannot split
@@ -144,6 +153,7 @@ export const MAX_HITS_MEMORY = 8;
 
 // §14 XP, gems, level-up
 export const GEM_SPEED = 500;
+export const GEM_COLLECT_RADIUS = 12;
 export const MAX_GEMS = 600;
 export const xpToNext = (level) => 5 + 3 * level;
 export const CARD_COUNT = 3;

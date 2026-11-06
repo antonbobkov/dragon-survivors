@@ -1,7 +1,7 @@
 // World rendering (§5): background, tether ring, entities in draw order, effects.
 // Reads the game and never writes it.
 import { mulberry32 } from '../sim/rng.js';
-import { TETHER_LENGTH } from '../sim/content.js';
+import { TETHER_LENGTH, WEAPONS, TICK_HZ } from '../sim/content.js';
 import { VIEW_W, VIEW_H, cameraOffset } from '../viewport.js';
 
 export const SPRITE_SCALE = 2;
@@ -74,6 +74,18 @@ export function grassSpeckles(seed = BG_SEED) {
 // First tile origin for a tiled background with camera offset `o` (in [-TILE_SIZE, 0)).
 export function tileStart(o) {
   return (((o % TILE_SIZE) + TILE_SIZE) % TILE_SIZE) - TILE_SIZE;
+}
+
+// §10.3: a mini tower in flight is drawn along the straight line from the tower to its
+// landing point, raised by a sine arc of lobHeight px; a landed one at its position.
+const LOB_TICKS = Math.round(WEAPONS.miniTower.lobTime * TICK_HZ);
+export function miniTowerDrawPos(m) {
+  if (!(m.lobTicks > 0)) return { x: m.x, y: m.y };
+  const t = 1 - m.lobTicks / LOB_TICKS;
+  return {
+    x: m.fromX + (m.x - m.fromX) * t,
+    y: m.fromY + (m.y - m.fromY) * t - Math.sin(t * Math.PI) * WEAPONS.miniTower.lobHeight,
+  };
 }
 
 // Enemies in draw order (by y, then id), as a new array: the game's list is never reordered.
@@ -150,7 +162,8 @@ export function createRenderer({ atlas, makeCanvas }) {
     }
 
     for (const m of game.miniTowers || []) {
-      drawAnim(ctx, atlas, m.anim || 'castle', m.frame || 0, m.x + o.x, m.y + o.y, { scale: 0.5 });
+      const p = miniTowerDrawPos(m);
+      drawAnim(ctx, atlas, m.anim || 'castle', m.frame || 0, p.x + o.x, p.y + o.y, { scale: WEAPONS.miniTower.scale });
     }
 
     for (const e of enemyDrawOrder(game.enemies, sorted)) {
@@ -161,7 +174,7 @@ export function createRenderer({ atlas, makeCanvas }) {
     for (const w of game.weapons) {
       if (w.id !== 'ring' || !Array.isArray(w.balls)) continue;
       for (const b of w.balls) {
-        drawAnim(ctx, atlas, b.anim || 'fireball.anim', b.frame ?? 0, b.x + o.x, b.y + o.y, { scale: b.scale ?? 1 });
+        drawAnim(ctx, atlas, w.anim || 'fireball.anim', w.frame ?? 0, b.x + o.x, b.y + o.y);
       }
     }
 
