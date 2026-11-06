@@ -1,6 +1,6 @@
 # T-006: Polish: debug tools, soak test, full-run balance
 
-**Source:** [demo-spec.md](../demo-spec.md) milestone 5, §19, §20 (soak); [early-balance report](../../reports/measurements/2026-11-06-early-balance.md) (kite target deferred here) · **Model:** Opus · **Depends on:** T-005 merged
+**Source:** [demo-spec.md](../../demo-spec.md) milestone 5, §19, §20 (soak); [early-balance report](../../../reports/measurements/2026-11-06-early-balance.md) (kite target deferred here) · **Model:** Opus · **Depends on:** T-005 merged
 
 ## Why
 
@@ -46,4 +46,4 @@ Edit `docs/backlog.md`, merge, push `main`. Another agent may be adding tests fo
 - T-005's probe: a gem-collecting bot with an invincible tower reached level 42–44 by 5:30 with a full L5 build, and the horde thinned to ~50 enemies. Expect late game to be too easy and the 1:00–2:00 ramp to be too steep (T-009); measure both.
 - Debug keys F1–F5 were not built in T-005; `window.app` exists with `?debug=1`.
 - Level-up: `level` rises when queued; a pick on the queuing tick is ignored; the pick tick does not advance the world.
-- Fun features to keep while tuning: [fun-features.md](../fun-features.md) (split fireworks, gem comet tail).
+- Fun features to keep while tuning: [fun-features.md](../../fun-features.md) (split fireworks, gem comet tail).
