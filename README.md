@@ -2,6 +2,8 @@
 
 A Vampire Survivors-style demo: fly an invulnerable dragon, keep the tethered tower alive, survive the horde past 5:00.
 
+**Play it:** <https://antonbobkov.github.io/dragon-survivors/> (GitHub Pages, deployed from `main`).
+
 Plain JavaScript ES modules on an HTML canvas. No framework, no bundler, no runtime dependencies.
 
 ## Run
