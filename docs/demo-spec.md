@@ -60,7 +60,7 @@ dragon-survivors/
   docs/
 ```
 
-Serve with any static server (`python -m http.server` or `npx serve`). The only build step is `node tools/build-atlas.mjs`, which reads `E:\code\dragongame\assets` (path set in `manifest.json`) and writes into `assets/`.
+Serve with any static server (`python -m http.server` or `npx serve`). The only build step is `node tools/build-atlas.mjs`, which reads `E:\code\dragongame\assets` (path set in `manifest.json`) and writes into `assets/`, plus `node tools/copy-sounds.mjs` for the WAVs. `npm run build:assets` runs both. The outputs are committed, so the game and CI never need the pack.
 
 ### 2.1 Tick order
 
@@ -93,9 +93,9 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 
 `tools/build-atlas.mjs`:
 
-1. Reads `manifest.json`: a list of entries like `{ "name": "knight.walk", "list": "knight/knight.txt" }` for sequences and `{ "name": "castle", "file": "castle/castle0000.bmp" }` for single frames.
-2. Decodes each BMP with its own decoder (handles `biBitCount` 8 and 24, bottom-up rows, 4-byte row padding) and sets the key colour to alpha 0.
-3. Packs all unique frames into one PNG with a shelf packer and 1px padding. Writes the PNG using Node's built-in `zlib` (no library).
+1. Reads `manifest.json`: a list of entries like `{ "name": "knight.walk", "list": "knight/knight.txt" }` for sequences `{ "name": "castle", "file": "castle/castle0000.bmp" }` for single frames, and `{ "name": "explosion.big", "files": [...] }` for numbered BMP ranges that have no `.txt`. Frame keys are the source path relative to the source root, with forward slashes; a frame used by several anims is packed once. The source root is `sourceRoot` in the manifest, overridden by `--source <dir>` or the `DRAGONGAME_ASSETS` environment variable. The manifest also lists the `sounds` to copy.
+2. Decodes each BMP with its own decoder (handles `biBitCount` 8 and 24, bottom-up rows, and top-down rows when the height is negative, 4-byte row padding) and sets the key colour to alpha 0.
+3. Packs all unique frames into one PNG with a shelf packer (fixed width 512 px, height grows, tallest frames first) and 1px padding. Writes the PNG using Node's built-in `zlib` (no library).
 4. Writes `atlas.json`:
 
 ```json
@@ -119,9 +119,9 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 | `slime.walk`, `slime.die`, `slime.split` | `slime/slime_walk.txt`, `slime/slime_die.txt`, `slime/slime_reproduce.txt` | |
 | `mage.walk`, `mage.die`, `mage.spell` | `mage/mage.txt`, `mage/die.txt`, `mage/spell.txt` | |
 | `ghost.knight`, `ghost.burn`, `ghost.ghost` | `ghostnight/ghost_knight.txt`, `ghostnight/ghost_knight_burn.txt`, `ghostnight/ghost.txt` | burn = death-to-ghost transition |
-| `golem.walk`, `golem.die` | `golem/golem.txt`, `golem/golem_death.txt` | 64px. `die` unused in the demo (golem is unkillable) but imported for later |
+| `golem.walk`, `golem.die` | `golem/golem.txt`, `golem/golem_death.txt` | 64px. `golem/golem.txt` lists `golem_death0000..0006`, as the original does. `die` unused in the demo (golem is unkillable) but imported for later |
 | `fireball.anim` | `fireball/fireball.txt` | 8px, 8-frame looping animation |
-| `fireball.big` | `fireball/big_fireball.txt` | 12px |
+| `fireball.big` | `fireball/big_fireball.txt` | 20px, 2 frames |
 | `laser.dir` | `fireball/laser.txt` | 8px, **16 directions** |
 | `laser.bigdir` | `fireball/laser_15.txt` | 12px, 16 directions |
 | `castle` | `castle/castle0000.bmp` | 30px. Tower and mini tower |
