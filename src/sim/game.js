@@ -8,6 +8,7 @@ import { stepEnemies, stepDeaths } from './enemies.js';
 import { createSpawner, stepSpawner, spawnGolemIfDue } from './spawner.js';
 import { createWeapon, stepWeapons, collideRing } from './weapons.js';
 import { stepProjectiles, collideProjectiles } from './projectiles.js';
+import { stepEnemyShots, collideEnemyShots } from './enemyShots.js';
 import { stepEffects, spawnEffect } from './effects.js';
 import { stepGems } from './gems.js';
 import { applyCard, rollOffers } from './levelup.js';
@@ -54,6 +55,7 @@ export class Game {
     this.tower = createTower();
     this.enemies = [];
     this.projectiles = [];
+    this.enemyShots = []; // mage orbs (§8.5), apart from the player's projectiles
     this.effects = [];
     this.gems = [];
     this.miniTowers = [];
@@ -143,14 +145,18 @@ export class Game {
   stepEnemies() { stepEnemies(this); }
   // 6. §10: cooldowns, firing, ring positions, mini towers.
   stepWeapons() { stepWeapons(this); }
-  // 7.
-  stepProjectiles() { stepProjectiles(this); }
-  // 8. Projectile vs enemy (with procs), ring vs enemy, enemy vs tower.
+  // 7. Projectiles, then enemy shots: move, expire by range.
+  stepProjectiles() {
+    stepProjectiles(this);
+    stepEnemyShots(this);
+  }
+  // 8. Projectile vs enemy (with procs), ring vs enemy, enemy vs tower, enemy shot vs dragon.
   stepCollisions() {
     this.grid.build(this.enemies);
     collideProjectiles(this);
     collideRing(this);
     collideTower(this);
+    collideEnemyShots(this);
   }
   // 9. Deaths, gems, slime split, ghost knight burn (§8.4).
   stepDeaths() { stepDeaths(this); }
@@ -180,7 +186,7 @@ export class Game {
       nextId: this.nextId, kills: this.kills, level: this.level, xp: this.xp,
       pendingLevelUps: this.pendingLevelUps, offers: this.offers, spawner: this.spawner,
       dragon: this.dragon, tower: this.tower, enemies: this.enemies,
-      projectiles: this.projectiles, effects: this.effects, gems: this.gems, miniTowers: this.miniTowers,
+      projectiles: this.projectiles, enemyShots: this.enemyShots, effects: this.effects, gems: this.gems, miniTowers: this.miniTowers,
       weapons: this.weapons, buffs: this.buffs,
     };
   }

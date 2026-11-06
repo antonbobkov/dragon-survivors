@@ -14,7 +14,7 @@ This document is the authority for the demo. If code and spec disagree, the code
 - Keyboard + mouse and gamepad both work from day one.
 - Game logic is headless and deterministic so it can run under `node --test` without a DOM.
 
-Change from the high-level design: the dragon does **not** body-block enemies. It passes over them and never collides with them. The player's job is to kill, kite, and collect gems. The tower is the only thing enemies touch.
+Change from the high-level design: the dragon does **not** body-block enemies. It passes over them and never collides with them. The player's job is to kill, kite, and collect gems. The tower is the only thing enemies touch; the one thing that hits the dragon is a mage's orb, and that damage goes to the tower (§8.5).
 
 ---
 
@@ -44,6 +44,7 @@ dragon-survivors/
       dragon.js
       tower.js
       enemies.js          AI, movement, separation, death behaviours
+    enemyShots.js       mage orbs: firing, movement, hits on the dragon
       spawner.js
       weapons.js          cooldowns, firing, ring, mini tower
       projectiles.js      movement, hits, procs
@@ -74,10 +75,10 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 2. Move the dragon.
 3. Tower: follow the dragon, then the tether (§7.1).
 4. Spawner: add enemies for this tick (§9).
-5. Enemies: special timers (mage cast, summon anim), AI target, move, separation, despawn.
+5. Enemies: special timers (mage cast, mage orb, summon anim), AI target, move, separation, despawn.
 6. Weapons: advance cooldowns, fire, spin the ring, run mini towers.
-7. Projectiles: move, expire by range.
-8. Collisions: projectile vs enemy (with procs), ring vs enemy, enemy vs tower.
+7. Projectiles, then enemy shots (mage orbs): move, expire by range.
+8. Collisions: projectile vs enemy (with procs), ring vs enemy, enemy vs tower, enemy shot vs dragon.
 9. Deaths: play death animations, drop gems, split slimes, start ghost knight burns.
 10. Gems: attract and collect, add XP, queue level-ups and roll the offers.
 11. Effects: advance one-shot animations, remove finished ones; a finished ghost burn becomes a ghost.
@@ -97,7 +98,7 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 
 `tools/build-atlas.mjs`:
 
-1. Reads `manifest.json`: a list of entries like `{ "name": "knight.walk", "list": "knight/knight.txt" }` for sequences `{ "name": "castle", "file": "castle/castle0000.bmp" }` for single frames, and `{ "name": "explosion.big", "files": [...] }` for numbered BMP ranges that have no `.txt`. Frame keys are the source path relative to the source root, with forward slashes; a frame used by several anims is packed once. The source root is `sourceRoot` in the manifest, overridden by `--source <dir>` or the `DRAGONGAME_ASSETS` environment variable. The manifest also lists the `sounds` to copy.
+1. Reads `manifest.json`: a list of entries like `{ "name": "knight.walk", "list": "knight/knight.txt" }` for sequences `{ "name": "castle", "file": "castle/castle0000.bmp" }` for single frames, and `{ "name": "explosion.big", "files": [...] }` for numbered BMP ranges that have no `.txt`. Frame keys are the source path relative to the source root, with forward slashes; a frame used by several anims is packed once. An entry may add `"swap": "rg"` (any two different channels of `r`, `g`, `b`) to swap those colour channels of every pixel after decoding; its frame keys get the swap value as a suffix (`#rg`), so a recoloured frame is packed apart from the original. The source root is `sourceRoot` in the manifest, overridden by `--source <dir>` or the `DRAGONGAME_ASSETS` environment variable. The manifest also lists the `sounds` to copy.
 2. Decodes each BMP with its own decoder (handles `biBitCount` 8 and 24, bottom-up rows, and top-down rows when the height is negative, 4-byte row padding) and sets the key colour to alpha 0.
 3. Packs all unique frames into one PNG with a shelf packer (fixed width 512 px, height grows, tallest frames first) and 1px padding. Writes the PNG using Node's built-in `zlib` (no library).
 4. Writes `atlas.json`:
@@ -126,6 +127,7 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 | `golem.walk`, `golem.die` | `golem/golem.txt`, `golem/golem_death.txt` | 64px. `golem/golem.txt` lists `golem_death0000..0006`, as the original does. `die` unused in the demo (golem is unkillable) but imported for later |
 | `fireball.anim` | `fireball/fireball.txt` | 8px, 8-frame looping animation |
 | `fireball.big` | `fireball/fireball_15.txt` | 12px, 8-frame looping animation. (`fireball/big_fireball.txt` lists `1.bmp 2.bmp`, a 20px block that is not a fireball; it is not imported.) |
+| `orb.green` | `fireball/fireball.txt` with `"swap": "rg"` | 8px, the fireball with red and green swapped: the mage orb (§8.5) |
 | `laser.dir` | `fireball/laser.txt` | 8px, **16 directions** |
 | `laser.bigdir` | `fireball/laser_15.txt` | 12px, 16 directions |
 | `castle` | `castle/castle0000.bmp` | 30px. Tower and mini tower |
@@ -162,17 +164,18 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 - **Intent:** exactly the shape in §4. A missing, partial or non-finite field reads as 0, `false` or `-1` (`pick`). A move vector longer than 1 is normalised; a non-zero aim is normalised; `hasAim` is false when the aim is zero. The sim ignores `confirm`; `pick` is read only while level-up offers are open (§14). The loop turns a gamepad A press on the level-up screen into the `pick` of the highlighted card.
 - **Phases:** `game.phase` is `'play' | 'dying' | 'over'`. In the clock step, when tower HP is 0, the phase becomes `'dying'`, a `castle.destroy` effect spawns at the tower and sound `destroy_castle_sound` plays. During `'dying'` only effects advance; the clock, enemies, dragon and weapons are frozen. After 2 s (120 ticks) the phase becomes `'over'`. `tick()` in `'over'` changes nothing except clearing `events`. Title, pause and the level-up screen are the loop's business, not phases.
 - **Events:** `game.events` is cleared at the start of every tick. Systems push `{ type: 'sound', name }`, at most one per sound name per tick; the browser plays them. Events are output, not state.
-- **Ids:** every enemy, projectile, effect, gem and mini tower gets its `id` from one counter, `game.nextId`.
+- **Ids:** every enemy, projectile, enemy shot, effect, gem and mini tower gets its `id` from one counter, `game.nextId`.
 - **Start:** the dragon at (0, 0), the tower at (0, `TOWER_REST_DIST`) = (0, 40), below the dragon and at rest (§7.1), so nothing moves before the first input.
-- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.offers` (`[]`, the level-up cards on show, §14), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`, entries `{ id, level }` in the order gained), `game.gems` (`[]`), `game.miniTowers` (`[]`), `game.spawner` (`{ budget, spawned, golem }`, `golem` true once the golem has spawned). `game.score()` = `floor(t) + kills`.
+- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.offers` (`[]`, the level-up cards on show, §14), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`, entries `{ id, level }` in the order gained), `game.gems` (`[]`), `game.miniTowers` (`[]`), `game.enemyShots` (`[]`, mage orbs, §8.5), `game.spawner` (`{ budget, spawned, golem }`, `golem` true once the golem has spawned). `game.score()` = `floor(t) + kills`.
 
 | Entity | Fields |
 |---|---|
 | every drawable | `x, y, anim, frame, frameTicks` |
 | `game.dragon` | `aimX, aimY` (unit fire direction), `moveX, moveY`, `aimed` (an aim has ever been given), `flip` (facing left, §6.3); `anim` is `dragon.walk` |
 | `game.tower` | `hp, maxHp`, `moved` (the tower moved this tick, §7.1); `anim` is `castle` |
-| `game.enemies[]` | `id, type, r, hp, gen, flip, alpha`. `type` is a key of `ENEMIES` in `content.js`: `knight`, `skeleton`, `slime`, `mage`, `ghostKnight`, `ghost`, `golem`. Mages also have `castTimer` (§8); the golem has `unkillable` and `procImmune` set to true and `hp = GOLEM_HP = 1e9`, a finite stand-in for ∞ |
+| `game.enemies[]` | `id, type, r, hp, gen, flip, alpha`. `type` is a key of `ENEMIES` in `content.js`: `knight`, `skeleton`, `slime`, `mage`, `ghostKnight`, `ghost`, `golem`. Mages also have `castTimer` (§8.4) and `orbTimer` (§8.5); the golem has `unkillable` and `procImmune` set to true and `hp = GOLEM_HP = 1e9`, a finite stand-in for ∞ |
 | `game.projectiles[]` | `id, kind, dx, dy` (unit), `speed, r, damage, range, travelled, hits` (ids of enemies hit, at most 8), `gen, dirFrame` (for 16-direction sprites). `kind` is `fireball` (mini-tower shots included, §10.3) or `laser` |
+| `game.enemyShots[]` | `id, kind, dx, dy` (unit), `speed, r, damage, range, travelled`. `kind` is `orb` (§8.5). Kept apart from `game.projectiles`: no player weapon touches them |
 | `game.effects[]` | `id, scale, alpha, flip, hold, life, done`. `scale` multiplies the standard 2× sprite scale; `life` (ticks, usually 0) is a minimum length: the effect holds its last frame until `life` ticks have passed |
 | `game.gems[]` | `id, x, y, value, homing` (§14) |
 | `game.miniTowers[]` | `id, x, y` (landing point), `fromX, fromY` (where the lob started), `lobTicks` (ticks of flight left), `life` (ticks left after landing), `timer` (seconds to the next shot) (§10.3) |
@@ -190,8 +193,8 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 - **World:** unbounded plane. No terrain in the demo. The camera is centred on the dragon: a world point is drawn at `world + offset` with `offset = (round(480 − dragon.x), round(300 − dragon.y))`, an integer so sprites do not shimmer. Sprites are drawn centred on the entity position, at integer screen pixels.
 - **Background:** a 64×64 grass tile generated once at startup into an offscreen canvas (dark green base, 28 lighter or darker 2×2 px speckles), tiled with the camera offset. The speckles come from the tile's own `mulberry32` with a fixed seed, never from `game.rng`, so drawing cannot change a run. A faint darker ring (2 px, black at 18% alpha) of radius `TETHER_LENGTH` around the tower makes the tether rule readable.
 - **Gem:** drawn procedurally as a 6×6 px diamond, a blue edge around a pale cyan core, at 2× (12 px on screen), centred on the gem.
-- **Draw order:** background, gems, tower, mini towers, enemies sorted by y, ring fireballs, projectiles, dragon, effects, HUD, then any screen (title, pause, game over) over a 60% black overlay. Enemies are sorted by y then id in a copy owned by the renderer; the game's enemy list is never reordered, because its order is part of the sim.
-- **Sprites:** `scale` and `alpha` of effects and enemies apply as given (`scale` multiplies the 2×); `flip` mirrors around the sprite's centre. Projectiles whose anim is a 16-direction sheet (`laser.dir`, `laser.bigdir`) draw frame `dirFrame`; others draw `frame`. The dragon draws `frame` of `dragon.walk`, mirrored when `flip`. Ring fireballs draw the ring weapon's `frame` at each of its `balls`. A mini tower in flight is drawn on the straight line from `(fromX, fromY)` to `(x, y)` at progress `p = 1 − lobTicks / 30`, raised by `sin(p × π) × 30` px; a landed one at `(x, y)`.
+- **Draw order:** background, gems, tower, mini towers, enemies sorted by y, ring fireballs, projectiles, enemy shots (mage orbs), dragon, effects, HUD, then any screen (title, pause, game over) over a 60% black overlay. Enemies are sorted by y then id in a copy owned by the renderer; the game's enemy list is never reordered, because its order is part of the sim.
+- **Sprites:** `scale` and `alpha` of effects and enemies apply as given (`scale` multiplies the 2×); `flip` mirrors around the sprite's centre. Projectiles whose anim is a 16-direction sheet (`laser.dir`, `laser.bigdir`) draw frame `dirFrame`; others draw `frame`. Enemy shots draw `frame` of their anim. The dragon draws `frame` of `dragon.walk`, mirrored when `flip`. Ring fireballs draw the ring weapon's `frame` at each of its `balls`. A mini tower in flight is drawn on the straight line from `(fromX, fromY)` to `(x, y)` at progress `p = 1 − lobTicks / 30`, raised by `sin(p × π) × 30` px; a landed one at `(x, y)`.
 - **Facing:** enemies flip horizontally when moving left (`ctx.scale(-1, 1)`). The dragon flips the same way when facing left (§6.3).
 - `draw.js` reads the game state and never writes it. Animation indices live in the entity (`anim`, `frame`, `frameTicks`) and advance during the tick, so rendering is stateless.
 
@@ -204,8 +207,9 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 | `DRAGON_SPEED` | 87 px/s *unmeasured* |
 | `DRAGON_PICKUP_RADIUS` | 48 px *unmeasured* |
 | `FACING_DEADZONE` | 0.3 *unmeasured* |
+| `DRAGON_RADIUS` | 12 px *unmeasured*, collision circle for mage orbs (§8.5) |
 | Collision with enemies | none |
-| HP | none (cannot die) |
+| HP | none (cannot die); an orb that hits it damages the tower (§8.5) |
 
 ### 6.1 Movement
 Velocity = `move × DRAGON_SPEED`. Instant acceleration.
@@ -244,7 +248,7 @@ The tower always trails the dragon. Each tick, in this order:
 So a dragon walking away faster than the follow speed opens the gap until the tether is tight and then drags the tower at its own speed; once the dragon stops, the tower walks up to the rest distance and stops. `tower.moved` is true on a tick when either step moved the tower, false otherwise. The tower never moves except toward the dragon.
 
 ### 7.2 Damage
-Enemies whose circle overlaps the tower circle deal `contactDps × DT` each tick (continuous, not per hit). When HP reaches 0 the run ends (§13). Tower HP does not regenerate; the Repair card restores 25. HP never goes below 0.
+Enemies whose circle overlaps the tower circle deal `contactDps × DT` each tick (continuous, not per hit). A mage orb that hits the dragon takes `MAGE_ORB_DAMAGE` from the tower at once (§8.5). When HP reaches 0 the run ends (§13). Tower HP does not regenerate; the Repair card restores 25. HP never goes below 0.
 
 Circles overlap when the distance between centres is less than the sum of the radii. An enemy walking at the tower stops advancing once its centre is `r + TOWER_RADIUS − 1` px from the tower's (1 px inside contact range, *unmeasured*), so it keeps dealing damage without walking into the tower. Enemies never push the tower; when the tower follows or is dragged into enemies they simply overlap it.
 
@@ -266,7 +270,7 @@ An enemy whose HP drops to 0 or below stops being hit at once and is removed in 
 | Knight | 3 | 27.5 | 12 | 2 | 1 | `knight` | none |
 | Skeleton | 1 | 45 | 10 | 6 | 1 | `skelly` | none (a summoned one first plays `skelly.summon`, §8.4) |
 | Slime | 2 | 35 | 12 | 8 | 1 | `slime` | on death, if `gen == 0`, spawns 2 slimes with `gen = 1`, HP 1, radius 8, at ±20 px (§8.4). Parent plays `slime.split` instead of `die`. |
-| Mage | 4 | 20 | 12 | 5 | 5 | `mage` | every `MAGE_CAST_INTERVAL = 8 s` since spawn it stops for 1 s (`spell` anim) and spawns 4 skeletons in a 40 px ring around itself, each playing `skelly.summon` once before walking. Will not cast within 80 px of the tower (§8.4). |
+| Mage | 4 | 20 | 12 | 5 | 5 | `mage` | every `MAGE_CAST_INTERVAL = 8 s` since spawn it stops for 1 s (`spell` anim) and spawns 4 skeletons in a 40 px ring around itself, each playing `skelly.summon` once before walking. Will not cast within 80 px of the tower (§8.4). Fires a green orb at the dragon every 3 s while within 320 px of it (§8.5). |
 | Ghost knight | 3 | 27.5 | 12 | 10 | 2 | `ghost.knight` | on death plays `ghost.burn` once (0.5 s, not collidable), then becomes a **Ghost** (§8.4). |
 | Ghost | 2 | 36 | 10 | 8 | 1 | `ghost.ghost` | drawn at 60% alpha. Dies normally. |
 | Mega golem | ∞ | 75 | 56 | 40 | none | `golem` | §13. Every hit pushes it 6 px away from the hitter. Immune to procs. |
@@ -293,6 +297,23 @@ Specials run in the enemies step before the enemy walks; a busy enemy (a casting
 - **Summoned skeletons** start on `skelly.summon` frame 0. They join the enemy list at once (separation, collisions, the cap) but first act on the next tick. While `skelly.summon` plays they do not walk; they can be hit and damaged and they do touch the tower. On the tick the anim ends they switch to `skelly.walk` and walk from the next tick on.
 - **Ghost knight burn.** A dying ghost knight counts as a kill, plays `death01` and drops its gem; its effect is `ghost.burn` with its `flip` and `alpha` and `life` 30 ticks (0.5 s): the anim is 22 ticks long and holds its last frame for the rest. The burn is an effect, so it is not hit and does not touch the tower. In the effects step of the tick it finishes, the burn is removed and a ghost appears at its position with its `flip`. The ghost is added even when the cap is full. No ghost rises once the phase is no longer `'play'`.
 - **Golem.** It spawns with `hp = GOLEM_HP` and `unkillable`; it never dies and never despawns. On every damaging hit, after the damage, its HP is restored to `GOLEM_HP` and it moves 6 px along the unit direction from the hitting projectile's position (for the ring, the ring fireball; for an explosion, its centre) to the golem's centre, `(0, 1)` if they coincide, and sound `hit_golem` plays. The knockback is applied at once, before the next separation. `procImmune` marks it as immune to procs (§12). It is immovable in separation (§8.1) and deals 40 DPS on contact (§7.2).
+
+### 8.5 Mage orbs
+
+Mages shoot slow green orbs at the dragon, so dodging matters. The dragon cannot die, so an orb that hits it damages the **tower** instead.
+
+| Constant | Value |
+|---|---|
+| `MAGE_ORB_RANGE` | 320 px, the mage fires only while the dragon is this close *unmeasured* |
+| `MAGE_ORB_INTERVAL` | 3 s between shots *unmeasured* |
+| `MAGE_ORB_SPEED` | 110 px/s, faster than the dragon, slow enough to sidestep *unmeasured* |
+| `MAGE_ORB_DAMAGE` | 5 tower HP per hit *unmeasured* |
+| Orb | radius 6 px, flies 400 px, sprite `orb.green`, hit sound `slime_poke` |
+
+- **Timer.** A mage's `orbTimer` is the number of enemies steps until it may fire. When the mage spawns it is set to `floor(game.rng() × 180)`, a random offset in `[0, 180)` ticks (`[0, MAGE_ORB_INTERVAL)`), so a pack of mages does not fire in volleys. This is the orbs' only random draw; no other enemy draws one.
+- **Firing,** in the enemies step, after the mage's cast logic (§8.4) and before it walks: `orbTimer` goes down by one if it is above 0. When it is 0, the mage is not casting this tick (no tick of a cast, its first and last included) and its centre is at most `MAGE_ORB_RANGE` from the dragon's, it fires one orb and `orbTimer` restarts at 180 (3 s). Otherwise `orbTimer` stays at 0 and the mage fires on the first step it can, so a mage walking into range fires at once. Firing never stops the mage walking.
+- **Orb.** An orb starts at the mage's centre and flies in a straight line toward the dragon's position at the moment of firing (no lead; `(0, 1)` if they coincide), at `MAGE_ORB_SPEED`. It is a `{ kind: 'orb' }` entry of `game.enemyShots`, drawn above enemies and projectiles and below the dragon. In step 7, after the player's projectiles, it moves, expires once it has travelled 400 px, and its anim loops.
+- **Hit,** in step 8 after enemy vs tower: an orb whose circle overlaps the dragon's (`DRAGON_RADIUS`) is removed and the tower loses `MAGE_ORB_DAMAGE` HP (never below 0); sound `slime_poke`. Orbs ignore enemies and the tower itself; player projectiles and the ring do not touch them. An orb in flight outlives the mage that fired it. A tower brought to 0 by an orb ends the run like any other damage (§13).
 
 ---
 
@@ -516,6 +537,7 @@ Checks per tick:
 - explosion vs enemy: grid query at the explosion centre within its radius plus the largest radius, then a circle test.
 - mini tower target: grid query in a 300 px radius, pick the nearest.
 - gem vs dragon: gems are not in the grid; a linear scan is fine at 600.
+- enemy shot vs dragon: a linear scan of `game.enemyShots`, one circle test each.
 
 ---
 
@@ -578,7 +600,7 @@ Precisely:
 - **Grant** sets the weapon to level 5 if owned, else adds it at level 5 when a weapon slot is free (it fires on that tick's weapons step). It does not use a level-up.
 - **Jump** sets `tickCount` to `round(jumpTo / DT)` and `t` with it, only forward. Nothing in between is simulated: the spawner reads its rate and weights from the new `t`, its budget is unchanged, and the golem spawns at 5:00 as usual.
 - **Game speed** is the loop's: `+` / `-` (also keypad) step through 0.25×, 0.5×, 1×, 2×, 4×. The accumulator adds `real time × speed`, and above 1× the cap of 4 ticks per frame scales with the speed (16 at 4×), so 4× runs 4 ticks per 60 Hz frame. The sim is untouched.
-- **Overlay** (`render/debug.js`, drawn from game state and loop stats only): circles for enemies (`r`), the tower (`TOWER_RADIUS`), projectiles, ring fireballs, landed mini towers' 300 px target radius and the dragon's pickup radius; at the top right the average ms per tick (smoothed), ticks run in the last frame, the game speed, the counts of enemies, projectiles, gems and effects, `t` and the seed. With `debug`, the browser defaults of F1–F5, `+` and `-` are suppressed.
+- **Overlay** (`render/debug.js`, drawn from game state and loop stats only): circles for enemies (`r`), the tower (`TOWER_RADIUS`), projectiles, enemy shots, ring fireballs, landed mini towers' 300 px target radius, the dragon's hit circle (`DRAGON_RADIUS`) and its pickup radius; at the top right the average ms per tick (smoothed), ticks run in the last frame, the game speed, the counts of enemies, projectiles, enemy shots (`orbs`), gems and effects, `t` and the seed. With `debug`, the browser defaults of F1–F5, `+` and `-` are suppressed.
 
 ---
 
@@ -594,6 +616,7 @@ Precisely:
 - **Slime split:** killing a gen-0 slime yields two gen-1 slimes; killing those yields none.
 - **Ghost:** killing a ghost knight yields a ghost after the burn effect finishes.
 - **Mage:** a mage starts casting 8 s after it spawns and has spawned 4 skeletons 1 s later, unless within 80 px of the tower.
+- **Mage orbs:** a mage fires only within `MAGE_ORB_RANGE` of the dragon and never while casting, every 3 s from its spawn offset; an orb flies straight at where the dragon was; a hit removes it and takes `MAGE_ORB_DAMAGE` from the tower; a dodged orb expires after 400 px; a game without mages draws no extra random numbers.
 - **Timeline:** at t = 300 s the golem exists; at t = 0 only knights spawn.
 - **Soak:** run 5 minutes with a scripted dragon that circles the tower. Assert no exceptions, the spawner never spawns above the cap (§8.2), and the tower eventually dies. The test holds the tower at full HP until the golem has spawned, so the run reaches 5:00 whatever the balance; the horde reaches the cap on the way, and the golem then ends the run. It stays in the default suite (a few seconds).
 - **Atlas:** `build-atlas.mjs` run on the manifest produces every name the game asks for. `content.js` lists its required atlas names and the test cross-checks them.

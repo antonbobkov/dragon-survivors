@@ -8,6 +8,7 @@ import {
 } from './content.js';
 import { advanceAnim, setAnim, spawnEffect } from './effects.js';
 import { dropGem } from './gems.js';
+import { initialOrbTimer, stepMageOrb } from './enemyShots.js';
 
 const MAGE_INTERVAL_TICKS = Math.round(MAGE_CAST_INTERVAL / DT);
 const MAGE_CAST_TICKS = Math.round(MAGE_CAST_TIME / DT);
@@ -24,7 +25,7 @@ export function createEnemy(game, type, x, y) {
     flip: false, alpha: def.alpha,
     anim: def.walk, frame: 0, frameTicks: 0,
   };
-  if (type === 'mage') e.castTimer = 0;
+  if (type === 'mage') { e.castTimer = 0; e.orbTimer = initialOrbTimer(game); }
   if (def.unkillable) { e.hp = GOLEM_HP; e.unkillable = true; }
   if (def.procImmune) e.procImmune = true;
   game.enemies.push(e);
@@ -36,7 +37,11 @@ export function createEnemy(game, type, x, y) {
 // Step 5, per enemy, before it walks. Returns true when the enemy is busy this tick and
 // must not walk (a casting mage, a skeleton still playing its summon anim).
 export function enemySpecial(game, e) {
-  if (e.type === 'mage') return mageSpecial(game, e);
+  if (e.type === 'mage') {
+    const casting = mageSpecial(game, e);
+    stepMageOrb(game, e, casting); // §8.5
+    return casting;
+  }
   if (e.type === 'skeleton' && e.anim === ENEMIES.skeleton.summon) {
     if (advanceAnim(e, false)) setAnim(e, ENEMIES.skeleton.walk);
     return true;

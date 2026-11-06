@@ -9,6 +9,7 @@ export const DT = 1 / TICK_HZ;
 export const DRAGON_SPEED = 87;
 export const DRAGON_PICKUP_RADIUS = 48;
 export const FACING_DEADZONE = 0.3; // |moveX| / |aimX| below this does not turn the dragon (§6.3)
+export const DRAGON_RADIUS = 12; // collision circle for mage orbs (§8.5); enemies never collide with the dragon
 export const DRAGON_START = { x: 0, y: 0 };
 export const DEFAULT_AIM = { x: 1, y: 0 }; // firing right until there is any aim or movement
 export const DRAGON_ANIM = 'dragon.walk'; // the sprite faces right; flipped to face left (§6.3)
@@ -47,6 +48,15 @@ export const MAGE_CAST_TIME = 1;
 export const MAGE_SUMMON_COUNT = 4;
 export const MAGE_SUMMON_RING = 40;
 export const MAGE_NO_CAST_DIST = 80;
+// §8.5 mage orbs: fired at the dragon, an orb that hits it damages the tower
+export const MAGE_ORB_RANGE = 320; // px from the mage to the dragon within which it fires
+export const MAGE_ORB_INTERVAL = 3; // s between shots; the first at a random offset after spawn
+export const MAGE_ORB_SPEED = 110;
+export const MAGE_ORB_R = 6;
+export const MAGE_ORB_TRAVEL = 400; // px an orb flies before it expires (its `range`)
+export const MAGE_ORB_DAMAGE = 5; // tower HP per hit
+export const MAGE_ORB_ANIM = 'orb.green';
+export const MAGE_ORB_SOUND = 'slime_poke';
 export const GHOST_BURN_TIME = 0.5;
 export const GOLEM_KNOCKBACK = 6;
 export const GOLEM_HP = 1e9; // finite stand-in for hp ∞ in state; restored after every hit
@@ -172,7 +182,7 @@ export const ATLAS_NAMES = [
   'mage.walk', 'mage.die', 'mage.spell',
   'ghost.knight', 'ghost.burn', 'ghost.ghost', 'ghost.die',
   'golem.walk', 'golem.die',
-  'fireball.anim', 'fireball.big',
+  'fireball.anim', 'fireball.big', 'orb.green',
   'laser.dir', 'laser.bigdir',
   'castle', 'castle.destroy', 'royal.prince', 'royal.princess',
   'explosion.small', 'explosion.big', 'explosion.laser', 'explosion.laserbig',

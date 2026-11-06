@@ -32,6 +32,7 @@ export const ANIMS = {
   'mage.die': { ticks: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6] },
   'mage.spell': { ticks: [6, 6] },
   'mage.walk': { ticks: [6, 6] },
+  'orb.green': { ticks: [6, 6, 6, 6, 6, 6, 6, 6] },
   'royal.prince': { ticks: [6] },
   'royal.princess': { ticks: [6] },
   'skelly.die': { ticks: [6, 6, 6, 6, 6, 6, 6] },
