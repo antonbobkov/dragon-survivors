@@ -125,7 +125,7 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 | `ghost.knight`, `ghost.burn`, `ghost.ghost`, `ghost.die` | `ghostnight/ghost_knight.txt`, `ghostnight/ghost_knight_burn.txt`, `ghostnight/ghost.txt`, `ghostnight/ghost_burn.txt` | burn = death-to-ghost transition; `ghost.die` = the ghost's own death |
 | `golem.walk`, `golem.die` | `golem/golem.txt`, `golem/golem_death.txt` | 64px. `golem/golem.txt` lists `golem_death0000..0006`, as the original does. `die` unused in the demo (golem is unkillable) but imported for later |
 | `fireball.anim` | `fireball/fireball.txt` | 8px, 8-frame looping animation |
-| `fireball.big` | `fireball/big_fireball.txt` | 20px, 2 frames |
+| `fireball.big` | `fireball/fireball_15.txt` | 12px, 8-frame looping animation. (`fireball/big_fireball.txt` lists `1.bmp 2.bmp`, a 20px block that is not a fireball; it is not imported.) |
 | `laser.dir` | `fireball/laser.txt` | 8px, **16 directions** |
 | `laser.bigdir` | `fireball/laser_15.txt` | 12px, 16 directions |
 | `castle` | `castle/castle0000.bmp` | 30px. Tower and mini tower |

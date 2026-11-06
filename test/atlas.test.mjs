@@ -242,7 +242,7 @@ test('sprite sizes match spec §3.3', () => {
   };
   const expected = {
     'dragon.dir': '25x25', 'knight.walk': '16x16', 'golem.walk': '64x64', 'golem.die': '64x64',
-    'fireball.anim': '8x8', 'fireball.big': '20x20', 'laser.dir': '8x8', 'laser.bigdir': '12x12',
+    'fireball.anim': '8x8', 'fireball.big': '12x12', 'laser.dir': '8x8', 'laser.bigdir': '12x12',
     castle: '30x30', 'explosion.small': '30x30', 'explosion.big': '57x57', 'explosion.laser': '45x45',
     'explosion.laserbig': '64x64', burn: '16x16', 'icon.nuke': '9x9',
   };

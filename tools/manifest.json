@@ -20,7 +20,7 @@
     { "name": "golem.walk", "list": "golem/golem.txt" },
     { "name": "golem.die", "list": "golem/golem_death.txt" },
     { "name": "fireball.anim", "list": "fireball/fireball.txt" },
-    { "name": "fireball.big", "list": "fireball/big_fireball.txt" },
+    { "name": "fireball.big", "list": "fireball/fireball_15.txt" },
     { "name": "laser.dir", "list": "fireball/laser.txt" },
     { "name": "laser.bigdir", "list": "fireball/laser_15.txt" },
     { "name": "castle", "file": "castle/castle0000.bmp" },
