@@ -66,7 +66,7 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 
 ### 2.1 Tick order
 
-`Game.tick(intent)` runs these in order, every tick:
+`Game.tick(intent)` runs these in order, every tick (while level-up offers are open none of them runs, §14):
 
 1. Apply intent: dragon velocity and aim direction.
 2. Move the dragon.
@@ -75,9 +75,9 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 5. Enemies: special timers (mage cast, summon anim), AI target, move, separation, despawn.
 6. Weapons: advance cooldowns, fire, spin the ring, run mini towers.
 7. Projectiles: move, expire by range.
-8. Collisions: projectile vs enemy, ring vs enemy, enemy vs tower.
+8. Collisions: projectile vs enemy (with procs), ring vs enemy, enemy vs tower.
 9. Deaths: play death animations, drop gems, split slimes, start ghost knight burns.
-10. Gems: attract and collect, add XP, queue level-ups.
+10. Gems: attract and collect, add XP, queue level-ups and roll the offers.
 11. Effects: advance one-shot animations, remove finished ones; a finished ghost burn becomes a ghost.
 12. Clock: advance `t`, spawn the golem at 5:00, check tower HP for game over.
 
@@ -142,7 +142,7 @@ Sounds copied as-is from the pack root: `shoot01`, `laser01`, `explosion01`, `ex
 
 - **Sim tick:** fixed 60 Hz (`DT = 1/60`). All speeds in this spec are world pixels per second; the sim multiplies by `DT`.
 - `loop.js` accumulates real time, runs up to 4 ticks per frame (clamps if the tab was hidden), then renders. No interpolation in the demo.
-- When the level-up screen or pause is open, ticks stop; the renderer still draws.
+- When pause is open, ticks stop; the renderer still draws. While the level-up screen is open the loop keeps calling `tick`, but the sim itself freezes the world (§14), so picks travel in the intent stream.
 - Precisely: each animation frame adds the time since the previous frame to an accumulator and runs `floor(acc / (1000/60 ms))` ticks, keeping the remainder. If more than 4 are owed, 4 run and the rest are dropped (not banked), so a stall or a hidden tab never fast-forwards. The first frame runs none. While ticks are stopped (title, pause) no time is banked, and starting or resuming a run begins with an empty accumulator.
 - Intents are built once per frame. The edge fields `confirm` and `pick` are held until the next tick runs and given to that tick only, so a frame that runs no tick (high refresh rates) loses no press. Every tick of a frame gets the frame's move and aim.
 - After each tick the browser plays that tick's `game.events` sounds (they are cleared by the next tick).
@@ -156,12 +156,12 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 - **Construction:** `new Game({ seed, timeline })`. `timeline` defaults to the §9 table in `content.js`; tests may pass their own rows.
 - **RNG:** `game.rng` is a plain function returning a float in `[0, 1)`. Every random draw calls `game.rng()` at the point of use, never a reference cached at construction, so a test can replace it (`game.rng = () => 0`).
 - **Units and clock:** positions in world px, speeds in px/s, `DT = 1/60`. `game.tickCount` is an integer and `game.t = tickCount × DT` seconds, so time never drifts.
-- **Intent:** exactly the shape in §4. A missing, partial or non-finite field reads as 0, `false` or `-1` (`pick`). A move vector longer than 1 is normalised; a non-zero aim is normalised; `hasAim` is false when the aim is zero. The sim core ignores `confirm` and `pick`; they belong to the level-up flow (§14).
+- **Intent:** exactly the shape in §4. A missing, partial or non-finite field reads as 0, `false` or `-1` (`pick`). A move vector longer than 1 is normalised; a non-zero aim is normalised; `hasAim` is false when the aim is zero. The sim ignores `confirm`; `pick` is read only while level-up offers are open (§14). The loop turns a gamepad A press on the level-up screen into the `pick` of the highlighted card.
 - **Phases:** `game.phase` is `'play' | 'dying' | 'over'`. In the clock step, when tower HP is 0, the phase becomes `'dying'`, a `castle.destroy` effect spawns at the tower and sound `destroy_castle_sound` plays. During `'dying'` only effects advance; the clock, enemies, dragon and weapons are frozen. After 2 s (120 ticks) the phase becomes `'over'`. `tick()` in `'over'` changes nothing except clearing `events`. Title, pause and the level-up screen are the loop's business, not phases.
 - **Events:** `game.events` is cleared at the start of every tick. Systems push `{ type: 'sound', name }`, at most one per sound name per tick; the browser plays them. Events are output, not state.
-- **Ids:** every enemy, projectile and effect gets its `id` from one counter, `game.nextId`.
+- **Ids:** every enemy, projectile, effect, gem and mini tower gets its `id` from one counter, `game.nextId`.
 - **Start:** the dragon at (0, 0), the tower at (0, 60), below the dragon.
-- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`), `game.spawner` (`{ budget, spawned, golem }`, `golem` true once the golem has spawned). `game.score()` = `floor(t) + kills`.
+- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.offers` (`[]`, the level-up cards on show, §14), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`, entries `{ id, level }` in the order gained), `game.gems` (`[]`), `game.miniTowers` (`[]`), `game.spawner` (`{ budget, spawned, golem }`, `golem` true once the golem has spawned). `game.score()` = `floor(t) + kills`.
 
 | Entity | Fields |
 |---|---|
@@ -169,8 +169,11 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 | `game.dragon` | `aimX, aimY` (unit fire direction), `moveX, moveY`, `aimed` (an aim has ever been given), `dirFrame`, `bob`; `anim` is `dragon.dir` and `frame = dirFrame` |
 | `game.tower` | `hp, maxHp`; `anim` is `castle` |
 | `game.enemies[]` | `id, type, r, hp, gen, flip, alpha`. `type` is a key of `ENEMIES` in `content.js`: `knight`, `skeleton`, `slime`, `mage`, `ghostKnight`, `ghost`, `golem`. Mages also have `castTimer` (§8); the golem has `unkillable` and `procImmune` set to true and `hp = GOLEM_HP = 1e9`, a finite stand-in for ∞ |
-| `game.projectiles[]` | `id, kind, dx, dy` (unit), `speed, r, damage, range, travelled, hits` (ids of enemies hit, at most 8), `gen, dirFrame` (for 16-direction sprites) |
+| `game.projectiles[]` | `id, kind, dx, dy` (unit), `speed, r, damage, range, travelled, hits` (ids of enemies hit, at most 8), `gen, dirFrame` (for 16-direction sprites). `kind` is `fireball`, `laser` or `miniShot`; lasers also have `maxHits` and `hitCount` |
 | `game.effects[]` | `id, scale, alpha, flip, hold, life, done`. `scale` multiplies the standard 2× sprite scale; `life` (ticks, usually 0) is a minimum length: the effect holds its last frame until `life` ticks have passed |
+| `game.gems[]` | `id, x, y, value, homing` (§14) |
+| `game.miniTowers[]` | `id, x, y` (landing point), `fromX, fromY` (where the lob started), `lobTicks` (ticks of flight left), `life` (ticks left after landing), `timer` (seconds to the next shot) (§10.3) |
+| ring weapon | also `angle` (radians), `balls` (`[{ x, y }]`, the fireball positions this tick), `rehit` (enemy id → `tickCount` from which it may be hit again), and its own `anim, frame, frameTicks` (§10.4) |
 
 - **Animation:** `anim` is an atlas anim name, `frame` the frame index, `frameTicks` the ticks already spent on that frame; frame durations come from `ANIMS` in `anims.js`. Looping anims (walks, projectiles) wrap. A non-looping anim finishes once its last frame has been shown for its full duration and then stays on that frame. An effect is removed in the effects step of the tick its anim finishes, unless it has `hold` (the `castle.destroy` effect holds, so the ruin stays on screen).
 - **Digest:** `game.digest()` is an 8-hex-digit FNV-1a hash of a canonical JSON of `game.snapshot()` (sorted keys, numbers rounded to 1e-6; events, the rng and the grid excluded). Same seed and same intents give the same digest.
@@ -185,7 +188,7 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 - **Background:** a 64×64 grass tile generated once at startup into an offscreen canvas (dark green base, 28 lighter or darker 2×2 px speckles), tiled with the camera offset. The speckles come from the tile's own `mulberry32` with a fixed seed, never from `game.rng`, so drawing cannot change a run. A faint darker ring (2 px, black at 18% alpha) of radius `TETHER_LENGTH` around the tower makes the tether rule readable.
 - **Gem:** drawn procedurally as a 6×6 px diamond, a blue edge around a pale cyan core, at 2× (12 px on screen), centred on the gem.
 - **Draw order:** background, gems, tower, mini towers, enemies sorted by y, ring fireballs, projectiles, dragon, effects, HUD, then any screen (title, pause, game over) over a 60% black overlay. Enemies are sorted by y then id in a copy owned by the renderer; the game's enemy list is never reordered, because its order is part of the sim.
-- **Sprites:** `scale` and `alpha` of effects and enemies apply as given (`scale` multiplies the 2×); `flip` mirrors around the sprite's centre. Projectiles whose anim is a 16-direction sheet (`laser.dir`, `laser.bigdir`) draw frame `dirFrame`; others draw `frame`. The dragon draws frame `dirFrame` offset by `bob` in y.
+- **Sprites:** `scale` and `alpha` of effects and enemies apply as given (`scale` multiplies the 2×); `flip` mirrors around the sprite's centre. Projectiles whose anim is a 16-direction sheet (`laser.dir`, `laser.bigdir`) draw frame `dirFrame`; others draw `frame`. The dragon draws frame `dirFrame` offset by `bob` in y. Ring fireballs draw the ring weapon's `frame` at each of its `balls`. A mini tower in flight is drawn on the straight line from `(fromX, fromY)` to `(x, y)` at progress `p = 1 − lobTicks / 30`, raised by `sin(p × π) × 30` px; a landed one at `(x, y)`.
 - **Facing:** enemies flip horizontally when moving left (`ctx.scale(-1, 1)`). The dragon uses its 16-direction sheet (§6.3).
 - `draw.js` reads the game state and never writes it. Animation indices live in the entity (`anim`, `frame`, `frameTicks`) and advance during the tick, so rendering is stateless.
 
@@ -339,7 +342,9 @@ Fast, piercing, lower damage. The laser always passes through enemies up to `max
 | 4 | 1.1 | 2 | 2 | 750 | 650 | 6 |
 | 5 | 1.0 | 3 | 2 | 800 | 700 | 8 |
 
-Sprite `laser.dir` using the same 16-direction formula as the dragon, `laser.bigdir` from level 4. Spawns `explosion.laser` on each hit. Sound `laser01`.
+Sprite `laser.dir` using the same 16-direction formula as the dragon, `laser.bigdir` from level 4. Radius 6 px (8 with `laser.bigdir`) *unmeasured*. Spawns `explosion.laser` on each hit. Sound `laser01`.
+
+There is no fan: with `count` 2 the two lasers fly parallel along the aim, starting 6 px either side of the dragon perpendicular to the aim (*unmeasured*); the first at `dragon + 6 × (−aimY, aimX)`. Projectile kind `laser`. A laser carries `maxHits` (the table value plus the pierce buff's extra hits, §11) and `hitCount`; every hit counts, and the laser is removed on the hit that brings `hitCount` to `maxHits`. Lasers never roll pierce and cannot split; they can explode.
 
 ### 10.3 Mini tower (auto-targeting, fires from the tower)
 Every `cooldown` seconds the tower lobs a mini tower that lands 80 px toward the nearest enemy (random direction if none). A mini tower is a stationary turret alive for `duration` seconds that shoots a fireball (damage `damage`, speed 380, range 300) at the nearest enemy within 300 px every `fireRate` seconds. At most `maxActive` mini towers exist; the oldest is removed when exceeded.
@@ -354,6 +359,13 @@ Every `cooldown` seconds the tower lobs a mini tower that lands 80 px toward the
 
 Sprite `castle` at 1× (30 px, half the real tower). The lob is a 0.5 s arc drawn as the sprite rising and falling 30 px. Mini towers cannot be damaged.
 
+Precisely, in the weapons step:
+
+- **Lob.** The weapon's `timer` works like the fireball's: a lob on the first weapons step after the weapon is gained, then every `cooldown` (× the cooldown buff). The direction is toward the live enemy whose centre is nearest the tower's (ties: lower id), `(0, 1)` if that enemy is at the tower's centre; with no enemies it is a random angle, one `game.rng()` draw × 2π. The mini tower lands at `tower + 80 × direction` and is added to `game.miniTowers` with `lobTicks` 30 and `life` = `duration` in ticks; if that would make more than `maxActive`, the oldest ones are removed first. The lob and the shots play no sound.
+- **Mini towers** then step in list order, the one just lobbed included. In flight one only counts `lobTicks` down; the step that reaches 0 is its landing, so it is in the air for 30 steps. From the next step on it shoots, then counts `life` down and is removed when `life` reaches 0, so it stands for exactly `duration` seconds after landing.
+- **Shots.** When its `timer` is 0 a landed mini tower fires at the live enemy whose centre is nearest its own and at most 300 px away (ties: lower id), found through the grid; with no such enemy it waits, `timer` stays 0 and it fires on the first step one is in range. A shot is projectile kind `miniShot` with sprite `fireball.anim`, radius 6 × area, speed 380 and range 300 (both × projectile speed), damage `damage` (× the damage buff, rounded up), aimed at the target's centre (`(0, 1)` if they coincide). Its hit effect is `explosion.small`. The next shot is `fireRate` × the cooldown buff later. Upgrading the weapon changes the stats of later lobs and shots; mini towers already standing keep their `life`.
+- Before the mini towers step, the grid is rebuilt when any of them has landed, because the enemies step's grid was built before its despawn pass.
+
 ### 10.4 Ring (not aimed, orbits the dragon)
 `count` fireballs orbit the dragon at radius `orbit` px with angular speed `spin` degrees/s, evenly spaced. Each enemy can be hit by the ring at most once every `rehit` seconds. Ring damage does not trigger procs.
 
@@ -366,6 +378,8 @@ Sprite `castle` at 1× (30 px, half the real tower). The lob is a 0.5 s arc draw
 | 5 | 5 | 80 | 260 | 4 | 0.3 |
 
 Sprite `fireball.anim`, radius 6 px.
+
+Precisely: in the weapons step the ring turns by `spin × DT` degrees (its `angle` starts at 0 and wraps at 2π) and places its `count` fireballs at `dragon + orbit × area × (cos, sin)(angle + i × 2π / count)`, after the dragon has moved, in `balls`. In the collisions step, after the projectiles, every ball hits every live enemy whose circle overlaps its own (radius 6, not scaled by area) and whose `rehit` entry is absent or not after the current `tickCount`; a hit deals `damage` (× the damage buff, rounded up), runs the golem's knockback from the ball (§8.4), sets the entry to `tickCount + rehit` in ticks and spawns `explosion.small` at the ball. Balls are checked in order and enemies in grid order, so two balls over one enemy hit it once. Expired entries are dropped in the weapons step, so ids of dead enemies do not pile up. The ring takes the damage and area buffs only: cooldown and projectile speed do not change `rehit` or `spin`. It rolls no procs and draws no random numbers.
 
 ---
 
@@ -385,6 +399,15 @@ Up to **4 buff slots**, levels 1–3. Stat buffs multiply every weapon. Chance b
 
 *unmeasured*.
 
+Buff maths, with `d, c, a, s` the current Damage, Cooldown (negative), Area and Projectile speed values (0 when not owned):
+
+- damage = `ceil(base × (1 + d))` for every weapon, the ring included (2 at +25% is 3);
+- every weapon cooldown and the mini tower's `fireRate` × `(1 + c)`;
+- projectile radius (fireball, laser, mini-tower shot), explosion radius and ring orbit × `(1 + a)`;
+- projectile speed and range × `(1 + s)`.
+
+Stats are read when a projectile is fired or a mini tower lobbed, so a buff gained later does not change projectiles already in flight. Buffs live in `game.buffs` in the order gained, which is also their HUD order.
+
 ---
 
 ## 12. Procs
@@ -395,6 +418,13 @@ Resolved in `projectiles.js` when a projectile hits an enemy, in this order: dam
 - **Split:** spawn 2 fireballs from the hit point at ±45° from the projectile's direction, same damage, `gen + 1`. Projectiles with `gen >= 2` cannot split. Split children can still explode and pierce.
 - **Pierce:** the projectile keeps flying and ignores the enemy it just hit. A projectile remembers the ids it has hit (small array, max 8).
 - **Golem:** immune to all procs. Hits still knock it back.
+
+Precisely:
+
+- **Rolls.** Each roll is `game.rng() < chance`, in the order explode, split, pierce, after the damage, the hit effect and the hit memory. A roll happens only when the projectile's kind can have that proc and its chance buff is owned, so a game without chance buffs draws no extra numbers. Fireballs and mini-tower shots can have all three; lasers only explode. A projectile with `gen >= 2` does not roll split. Against a proc-immune enemy (the golem) nothing is rolled at all, and a fireball or mini-tower shot that hits it is used up; a laser counts the hit like any other.
+- **Explode.** The circle has radius `60 × area` around the projectile's position at the hit. Every live enemy whose circle overlaps it, except the one just hit, takes the projectile's damage once; proc-immune enemies are not affected at all (no damage, no knockback). The effect is `explosion.big` (`explosion.laserbig` for lasers) with `scale = 2 × radius / (2 × source width)` (57 px and 64 px), so the sprite's diameter matches the circle. Explosion kills are ordinary kills in the deaths step.
+- **Split.** The two children are `fireball` projectiles (also from a mini-tower shot) leaving the hit point at −45° then +45° from the parent's direction, with the parent's damage, radius, speed and sprite (`fireball.anim` for a mini-tower shot), range = the parent's range minus the distance it has travelled, `gen + 1`, and the enemy just hit already in their `hits`. They join the projectile list at once but first move and collide on the next tick. The parent is removed unless it also pierces.
+- **Pierce.** A fireball or mini-tower shot that wins the roll stays in the list and hits its next enemy on a later tick.
 
 ---
 
@@ -417,7 +447,22 @@ Resolved in `projectiles.js` when a projectile hits an enemy, in this order: dam
 
 - Each enemy drops a gem worth its `XP` value at its death position. Gems are static. A gem within `DRAGON_PICKUP_RADIUS` moves toward the dragon at 500 px/s and is collected on contact. Sound `pickup`. Gems never expire. `MAX_GEMS = 600`; when exceeded, the oldest gem's value is merged into the gem nearest to it.
 - XP to next level: `xpToNext(level) = 5 + 3 × level` (level 1 needs 8, level 10 needs 35). *unmeasured*.
-- On level-up the sim increments `game.pendingLevelUps`. The loop sees it, stops ticking, and shows the level-up screen. Several pending level-ups are shown one after the other.
+- On level-up the sim increments `game.pendingLevelUps`. The loop sees it and shows the level-up screen. Several pending level-ups are shown one after the other.
+
+Gems precisely:
+
+- A gem is `{ id, x, y, value, homing }`, dropped in the deaths step before the death effect. Enemies worth no XP (the golem) drop nothing.
+- When a drop would make more than `MAX_GEMS`, the oldest gem is removed and its value added to the remaining gem nearest to it (ties: lower id), the new one included. No XP is lost.
+- In the gems step each gem whose centre is within `DRAGON_PICKUP_RADIUS` of the dragon starts homing and keeps homing until collected, even if the dragon flies away: it moves 500 px/s straight at the dragon (never past it). A gem whose centre is then within `GEM_COLLECT_RADIUS = 12` px (*unmeasured*) of the dragon is collected: its value is added to `xp`, it is removed, and sound `pickup` plays.
+- After collecting, while `xp >= xpToNext(level)`: `xp` drops by that amount, `level` goes up by one and so does `pendingLevelUps`. The overflow carries over and several level-ups can queue in one tick. `level` is the level reached, so the HUD and the game-over screen already count queued level-ups.
+
+Level-up flow, the only entry point being `tick(intent)`:
+
+- Whenever `pendingLevelUps > 0`, `game.offers` holds the current cards, and `tick` does not advance the world: no step of §2.1 runs, `tickCount` is unchanged and `events` are still cleared.
+- If `intent.pick` is a valid index into `offers`, that card is applied, `pendingLevelUps` drops by one, sound `powerup` plays, and the next offers are rolled if level-ups remain (otherwise `offers` becomes empty). The tick that applies a pick does not advance the world either; it runs again on the next tick. Any other `pick` is ignored. So picks are part of the intent stream and a replay of the intents replays the run.
+- Offers are rolled with `game.rng` when the first level-up is queued (end of the gems step) and after each pick, from the build at that moment. A pick sent on the tick that queues a level-up is not applied, since the offers did not exist when that tick began.
+- If the tower falls on the tick a level-up is queued, the offers are dropped (`offers` empty, `pendingLevelUps` 0).
+- The loop shows the level-up screen while the run is in `'play'` and `offers` is not empty, and keeps calling `tick` with the pick.
 
 ### 14.1 Card pool
 Build the pool, then draw 3 distinct cards with weights:
@@ -432,18 +477,33 @@ Build the pool, then draw 3 distinct cards with weights:
 
 A card shows the icon, name, level or NEW, and one line of effect text. Choose with mouse click, keys 1/2/3, or gamepad d-pad + A. Sound `powerup`.
 
+Precisely:
+
+- **Pool order** is fixed: the weapons in the order Fireball, Laser, Mini Tower, Ring, then the buffs in the §11 table order, then Repair. A weapon or buff is either an upgrade (owned, below its cap), a new card (not owned, a slot free) or absent.
+- **Drawing:** `min(3, pool size)` cards without replacement. Each card takes one `game.rng()`: `r = rng × total weight`, then the first card in pool order whose weight exceeds what is left of `r` (subtracting the weights passed). The chosen card leaves the pool before the next draw. Repair is always in the pool (weight 1), so a full build is offered Repair alone.
+- **Card:** `{ kind: 'weapon' | 'buff' | 'repair', id, level }`, `level` being the level after the pick (1 = new). A new weapon fires on the next weapons step; an upgrade keeps the weapon's timer and state. A new buff is appended to `game.buffs`. **Repair** restores 25 tower HP, capped at `maxHp`.
+- **Names:** Fireball, Laser, Mini Tower, Ring; Damage, Cooldown, Area, Projectile Speed, Explode, Split, Pierce; Repair.
+- **Icons:** weapons as in §17, buffs as in §11, Repair the `castle` at 1×.
+- **Tag:** `NEW` for level 1, `L<n>` for an upgrade, none for Repair.
+- **Text:** a new weapon has a short description (Fireball "Aimed fireballs", Laser "Fast aimed laser, pierces enemies", Mini Tower "Lobs turrets that shoot enemies", Ring "Fireballs orbit the dragon"). A weapon upgrade lists the first three stats that change, in the order damage, count, maxHits, maxActive, duration, fireRate, cooldown, orbit, spin, rehit, spread, speed, range, labelled `dmg, count, hits, max, life, rate, cd, orbit, spin, rehit, spread, speed, range`, as `dmg 1→2, hits 4→5, cd 1.3→1.2`. A buff shows its value at the new level (`+50% damage`, `-20% cooldowns`, `+40% area and orbit`, `+40% shot speed and range`, `35% chance to explode`, `35% chance to split in two`, `35% pierce, laser +2 hits`). Repair shows `Tower +25 HP`.
+
+**Level-up screen** (`screens.js`, over a 60% black overlay): the title `LEVEL UP` at y 100, `<n> more to pick` below it when more level-ups wait, then the cards in a centred row, each 260×220 px with a 24 px gap, top at y 170. A card shows its key number (1–3) top left, its tag top right (green `NEW`, yellow `L<n>`), the icon at 3× its icon scale, the name, and the effect text in the largest monospace size from 15 px down to 9 px that fits the card. The highlighted card has a yellow border. Below the row a hint names the controls.
+
+**Picking** (`app.js`): keys 1/2/3 pick the card with that number if it is shown; a left click inside a card picks it (clicks elsewhere do nothing); gamepad d-pad left/right moves the highlight, clamped to the cards shown, and A picks the highlighted card. The highlight starts on the first card for every new set of offers. Pause works on the level-up screen as anywhere in a run.
+
 ---
 
 ## 15. Collision and the grid
 
 `grid.js` is a spatial hash with 64 px cells keyed by packed integers. It is rebuilt from scratch every tick from the enemy list, which is cheap at 400 enemies. The query `nearby(x, y, radius)` returns candidate enemies.
 
-Enemies are stored by their centre. The grid is built twice per tick: after enemies move (for separation) and at the start of the collisions step. `nearby` returns every enemy whose centre lies in a cell touching the query square, a superset of those within `radius`, in a fixed order; callers do the circle test. Queries for circle overlaps add the largest radius among the stored enemies to their radius.
+Enemies are stored by their centre. The grid is built twice per tick: after enemies move (for separation) and at the start of the collisions step; a third time in the weapons step when a landed mini tower needs a target (§10.3). `nearby` returns every enemy whose centre lies in a cell touching the query square, a superset of those within `radius`, in a fixed order; callers do the circle test. Queries for circle overlaps add the largest radius among the stored enemies to their radius.
 
 Checks per tick:
 - projectile vs enemy: grid query at the projectile position, then a circle test.
 - ring fireball vs enemy: same, with the per-enemy rehit timer map.
 - enemy vs tower: grid query within `TOWER_RADIUS + 60` of the tower, then a circle test.
+- explosion vs enemy: grid query at the explosion centre within its radius plus the largest radius, then a circle test.
 - mini tower target: grid query in a 300 px radius, pick the nearest.
 - gem vs dragon: gems are not in the grid; a linear scan is fine at 600.
 
@@ -511,6 +571,7 @@ Query parameter `?debug=1` exposes the App as `window.app` for the console (read
 - **Determinism:** two games with the same seed and the same intent sequence produce identical state after 300 s of ticks (compare a JSON digest).
 - **Tether:** moving the dragon 500 px to the right leaves the tower exactly `TETHER_LENGTH` behind it.
 - **Procs:** with `rng` stubbed to return 0, a fireball with explode chance L1 spawns an explosion that damages a second enemy in range.
+- **Level-up:** the world is frozen while offers are open (the digest does not change on ticks without a pick); the same seed and the same intents, picks included, give the same digest.
 - **Slime split:** killing a gen-0 slime yields two gen-1 slimes; killing those yields none.
 - **Ghost:** killing a ghost knight yields a ghost after the burn effect finishes.
 - **Mage:** a mage starts casting 8 s after it spawns and has spawned 4 skeletons 1 s later, unless within 80 px of the tower.
