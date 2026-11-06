@@ -39,3 +39,11 @@ Edit `docs/backlog.md`, merge, push `main`. Another agent may be adding tests fo
 ## Done means
 
 `npm run gate` green; debug tools work in the browser; the balance report meets the targets or explains exactly which target is missed and why; spec and content agree; commit `T-006: …` with `Closes: T-006`.
+
+## What T-005 and T-009 left you
+
+- `tools/measure.mjs` (T-009) already sends `pick` when offers are open, but its bots never fly to gems, so every run stays at level 1. The full-run policies must collect gems (see the `bot` helper in `test/growth.test.mjs`): for example, steer toward the nearest gem when one is within some range of the tower, else follow the policy's movement.
+- T-005's probe: a gem-collecting bot with an invincible tower reached level 42–44 by 5:30 with a full L5 build, and the horde thinned to ~50 enemies. Expect late game to be too easy and the 1:00–2:00 ramp to be too steep (T-009); measure both.
+- Debug keys F1–F5 were not built in T-005; `window.app` exists with `?debug=1`.
+- Level-up: `level` rises when queued; a pick on the queuing tick is ignored; the pick tick does not advance the world.
+- Fun features to keep while tuning: [fun-features.md](../fun-features.md) (split fireworks, gem comet tail).

@@ -1,6 +1,6 @@
 # T-005: Growth: gems, XP, level-up, weapons, buffs, procs
 
-**Source:** [demo-spec.md](../demo-spec.md) milestone 3 · **Model:** Opus · **Depends on:** T-003 (browser shell), T-004 (roster: golem proc immunity, knockback hook)
+**Source:** [demo-spec.md](../../demo-spec.md) milestone 3 · **Model:** Opus · **Depends on:** T-003 (browser shell), T-004 (roster: golem proc immunity, knockback hook)
 
 ## Why
 
