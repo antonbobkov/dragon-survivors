@@ -173,7 +173,7 @@ export const ATLAS_NAMES = [
   'golem.walk', 'golem.die',
   'fireball.anim', 'fireball.big',
   'laser.dir', 'laser.bigdir',
-  'castle', 'castle.destroy',
+  'castle', 'castle.destroy', 'royal.prince', 'royal.princess',
   'explosion.small', 'explosion.big', 'explosion.laser', 'explosion.laserbig',
   'burn',
   'icon.laser', 'icon.explode', 'icon.split', 'icon.ring', 'icon.speed', 'icon.big', 'icon.multi', 'icon.nuke',

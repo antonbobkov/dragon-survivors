@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { Game } from '../src/sim/game.js';
 import { App } from '../src/app.js';
 import { STEP_MS } from '../src/loop.js';
-import { createRenderer, drawAnim, enemyDrawOrder, tileStart, grassSpeckles, DIR_ANIMS } from '../src/render/draw.js';
+import { createRenderer, drawAnim, enemyDrawOrder, tileStart, grassSpeckles, DIR_ANIMS, minionSprites, towerMoving } from '../src/render/draw.js';
 import { drawHud, formatTime, iconSlots, WEAPON_ICONS, buffIcon } from '../src/render/hud.js';
 import { drawTitle, drawPause, drawGameOver, gameOverLines } from '../src/render/screens.js';
 import { BUFF_IDS, WEAPON_IDS } from '../src/sim/content.js';
@@ -272,4 +272,31 @@ test('game-over lines show time, level, kills and score', () => {
   for (let i = 0; i < 125; i++) g.tick({});
   g.kills = 7; // test only
   assert.deepEqual(gameOverLines(g), ['Time   0:02', 'Level  1', 'Kills  7', `Score  ${2 + 7}`]);
+});
+
+test('minion carriers: shown at the tower base only while the tether pulls it (§7.3)', () => {
+  const g = new Game({ seed: 3, timeline: [{ t: 0, rate: 0, weights: { knight: 100 } }] });
+  assert.deepEqual(minionSprites(g), [], 'standing tower: no carriers');
+  for (let i = 0; i < 120; i++) g.tick({ moveX: 1 });
+  assert.ok(towerMoving(g));
+  const m = minionSprites(g);
+  assert.deepEqual(m.map((x) => x.anim), ['royal.prince', 'royal.princess']);
+  assert.ok(m.every((x) => !x.flip), 'pulled right: facing right');
+  assert.ok(m[0].x < g.tower.x && m[1].x > g.tower.x);
+  assert.notEqual(m[0].y, m[1].y, 'they bob out of phase');
+  for (const x of m) assert.ok(atlas.anims[x.anim], `${x.anim} in the atlas`);
+  // Flying back: the tower still catches up while the dragon is beyond the tether, then stops.
+  g.tick({ moveX: -1 });
+  assert.ok(towerMoving(g), 'still beyond the tether');
+  for (let i = 0; i < 30; i++) g.tick({ moveX: -1 });
+  assert.equal(towerMoving(g), false);
+  assert.deepEqual(minionSprites(g), []);
+  const before = g.digest();
+  const r = createRenderer({ atlas, makeCanvas });
+  for (let i = 0; i < 3; i++) { g.tick({ moveX: -1 }); }
+  for (let i = 0; i < 60; i++) g.tick({ moveY: 1 });
+  const d = g.digest();
+  r.drawWorld(fakeCtx(), g);
+  assert.equal(g.digest(), d);
+  assert.notEqual(d, before);
 });

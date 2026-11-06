@@ -130,6 +130,7 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 | `laser.bigdir` | `fireball/laser_15.txt` | 12px, 16 directions |
 | `castle` | `castle/castle0000.bmp` | 30px. Tower and mini tower |
 | `castle.destroy` | `castle/destroy_castle.txt` | tower death |
+| `royal.prince`, `royal.princess` | `castle/royal_figure_prince.bmp`, `castle/royal_figure_princess.bmp` | 2×5px. Minion carriers (§7.3) |
 | `explosion.small`, `explosion.big` | `explosion/explosion.txt`, `explosion/explosion_big0000..0005.bmp` | 30px, 57px |
 | `explosion.laser`, `explosion.laserbig` | `explosion/laser_explosion0000..0005.bmp`, `explosion/laser_explosion_even_bigger_good_with_sparks0000..0005.bmp` | 45px, 64px |
 | `burn` | `burn/burn.txt` | 16px, reserved |
@@ -243,7 +244,7 @@ Enemies whose circle overlaps the tower circle deal `contactDps × DT` each tick
 Circles overlap when the distance between centres is less than the sum of the radii. An enemy walking at the tower stops advancing once its centre is `r + TOWER_RADIUS − 1` px from the tower's (1 px inside contact range, *unmeasured*), so it keeps dealing damage without walking into the tower. Enemies never push the tower; when the tether drags the tower into enemies they simply overlap it.
 
 ### 7.3 Visual
-Draw the castle with a 4 px HP bar above it: 40 px wide, 4 px above the sprite's top edge, red fill on a dark red back, proportional to `hp / maxHp`. Once the phase is `'dying'` the castle and its bar are not drawn; the `castle.destroy` effect takes their place. Stretch goal: three tiny figures (`castle/royal_figure_*`) walking at the base of the tower while it moves, the minions carrying it.
+Draw the castle with a 4 px HP bar above it: 40 px wide, 4 px above the sprite's top edge, red fill on a dark red back, proportional to `hp / maxHp`. Once the phase is `'dying'` the castle and its bar are not drawn; the `castle.destroy` effect takes their place. **Minion carriers:** while the tower is moving, the two tiny figures `royal.prince` and `royal.princess` (the pack has two) walk at its base, the minions carrying it: drawn at `tower + (∓14, 26)` px, flipped to face left when the dragon is left of the tower, each bobbing up 1 px on alternate 8-tick steps of `tickCount`, out of phase with each other. The tower counts as moving when the dragon is farther than `TETHER_LENGTH` from it, or exactly on the tether with a move that points away from the tower. Visual only, derived from state by the renderer (*unmeasured*).
 
 ---
 
@@ -610,6 +611,5 @@ Unchanged from the design: meta progression, multiple stages, evolutions, elemen
 
 ## 23. Open decisions
 
-- **Minion carriers** for the tower are a stretch goal in milestone 5, visual only.
 - **Enemy facing:** horizontal flip only. The original did not flip enemies; if it looks wrong, drop the flip.
 - **Big fireball sprite** switches at level 4. If it reads as a different weapon, keep the small sprite and only scale the radius.
