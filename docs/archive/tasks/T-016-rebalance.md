@@ -1,6 +1,6 @@
 # T-016: Rebalance after play-test 1, including late-game pressure
 
-**Source:** [owner play-test 1](../../reports/feedback/2026-11-06-owner-playtest-1.md); [full-run balance](../../reports/measurements/2026-11-06-full-run-balance.md); decision D-4 in [decisions.md](../decisions.md) · **Model:** Opus · **Depends on:** T-013, T-014, T-015
+**Source:** [owner play-test 1](../../../reports/feedback/2026-11-06-owner-playtest-1.md); [full-run balance](../../../reports/measurements/2026-11-06-full-run-balance.md); decision D-4 in [decisions.md](../../decisions.md) · **Model:** Opus · **Depends on:** T-013, T-014, T-015
 
 ## Why
 
