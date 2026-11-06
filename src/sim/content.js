@@ -74,7 +74,7 @@ export const TIMELINE = [
   { t: 30,  rate: 0.5, weights: { knight: 70,  skeleton: 30, slime: 0,  mage: 0,  ghostKnight: 0 } },
   { t: 60,  rate: 0.6, weights: { knight: 50,  skeleton: 30, slime: 20, mage: 0,  ghostKnight: 0 } },
   { t: 120, rate: 2.5, weights: { knight: 40,  skeleton: 25, slime: 25, mage: 10, ghostKnight: 0 } },
-  { t: 180, rate: 14,  weights: { knight: 30,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 15 } },
+  { t: 180, rate: 8,   weights: { knight: 30,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 15 } },
   { t: 240, rate: 16,  weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 } },
   { t: 300, rate: 18,  weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 }, golem: true },
 ];
