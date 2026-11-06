@@ -34,8 +34,9 @@ export function applyIntent(game, intent) {
     d.aimY = intent.aimY;
     d.aimed = true;
   } else if (!d.aimed && (d.moveX !== 0 || d.moveY !== 0)) {
-    d.aimX = d.moveX;
-    d.aimY = d.moveY;
+    const ml = Math.hypot(d.moveX, d.moveY); // move may be shorter than 1 (half-pushed stick)
+    d.aimX = d.moveX / ml;
+    d.aimY = d.moveY / ml;
   }
   // otherwise keep the last aim (or the last movement direction, or the default)
   d.dirFrame = dirFrame(d.aimX, d.aimY);
