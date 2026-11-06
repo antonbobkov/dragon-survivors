@@ -32,7 +32,7 @@ export const ENEMIES = {
   mage:        { name: 'Mage',         hp: 4,        speed: 40, r: 12, dps: 5,  xp: 5, walk: 'mage.walk',    die: 'mage.die',    alpha: 1, spell: 'mage.spell' },
   ghostKnight: { name: 'Ghost knight', hp: 3,        speed: 55, r: 12, dps: 10, xp: 2, walk: 'ghost.knight', die: 'ghost.burn',  alpha: 1 },
   ghost:       { name: 'Ghost',        hp: 2,        speed: 72, r: 10, dps: 8,  xp: 1, walk: 'ghost.ghost',  die: 'ghost.die',   alpha: 0.6 },
-  golem:       { name: 'Mega golem',   hp: Infinity, speed: 30, r: 56, dps: 40, xp: 0, walk: 'golem.walk',   die: 'golem.die',   alpha: 1, immovable: true, procImmune: true },
+  golem:       { name: 'Mega golem',   hp: Infinity, speed: 30, r: 56, dps: 40, xp: 0, walk: 'golem.walk',   die: 'golem.die',   alpha: 1, immovable: true, procImmune: true, unkillable: true },
 };
 
 // §8 specials (implemented by the roster task)
@@ -47,6 +47,7 @@ export const MAGE_SUMMON_RING = 40;
 export const MAGE_NO_CAST_DIST = 80;
 export const GHOST_BURN_TIME = 0.5;
 export const GOLEM_KNOCKBACK = 6;
+export const GOLEM_HP = 1e9; // finite stand-in for hp ∞ in state; restored after every hit
 
 // §8.1–8.3
 export const SEPARATION_MAX_NEIGHBOURS = 6;

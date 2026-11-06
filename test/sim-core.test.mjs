@@ -7,7 +7,7 @@ import { rateAt, rowIndexAt, pickType } from '../src/sim/spawner.js';
 import { advanceAnim, setAnim, spawnEffect, animLength } from '../src/sim/effects.js';
 import { dirFrame, bobAt } from '../src/sim/dragon.js';
 import {
-  DT, TIMELINE, TETHER_LENGTH, TOWER_RADIUS, MAX_ENEMIES, DESPAWN_DIST, SPAWN_RING_RADIUS, ENEMIES,
+  DT, TIMELINE, TETHER_LENGTH, TOWER_RADIUS, MAX_ENEMIES, DESPAWN_DIST, SPAWN_RING_RADIUS, ENEMIES, GOLEM_HP,
 } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }];
@@ -404,10 +404,10 @@ test('run counters start as decided', () => {
     [0, 1, 0, 0, [], [{ id: 'fireball', level: 1, timer: 0 }], 'play', 0, 0],
   );
   assert.equal(g.tower.hp, g.tower.maxHp);
-  // every enemy type can be created with its table values
+  // every enemy type can be created with its table values (hp ∞ is held as the finite GOLEM_HP)
   for (const type of Object.keys(ENEMIES)) {
     const e = createEnemy(g, type, 0, 0);
-    assert.deepEqual([e.type, e.hp, e.r, e.alpha, e.anim], [type, ENEMIES[type].hp, ENEMIES[type].r, ENEMIES[type].alpha, ENEMIES[type].walk]);
+    assert.deepEqual([e.type, e.hp, e.r, e.alpha, e.anim], [type, ENEMIES[type].unkillable ? GOLEM_HP : ENEMIES[type].hp, ENEMIES[type].r, ENEMIES[type].alpha, ENEMIES[type].walk]);
   }
   // the rng is read through game.rng on every draw, so a stub takes effect
   const h = new Game({ seed: 1, timeline: [{ t: 0, rate: 90, weights: { knight: 100 } }] });
