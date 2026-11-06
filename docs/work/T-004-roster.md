@@ -46,3 +46,12 @@ Edit `docs/backlog.md`, merge, push `main`, touch browser code (`src/*.js` outsi
 ## Done means
 
 `npm run gate` green; spec §8/§13 updated; commit `T-004: …` with `Closes: T-004`.
+
+## What T-002 left you
+
+- Hooks (empty today): `enemySpecial(game, e)` in `enemies.js` (return true when busy and must not walk, e.g. a casting mage or a summoning skeleton); `onEnemyHit(game, e, source)` (golem knockback); `onEnemyDeath(game, e)` (return true to skip the generic die effect: slime split, ghost-knight burn); `onEffectDone(game, fx)` in `effects.js` (burn → ghost); `spawnGolemIfDue(game)` in `spawner.js`, already called from the clock step.
+- Enemy type keys: `knight, skeleton, slime, mage, ghostKnight, ghost, golem`. `enemy.gen` exists. Effects have `hold` (keep the last frame).
+- `ghost.die` (the ghost's own death, `ghostnight/ghost_burn.txt`) is now in the atlas.
+- **Ghost burn length:** the `ghost.burn` anim is 11 frames × 2 ticks = 0.37 s; the spec's 0.5 s stands: hold the last frame until 0.5 s (decided above).
+- A projectile hits at most one enemy per tick; the grid stores enemy centres and queries add the largest radius.
+- A full 300 s run at the 400 cap takes about 4 s (mostly separation): keep long runs out of the default suite or make them cheap.

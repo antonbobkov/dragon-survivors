@@ -49,3 +49,7 @@ Edit `docs/backlog.md`, merge, push `main`; change sim behaviour (a sim bug you 
 ## Done means
 
 The game is playable to game over and Retry in a browser with keyboard+mouse and with a gamepad; `npm run gate` green; spec §17 updated; commit `T-003: …` with `Closes: T-003`.
+
+## What T-002 left you
+
+Read spec §4.1 for the state interface. Highlights: `game.phase` (`play`/`dying`/`over`), `game.events` (`{ type: 'sound', name }`, cleared each tick), `dragon.anim = 'dragon.dir'` with `frame = dirFrame` and a `bob` of ±1 to draw (the sim position does not bob), `tower.anim = 'castle'`, effects with `scale, alpha, flip, hold`, projectiles with `dirFrame` for 16-direction sprites, `game.score()`. Enemy types: `knight, skeleton, slime, mage, ghostKnight, ghost, golem`. `content.js` exports `ATLAS_NAMES`, `SOUND_NAMES`, the weapon and buff tables; intent `confirm` and `pick` are ignored by the sim core today.
