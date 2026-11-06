@@ -117,7 +117,7 @@ export class App {
     // §19: F1–F4 / F5 queue up and reach the sim one per tick as `intent.debug`, so presses
     // made while no tick runs (a slow or throttled frame) are not lost.
     if (this.debug && input.debug) {
-      if (input.debug.grant) this.pending.debug.push({ grant: input.debug.grant });
+      for (const grant of input.debug.grants || []) this.pending.debug.push({ grant });
       if (input.debug.jump) this.pending.debug.push({ jumpTo: DEBUG_JUMP_TO });
     }
   }

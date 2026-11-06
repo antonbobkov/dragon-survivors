@@ -109,18 +109,19 @@ test('loop: game speed runs more or fewer ticks per frame, with the cap scaled a
 test('input: F1–F4 grant, F5 jumps, + / - change speed (edges only)', () => {
   const s = createInputState();
   const f = (pressed, held = new Set()) => readFrame({ held, pressed }, s).debug;
-  assert.deepEqual(f([]), { grant: null, jump: false, speed: 0 });
-  assert.equal(f(['F1']).grant, 'fireball');
-  assert.equal(f(['F2']).grant, 'laser');
-  assert.equal(f(['F3']).grant, 'miniTower');
-  assert.equal(f(['F4']).grant, 'ring');
+  assert.deepEqual(f([]), { grants: [], jump: false, speed: 0 });
+  assert.deepEqual(f(['F1']).grants, ['fireball']);
+  assert.deepEqual(f(['F2']).grants, ['laser']);
+  assert.deepEqual(f(['F3']).grants, ['miniTower']);
+  assert.deepEqual(f(['F4']).grants, ['ring']);
+  assert.deepEqual(f(['F3', 'F1']).grants, ['miniTower', 'fireball'], 'several presses in one frame all count, in order');
   assert.equal(f(['F5']).jump, true);
   assert.equal(f(['Equal']).speed, 1);
   assert.equal(f(['NumpadSubtract']).speed, -1);
-  assert.deepEqual(f([], new Set(['F1'])), { grant: null, jump: false, speed: 0 }, 'holding is not a press');
+  assert.deepEqual(f([], new Set(['F1'])), { grants: [], jump: false, speed: 0 }, 'holding is not a press');
 });
 
-const idle = { intent: {}, pause: false, confirm: false, pick: -1, nav: 0, click: null, debug: { grant: null, jump: false, speed: 0 } };
+const idle = { intent: {}, pause: false, confirm: false, pick: -1, nav: 0, click: null, debug: { grants: [], jump: false, speed: 0 } };
 const press = (debug) => ({ ...idle, debug: { ...idle.debug, ...debug } });
 const audio = { play: () => true, resume: () => Promise.resolve() };
 
@@ -138,7 +139,7 @@ test('app: debug keys reach the sim as the next tick\'s intent.debug only in a d
     const app = makeApp(debug);
     app.frame(0, { ...idle, confirm: true }); // title -> play
     app.frame(STEP_MS, idle);
-    app.frame(2 * STEP_MS, press({ grant: 'laser' }));
+    app.frame(2 * STEP_MS, press({ grants: ['laser'] }));
     app.frame(3 * STEP_MS, press({ jump: true }));
     app.frame(4 * STEP_MS, idle);
     if (debug) {
@@ -201,7 +202,16 @@ test('app: debug presses made while no tick runs queue up and reach the sim one 
   app.frame(0, { ...idle, confirm: true }); // title -> play
   app.frame(STEP_MS, idle);
   // A throttled frame rate: four presses in frames that run no tick (same timestamp).
-  for (const grant of ['fireball', 'laser', 'miniTower', 'ring']) app.frame(STEP_MS, press({ grant }));
+  for (const grant of ['fireball', 'laser', 'miniTower', 'ring']) app.frame(STEP_MS, press({ grants: [grant] }));
   for (let i = 2; i <= 6; i++) app.frame(i * STEP_MS, idle);
   assert.equal(levels(app.game), 'fireball:5,laser:5,miniTower:5,ring:5');
+});
+
+test('app: several debug presses in one frame all reach the sim, in order', () => {
+  const app = makeApp(true);
+  app.frame(0, { ...idle, confirm: true });
+  app.frame(STEP_MS, press({ grants: ['laser', 'ring'], jump: true }));
+  for (let i = 2; i <= 5; i++) app.frame(i * STEP_MS, idle);
+  assert.equal(levels(app.game), 'fireball:1,laser:5,ring:5');
+  assert.ok(app.game.t >= DEBUG_JUMP_TO);
 });

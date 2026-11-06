@@ -58,7 +58,7 @@ const anyHeld = (held, codes) => codes.some((c) => held.has(c));
 // }
 // state: from createInputState(); updated in place (device, previous pad buttons).
 // Returns { intent, device, pause, confirm, pick, nav, click, debug }; pause/confirm/pick/nav
-// are edges, and so is debug: { grant: weapon id or null, jump: bool, speed: -1 | 0 | 1 }.
+// are edges, and so is debug: { grants: weapon ids in press order, jump: bool, speed: -1 | 0 | 1 }.
 export function readFrame(raw, state) {
   const held = raw.held || new Set();
   const pressed = raw.pressed || [];
@@ -101,9 +101,9 @@ export function readFrame(raw, state) {
   for (const c of pressed) if (c in PICK_KEYS) pick = PICK_KEYS[c];
   const nav = (padEdge(PAD.RIGHT) ? 1 : 0) - (padEdge(PAD.LEFT) ? 1 : 0);
   const click = clicks.length ? clicks[clicks.length - 1] : null;
-  const debug = { grant: null, jump: false, speed: 0 };
+  const debug = { grants: [], jump: false, speed: 0 };
   for (const c of pressed) {
-    if (c in DEBUG_GRANT_KEYS) debug.grant = DEBUG_GRANT_KEYS[c];
+    if (c in DEBUG_GRANT_KEYS) debug.grants.push(DEBUG_GRANT_KEYS[c]);
     if (c === DEBUG_JUMP_KEY) debug.jump = true;
     if (c in DEBUG_SPEED_KEYS) debug.speed += DEBUG_SPEED_KEYS[c];
   }
