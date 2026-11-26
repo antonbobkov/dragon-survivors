@@ -13,7 +13,6 @@ Every open task, one table. Only the orchestrator edits this file. Work files li
 | T-025 | Slime rework: two splits, sizes, megaslime fusion | reports/designs/2026-11-26-strategy-depth-design.md §5 | T-017, T-018 | Opus | planned |
 | T-026 | Golem: poise and stagger, tower shove, screen shake | reports/designs/2026-11-26-strategy-depth-design.md §5 | T-019 | Opus | planned |
 | T-027 | Braziers and pickups | reports/designs/2026-11-26-strategy-depth-design.md §8 | T-017 | Opus | planned |
-| T-028 | Armoury: out-of-game upgrades | reports/designs/2026-11-26-strategy-depth-design.md §9 | T-018 | Opus | in progress |
 | T-029 | Rebalance with the damage calculator and bots | reports/designs/2026-11-26-strategy-depth-design.md §11 | T-017–T-028 | Opus | planned |
 | T-030 | Merchant | D-8 (accepted) | T-029 | Opus | planned |
 | T-031 | Princess | D-9 (accepted) | T-029 | Opus | planned |
