@@ -7,6 +7,7 @@ import { dirFrame } from './dragon.js';
 import { advanceAnim, spawnEffect } from './effects.js';
 import { dealDamage } from './damage.js';
 import { buffMods } from './weapons.js';
+import { hitBraziers } from './braziers.js';
 
 const SPRITE_SCALE = 2; // §5: every sprite is drawn at 2× source size
 
@@ -70,6 +71,7 @@ export function explode(game, p, hit, mods) {
     if (dx * dx + dy * dy >= rr * rr) continue;
     dealDamage(game, e, p.damage, p.type, src);
   }
+  hitBraziers(game, cx, cy, R); // §14.2: an explosion breaks the braziers it overlaps
   const scale = (2 * R) / (EXPLOSION_SPRITE_PX * SPRITE_SCALE);
   spawnEffect(game, EXPLOSION_ANIM, cx, cy, { scale });
   game.sound('explosion01');

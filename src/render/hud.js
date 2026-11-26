@@ -1,8 +1,8 @@
 // HUD (§17): timer, tower HP bar, XP bar with level, weapon and buff icons with level pips.
 // Reads the game and never writes it.
 import { BUFFS, WEAPON_MAX_LEVEL, BUFF_MAX_LEVEL, xpToNext } from '../sim/content.js';
-import { VIEW_W, VIEW_H } from '../viewport.js';
-import { drawAnim } from './draw.js';
+import { VIEW_W, VIEW_H, cameraOffset } from '../viewport.js';
+import { drawAnim, frameRect, SPRITE_SCALE, pickupVisible } from './draw.js';
 
 export const FONT = '16px monospace';
 export const BIG_FONT = '32px monospace';
@@ -59,8 +59,64 @@ export function iconSlots(weapons, buffs) {
   });
 }
 
+// §17 edge markers: an arrow at the screen edge toward each brazier or pickup whose sprite is
+// wholly off screen, with the thing's own sprite at 1× just inside it.
+export const MARKER = { margin: 26, size: 7, iconGap: 20, fill: '#ffbf00', edge: '#7f0000' };
+
+// The marker for a sprite of half size (hw, hh) at screen point (x, y), or null while any of it
+// is on the w × h screen. The arrow sits where the line from the screen centre to the point
+// meets the screen edge inset by `margin`, and points along that line (`angle`, radians).
+export function edgeMarker(x, y, hw, hh, w = VIEW_W, h = VIEW_H, margin = MARKER.margin) {
+  if (x + hw > 0 && x - hw < w && y + hh > 0 && y - hh < h) return null;
+  const cx = w / 2, cy = h / 2;
+  const dx = x - cx, dy = y - cy;
+  const sx = dx !== 0 ? (cx - margin) / Math.abs(dx) : Infinity;
+  const sy = dy !== 0 ? (cy - margin) / Math.abs(dy) : Infinity;
+  const s = Math.min(sx, sy);
+  return { x: cx + dx * s, y: cy + dy * s, angle: Math.atan2(dy, dx) };
+}
+
+// Markers of every off-screen brazier, then every off-screen pickup still showing, in list order:
+// [{ x, y, angle, anim, frame }].
+export function edgeMarkers(game, atlas) {
+  const o = cameraOffset(game.dragon);
+  const out = [];
+  const add = (ent) => {
+    const r = frameRect(atlas, ent.anim, ent.frame);
+    const hw = r ? (r.w * SPRITE_SCALE) / 2 : 0, hh = r ? (r.h * SPRITE_SCALE) / 2 : 0;
+    const m = edgeMarker(ent.x + o.x, ent.y + o.y, hw, hh);
+    if (m) out.push({ ...m, anim: ent.anim, frame: ent.frame });
+  };
+  for (const b of game.braziers || []) add(b);
+  for (const p of game.pickups || []) if (pickupVisible(p)) add(p);
+  return out;
+}
+
+function drawMarker(ctx, atlas, m) {
+  const { size, iconGap } = MARKER;
+  const ux = Math.cos(m.angle), uy = Math.sin(m.angle);
+  drawAnim(ctx, atlas, m.anim, m.frame, Math.round(m.x - ux * iconGap), Math.round(m.y - uy * iconGap), { scale: 0.5 });
+  ctx.save();
+  ctx.translate(Math.round(m.x), Math.round(m.y));
+  ctx.rotate(m.angle);
+  ctx.beginPath();
+  ctx.moveTo(size, 0);
+  ctx.lineTo(-size, -size);
+  ctx.lineTo(-size * 0.4, 0);
+  ctx.lineTo(-size, size);
+  ctx.closePath();
+  ctx.fillStyle = MARKER.fill;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = MARKER.edge;
+  ctx.stroke();
+  ctx.restore();
+}
+
 export function drawHud(ctx, game, atlas) {
   const tw = game.tower;
+
+  if (game.phase === 'play') for (const m of edgeMarkers(game, atlas)) drawMarker(ctx, atlas, m);
 
   // Tower HP, top left.
   const hp = HUD.hp;

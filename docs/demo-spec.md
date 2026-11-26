@@ -54,6 +54,7 @@ dragon-survivors/
       damage.js           damage types, resistances, the damage function (§12.1)
       effects.js          one-shot animations (explosions, deaths)
       gems.js             XP gems, attraction, pickup
+      braziers.js         braziers and their pickups (§14.2)
       levelup.js          card pool, offers, applying picks
       grid.js             spatial hash
   assets/
@@ -85,11 +86,11 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 1. Apply intent: dragon velocity and aim direction.
 2. Move the dragon.
 3. Tower: follow the dragon, then the tether (§7.1).
-4. Spawner: add enemies for this tick (§9).
+4. Spawner: add enemies for this tick (§9), then braziers: flicker, drop far ones, place a new one when due (§14.2).
 5. Enemies: special timers (mage cast, mage orb, summon anim), AI target, move, separation, despawn.
 6. Weapons: advance cooldowns, fire, spin the ring, run mini towers.
 7. Projectiles, then enemy shots (mage orbs): move, expire by range.
-8. Collisions: projectile vs enemy (with procs), ring vs enemy, enemy vs tower, enemy shot vs dragon. Every hit on an enemy goes through the damage function (§12.1).
+8. Collisions: player hits vs braziers (projectiles, then ring fireballs), projectile vs enemy (with procs; an explosion also breaks the braziers it overlaps), ring vs enemy, enemy vs tower, enemy shot vs dragon, dragon vs pickups (collect, apply, count lifetimes down, §14.2). Every hit on an enemy goes through the damage function (§12.1).
 9. Deaths: play death animations, drop gems, split slimes, start ghost knight burns.
 10. Gems: attract and collect, add XP, queue level-ups and roll the offers.
 11. Effects: advance one-shot animations, remove finished ones; a finished ghost burn becomes a ghost.
@@ -147,12 +148,14 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 | `explosion.small`, `explosion.big` | `explosion/explosion.txt`, `explosion/explosion_big0000..0005.bmp` | 30px, 57px. `explosion.big` is the Explode proc (§12); `explosion.small` is unused in the demo (hits spawn no effect, §10) but imported for later |
 | `explosion.laser`, `explosion.laserbig` | `explosion/laser_explosion0000..0005.bmp`, `explosion/laser_explosion_even_bigger_good_with_sparks0000..0005.bmp` | 45px, 64px. Unused in the demo (lasers never explode, §12) but imported for later |
 | `burn` | `burn/burn.txt` | 16px, reserved |
+| `brazier.burn`, `brazier.break` | `art/world/brazier.txt`, `art/world/brazier-break.txt` | drawn for this game (§3.4), 12×16: an iron brazier on a stand with the pack's red, gold, yellow and cream fire, 3 flicker frames of 8 ticks; the break is 4 frames (5, 5, 6, 40 ticks): the fire flares into sparks, the bowl splits and falls under a white puff, the halves lie by the stand (§14.2) |
+| `pickup.heart`, `pickup.magnet`, `pickup.bomb` | `art/pickups/heart.txt`, `art/pickups/magnet.txt`, `art/pickups/bomb.txt` | drawn for this game, 9×8, 9×7 and 9×9: a red heart with a cream glint, a red horseshoe magnet with steel tips, an iron bomb under a steel cap whose fuse spark flickers (2 frames of 8 ticks) (§14.2) |
 | `icon.laser`, `icon.explode`, `icon.split`, `icon.ring`, `icon.speed`, `icon.big`, `icon.multi`, `icon.nuke` | `bonus/bonuslaser1.bmp`, `bonus/bonusexplosion1.bmp`, `bonus/bonussplit1.bmp`, `bonus/bonusring1.bmp`, `bonus/bonusspeed1.bmp`, `bonus/bonusbig1.bmp`, `bonus/bonusmulti1.bmp`, `bonus/bonusnuke1.bmp` | level-up card icons, roughly 9px |
 | `icon.might`, `icon.haste`, `icon.duration`, `icon.force`, `icon.amount` | `art/icons/might.txt`, `art/icons/haste.txt`, `art/icons/duration.txt`, `art/icons/force.txt`, `art/icons/amount.txt` | drawn for this game (§3.4), 9×9, the pack's bonus tray under a sword, a lightning bolt, an hourglass, a war hammer and three fireballs. Icons of the generic buffs Might, Haste, Duration, Force and Amount; not shown until those buffs exist |
 | Tier sprites (§8.6) | the manifest's `tiers` block | named `<anim>@t2`, `<anim>@t3` and `<anim>@t4` after every anim of every enemy type except the golem (walk, die, summon, split, spell, burn), recoloured and outlined per tier (§8.6): bronze tint `#c86428` at 0.6 with outline `#d8702c`, silver tint `#b0c8f0` at 0.6 with outline `#a0b4d8`, gold tint `#ffd000` at 0.7 with outline `#f8c000`. 2 px larger than the plain frame each way |
 | `gem` | none, drawn procedurally | 6px diamond, two colours |
 
-Sounds copied as-is from the pack root: `shoot01`, `laser01`, `explosion01`, `explosion02`, `death01`, `death02`, `pickup`, `powerup`, `hit_golem`, `megaslime_hit`, `slime_poke`, `destroy_castle_sound`, `start_game`, `ohno`, `win_level_2`.
+Sounds copied as-is from the pack root: `shoot01`, `laser01`, `explosion01`, `explosion02`, `death01`, `death02`, `pickup`, `powerup`, `hit_golem`, `megaslime_hit`, `slime_poke`, `destroy_castle_sound`, `start_game`, `ohno`, `win_level_2`, `dropping`, `powerup02`, `powerup03`.
 
 ### 3.4 Text pixel art
 
@@ -199,9 +202,9 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 - **Intent:** exactly the shape in §4. A missing, partial or non-finite field reads as 0, `false` or `-1` (`pick`). A move vector longer than 1 is normalised; a non-zero aim is normalised; `hasAim` is false when the aim is zero. The sim ignores `confirm`; `pick` is read only while level-up offers are open (§14). The loop turns a gamepad A press on the level-up screen into the `pick` of the highlighted card.
 - **Phases:** `game.phase` is `'play' | 'dying' | 'over'`. In the clock step, when tower HP is 0, the phase becomes `'dying'`, a `castle.destroy` effect spawns at the tower and sound `destroy_castle_sound` plays. During `'dying'` only effects advance; the clock, enemies, dragon and weapons are frozen. After 2 s (120 ticks) the phase becomes `'over'`. `tick()` in `'over'` changes nothing except clearing `events`. Title, pause and the level-up screen are the loop's business, not phases.
 - **Events:** `game.events` is cleared at the start of every tick. Systems push `{ type: 'sound', name }`, at most one per sound name per tick; the browser plays them. Events are output, not state.
-- **Ids:** every enemy, projectile, enemy shot, effect, gem and mini tower gets its `id` from one counter, `game.nextId`.
+- **Ids:** every enemy, projectile, enemy shot, effect, gem, mini tower, brazier and pickup gets its `id` from one counter, `game.nextId`.
 - **Start:** the dragon at (0, 0), the tower at (0, `TOWER_REST_DIST`) = (0, 40), below the dragon and at rest (§7.1), so nothing moves before the first input.
-- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.offers` (`[]`, the level-up cards on show, §14), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`, entries `{ id, level }` in the order gained), `game.gems` (`[]`), `game.miniTowers` (`[]`), `game.enemyShots` (`[]`, mage orbs, §8.5), `game.spawner` (`{ budget, spawned, golem }`, `golem` true once the golem has spawned), `game.seen` (`[]`, the enemy types met this run in the order first met: a type is added when the first enemy of that type is created, by the spawner, a summon, a slime split, a rising ghost or the golem; read by the bestiary, §17.1), `game.seenTiers` (`{}`, per enemy type the tiers of it met this run, ascending, added as enemies are created, §8.6; read by the bestiary). `game.score()` = `floor(t) + kills`.
+- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.offers` (`[]`, the level-up cards on show, §14), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`, entries `{ id, level }` in the order gained), `game.gems` (`[]`), `game.miniTowers` (`[]`), `game.enemyShots` (`[]`, mage orbs, §8.5), `game.braziers` and `game.pickups` (`[]`, §14.2), `game.brazierTimer` (1500, spawner steps until the next brazier attempt), `game.lastBomb` (`null`, the `tickCount` of the tick the last bomb pickup went off, read by the renderer's flash), `game.spawner` (`{ budget, spawned, golem }`, `golem` true once the golem has spawned), `game.seen` (`[]`, the enemy types met this run in the order first met: a type is added when the first enemy of that type is created, by the spawner, a summon, a slime split, a rising ghost or the golem; read by the bestiary, §17.1), `game.seenTiers` (`{}`, per enemy type the tiers of it met this run, ascending, added as enemies are created, §8.6; read by the bestiary). `game.score()` = `floor(t) + kills`.
 
 | Entity | Fields |
 |---|---|
@@ -214,6 +217,8 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 | `game.effects[]` | `id, scale, alpha, flip, tier, hold, life, done`. `scale` multiplies the standard 2× sprite scale; `tier` is the tier of the enemy whose death it shows (1 for every other effect), drawn as in §8.6; `life` (ticks, usually 0) is a minimum length: the effect holds its last frame until `life` ticks have passed |
 | `game.gems[]` | `id, x, y, value, homing` (§14) |
 | `game.miniTowers[]` | `id, x, y` (landing point), `fromX, fromY` (where the lob started), `lobTicks` (ticks of flight left), `life` (ticks left after landing), `timer` (seconds to the next shot) (§10.3) |
+| `game.braziers[]` | `id, x, y`; `anim` is `brazier.burn` (§14.2) |
+| `game.pickups[]` | `id, kind, x, y, life` (ticks left); `kind` is `heart`, `magnet` or `bomb`, `anim` its `pickup.<kind>` (§14.2) |
 | ring weapon | also `angle` (radians), `balls` (`[{ x, y }]`, the fireball positions this tick), `rehit` (enemy id → `tickCount` from which it may be hit again), and its own `anim, frame, frameTicks` (§10.4) |
 
 - **Animation:** `anim` is an atlas anim name, `frame` the frame index, `frameTicks` the ticks already spent on that frame; frame durations come from `ANIMS` in `anims.js`. Looping anims (walks, projectiles) wrap. A non-looping anim finishes once its last frame has been shown for its full duration and then stays on that frame. An effect is removed in the effects step of the tick its anim finishes, unless it has `hold` (the `castle.destroy` effect holds, so the ruin stays on screen).
@@ -228,7 +233,7 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 - **World:** unbounded plane. No terrain in the demo. The camera is centred on the dragon: a world point is drawn at `world + offset` with `offset = (round(480 − dragon.x), round(300 − dragon.y))`, an integer so sprites do not shimmer. Sprites are drawn centred on the entity position, at integer screen pixels.
 - **Background:** a 64×64 grass tile generated once at startup into an offscreen canvas (dark green base, 28 lighter or darker 2×2 px speckles), tiled with the camera offset. The speckles come from the tile's own `mulberry32` with a fixed seed, never from `game.rng`, so drawing cannot change a run. A faint darker ring (2 px, black at 18% alpha) of radius `TETHER_LENGTH` around the tower makes the tether rule readable.
 - **Gem:** drawn procedurally as a 6×6 px diamond, a blue edge around a pale cyan core, at 2× (12 px on screen), centred on the gem.
-- **Draw order:** background, gems, tower, mini towers, enemies sorted by y, ring fireballs, projectiles, enemy shots (mage orbs), dragon, effects, HUD, then any screen (title, pause, game over) over a 60% black overlay. Enemies are sorted by y then id in a copy owned by the renderer; the game's enemy list is never reordered, because its order is part of the sim.
+- **Draw order:** background, gems, tower, mini towers, braziers, pickups (a blinking one only on its shown steps, §14.2), enemies sorted by y, ring fireballs, projectiles, enemy shots (mage orbs), dragon, effects, the bomb flash (§14.2), HUD, then any screen (title, pause, game over) over a 60% black overlay. Enemies are sorted by y then id in a copy owned by the renderer; the game's enemy list is never reordered, because its order is part of the sim.
 - **Sprites:** `scale` and `alpha` of effects and enemies apply as given (`scale` multiplies the 2×). An enemy or effect of tier 2–4 draws its anim's tier sprite `<anim>@t<tier>` (the plain anim if the atlas has no such sprite) at the tier's screen scale over the standard 2× (tiers 3 and 4: 1.5, times an effect's `scale`), with the same `frame`; `flip` mirrors around the sprite's centre. Projectiles whose anim is a 16-direction sheet (`laser.dir`, `laser.bigdir`) draw frame `dirFrame`; others draw `frame`. Enemy shots draw `frame` of their anim. The dragon draws `frame` of `dragon.walk`, mirrored when `flip`. Ring fireballs draw the ring weapon's `frame` at each of its `balls`. A mini tower in flight is drawn on the straight line from `(fromX, fromY)` to `(x, y)` at progress `p = 1 − lobTicks / 30`, raised by `sin(p × π) × 30` px; a landed one at `(x, y)`.
 - **Facing:** enemies flip horizontally when moving left (`ctx.scale(-1, 1)`). The dragon flips the same way when facing left (§6.3).
 - `draw.js` reads the game state and never writes it. Animation indices live in the entity (`anim`, `frame`, `frameTicks`) and advance during the tick, so rendering is stateless.
@@ -518,6 +523,7 @@ Every hit on an enemy has a damage type: **fire**, **arcane** or **physical** (`
 |---|---|
 | Fireball, mini-tower shots, ring, and their explosions | fire |
 | Laser (and its explosions, should a laser ever explode) | arcane |
+| Bomb pickup (§14.2) | fire |
 | Nothing yet (claws, bite and saw blade will be) | physical |
 
 Each enemy type has a resistance `r` per damage type, in `[−0.5, 1]` (§8 table): `r < 0` is a weakness, `r > 0` a resistance, `r = 1` immunity.
@@ -611,6 +617,44 @@ Precisely:
 
 **Picking** (`app.js`): keys 1/2/3 pick the card with that number if it is shown; a left click inside a card picks it (clicks elsewhere do nothing); gamepad d-pad left/right moves the highlight, clamped to the cards shown, and A picks the highlighted card. The highlight starts on the first card for every new set of offers. Pause works on the level-up screen as anywhere in a run.
 
+### 14.2 Braziers and pickups
+
+Breakable fires that appear just outside the view, so the player has to walk to them (pulling the tower along) and choose when. Each drops one pickup: a heart that heals the tower, a magnet that pulls every gem, or a bomb that blasts the screen.
+
+| Constant | Value |
+|---|---|
+| `BRAZIER_INTERVAL` | 25 s between brazier attempts *unmeasured* |
+| `BRAZIER_MIN_DIST`, `BRAZIER_MAX_DIST` | 250 and 450 px from the tower *unmeasured* |
+| `BRAZIER_SPACING` | 120 px, never closer to another brazier *unmeasured* |
+| `MAX_BRAZIERS` | 4 standing at once *unmeasured* |
+| `BRAZIER_TRIES` | 12 candidate points per attempt |
+| `BRAZIER_RADIUS` | 12 px, the hit circle; sprite `brazier.burn` (12×16) at 2× |
+| `PICKUP_LIFE` | 30 s *unmeasured* |
+| `PICKUP_BLINK` | 5 s, the pickup blinks for the last seconds of its life |
+| `HEART_HP` | 20 tower HP *unmeasured* |
+| `BOMB_DAMAGE` | 60 fire damage *unmeasured* |
+
+| Pickup | Weight | Effect | Sprite | Sound |
+|---|---|---|---|---|
+| Heart | 60 | tower +`HEART_HP`, capped at max HP | `pickup.heart` | `powerup02` |
+| Magnet | 25 | every gem on the ground starts homing (§14) | `pickup.magnet` | `powerup03` |
+| Bomb | 15 | `BOMB_DAMAGE` fire to every enemy on screen | `pickup.bomb` | `explosion02` |
+
+Weights *unmeasured*.
+
+- **A brazier** is a stationary object in `game.braziers`, not an enemy: enemies ignore it and walk through it, it is not in the grid, the cap or the bestiary, it has no HP and breaking it is not a kill. It loops `brazier.burn` (advanced in the spawner step).
+- **Timer.** `game.brazierTimer` starts at 1500 and goes down by one every spawner step (step 4, after the enemies); when it reaches 0 it restarts at 1500 and an attempt is made, so the first attempt is on tick 1500 (`t` = 25 s) and then one every 25 s of play. The timer counts steps, not `t`, so a debug jump (§19) neither skips nor adds attempts. An attempt with `MAX_BRAZIERS` standing does nothing and draws nothing.
+- **Placement.** Up to `BRAZIER_TRIES` candidates, each drawing from `game.rng` its angle (`rng × 2π`) and then its distance from the tower (`BRAZIER_MIN_DIST + rng × 200`). A candidate closer than `BRAZIER_SPACING` to a standing brazier is rejected. The first other candidate whose whole sprite (24×32 px on screen) is outside the 960×600 view around the dragon, `|x − dragon.x| > 480 + 12` or `|y − dragon.y| > 300 + 16`, becomes the brazier and the tries stop. If no try gives one, the first spaced candidate inside the view is used; if none was spaced, no brazier appears. So an attempt draws between 2 and 24 numbers. Since the dragon is within the tether of the tower, nearly every brazier lands just outside the view, most often above or below it.
+- **Far braziers.** In the spawner step, before the attempt, a brazier farther than `DESPAWN_DIST` (§8.3) from the tower is removed silently, so a walked-away player gets new ones.
+- **Breaking,** in step 8 before projectile vs enemy: every projectile (any kind, list order), then every ring fireball, breaks each brazier whose circle overlaps its own (`BRAZIER_RADIUS` + the projectile's `r`, or the ring's 6 px). A projectile is not used up and does not record the brazier in its hits: braziers are not targets. An explosion (§12) breaks every brazier its circle overlaps. Later weapons break braziers with their hit shapes the same way. The bomb pickup does not break braziers. A brazier takes no damage numbers and plays no hit effect.
+- **Drop.** A broken brazier is removed, a `brazier.break` effect plays where it stood, sound `dropping` plays, and one `game.rng()` draw picks the pickup by the weights above (first kind in the order heart, magnet, bomb whose weight exceeds what is left of `rng × 100`). The pickup lies at the brazier's position with `life` = `PICKUP_LIFE` × the Duration buff's multiplier when that buff exists (1 without it), in ticks.
+- **Pickups,** in step 8 after enemy shot vs dragon, in list order: a pickup whose centre is within `GEM_COLLECT_RADIUS` (§14) of the dragon's is collected (removed, its effect applied and its sound played, in list order once the scan is done); any other advances its anim, counts `life` down by one and is removed when it reaches 0. Pickups never move or home; the dragon has to touch them. Collecting in step 8 means a bomb's kills die in the same tick's deaths step (with their gems and kill counts) and a magnet's gems start homing in the same tick's gems step.
+- **Heart** adds `HEART_HP` to the tower, never above `maxHp`.
+- **Magnet** sets `homing` on every gem, so all of them fly to the dragon at 500 px/s and are collected (§14).
+- **Bomb:** `BOMB_DAMAGE` fire through the damage function (§12.1, resistances and the armoury apply, source the dragon's position) to every live enemy whose centre is within the view around the dragon (`|x − dragon.x| ≤ 480` and `|y − dragon.y| ≤ 300`), in enemy list order. Unkillable enemies (the golem) are skipped entirely: no knockback, no sound. It spawns an `explosion.big` effect at the dragon with `scale` 2 and sets `game.lastBomb` to the current `tickCount`. It draws no random numbers.
+- **Random draws** of this section, all through `game.rng`: placement (angle, then distance, per try) in step 4 after the spawner's own draws, and one pickup draw per broken brazier at the moment it breaks in step 8.
+- **Drawing** (render only): braziers and pickups at 2× (§5). A pickup with at most `PICKUP_BLINK` × 60 ticks of `life` left blinks: it is drawn only while `floor(life / 8)` is even. The bomb flashes the screen: after the world, a white rectangle over the whole view at alpha `0.6 × (1 − (age − 1) / 24)` while `age = tickCount − lastBomb` is between 1 and 24. Off-screen braziers and pickups get edge markers (§17).
+
 ---
 
 ## 15. Collision and the grid
@@ -626,6 +670,7 @@ Checks per tick:
 - explosion vs enemy: grid query at the explosion centre within its radius plus the largest radius, then a circle test.
 - mini tower target: grid query in a 300 px radius, pick the nearest.
 - gem vs dragon: gems are not in the grid; a linear scan is fine at 600.
+- player hit vs brazier, pickup vs dragon, bomb vs enemy: linear scans (at most 4 braziers, a handful of pickups; the bomb runs once per pickup).
 - enemy shot vs dragon: a linear scan of `game.enemyShots`, one circle test each.
 
 ---
@@ -671,6 +716,8 @@ Top centre: run timer `m:ss`. Top left: tower HP bar in red with the number. Bot
 
 Text is 16 px monospace (32 px for screen titles) with a 2 px black drop shadow. All HUD numbers *unmeasured*.
 
+**Edge markers** (§14.2), drawn first, under the rest of the HUD, while the phase is `'play'`: for every brazier, then every pickup currently shown (not blinked off), whose sprite at 2× lies wholly off the 960×600 screen, a gold (`#ffbf00`) arrowhead with a 2 px maroon edge, 14 px long, at the point where the line from the screen centre to the thing's centre meets the screen edge inset by 26 px, pointing along that line; the thing's own current frame at 1× sits 20 px behind the arrow, toward the centre. *unmeasured*.
+
 Weapon icons: fireball → frame 0 of `fireball.anim`; laser → frame 12 (facing right) of `laser.dir`; mini tower → `castle` at 1× (30 px); ring → `icon.ring`. Buff icons are the §11 icons. Icons draw at the standard 2× sprite scale unless stated.
 
 The title and pause screens list the controls: move, aim, pause and the bestiary (`Foes  Tab  Back`).
@@ -706,7 +753,7 @@ Precisely:
 - **Grant** sets the weapon to level 5 if owned, else adds it at level 5 when a weapon slot is free (it fires on that tick's weapons step). It does not use a level-up.
 - **Jump** sets `tickCount` to `round(jumpTo / DT)` and `t` with it, only forward. Nothing in between is simulated: the spawner reads its rate and weights from the new `t`, its budget is unchanged, and the golem spawns at 5:00 as usual.
 - **Game speed** is the loop's: `+` / `-` (also keypad) step through 0.25×, 0.5×, 1×, 2×, 4×. The accumulator adds `real time × speed`, and above 1× the cap of 4 ticks per frame scales with the speed (16 at 4×), so 4× runs 4 ticks per 60 Hz frame. The sim is untouched.
-- **Overlay** (`render/debug.js`, drawn from game state and loop stats only): circles for enemies (`r`), the tower (`TOWER_RADIUS`), projectiles, enemy shots, ring fireballs, landed mini towers' 300 px target radius, the dragon's hit circle (`DRAGON_RADIUS`) and its pickup radius; at the top right the average ms per tick (smoothed), ticks run in the last frame, the game speed, the counts of enemies, projectiles, enemy shots (`orbs`), gems and effects, `t` and the seed. With `debug`, the browser defaults of F1–F5, `+` and `-` are suppressed.
+- **Overlay** (`render/debug.js`, drawn from game state and loop stats only): circles for enemies (`r`), the tower (`TOWER_RADIUS`), projectiles, enemy shots, ring fireballs, landed mini towers' 300 px target radius, braziers (`BRAZIER_RADIUS`), the dragon's hit circle (`DRAGON_RADIUS`) and its pickup radius; at the top right the average ms per tick (smoothed), ticks run in the last frame, the game speed, the counts of enemies, projectiles, enemy shots (`orbs`), gems, effects, braziers and pickups, `t` and the seed. With `debug`, the browser defaults of F1–F5, `+` and `-` are suppressed.
 
 ---
 
@@ -724,6 +771,7 @@ Precisely:
 - **Slime split:** killing a gen-0 slime yields two gen-1 slimes; killing those yields none.
 - **Tiers:** the multipliers and the radius at every tier; the golem stays tier 1; children inherit the tier through a slime split, a ghost knight's burn and a mage's summon; gems and contact damage scale; a timeline without tier weights draws no extra random number (the same digest with and without tier rows before the first one); the draw order type, tier, angle; `game.seenTiers`; the manifest's tier expansion and every tier sprite in the committed atlas (the plain frames with the tier's ops, 2 px larger, the same ticks); the renderer drawing the tier sprite at the tier's scale; the bestiary's pips and legend.
 - **Ghost:** killing a ghost knight yields a ghost after the burn effect finishes.
+- **Braziers and pickups:** the first brazier on tick 1500 and one per 25 s up to the cap; placement bounds, spacing, the outside-the-view rule, the fallback and the draw order (scripted rng); far braziers dropped; breaking by a projectile (not used up), a ring fireball and an explosion, and by the dragon's own fireball in a full tick; the pickup weights by stubbed rng; collection radius and no homing; the heart's cap, the magnet's homing, the bomb through resistances and the armoury, its view rectangle, golem untouched and kills in the same tick; lifetime and blink; determinism and the snapshot; the renderer's order, blink and flash; the edge-marker maths and the HUD drawing without writing; the art's sizes and frames.
 - **Mage:** a mage starts casting 8 s after it spawns and has spawned 4 skeletons 1 s later, unless within 80 px of the tower.
 - **Mage orbs:** a mage fires only within `MAGE_ORB_RANGE` of the dragon and never while casting, every 3 s from its spawn offset; an orb flies straight at where the dragon was; a hit removes it and takes `MAGE_ORB_DAMAGE` from the tower; a dodged orb expires after 400 px; a game without mages draws no extra random numbers.
 - **Timeline:** at t = 300 s the golem exists; at t = 0 only knights spawn.

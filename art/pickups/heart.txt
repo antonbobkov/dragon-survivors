@@ -1,0 +1,15 @@
+# pickup.heart: heals the tower. A red heart, a cream glint top left, dark red shade
+# on the bottom right.
+key
+  r red
+  e red.dark
+  c cream
+frame
+.rr...rr.
+rrrr.rrre
+rcrrrrrre
+rrrrrrrre
+.rrrrrre.
+..rrrre..
+...rre...
+....e....

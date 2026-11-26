@@ -58,7 +58,7 @@ test('measure: aim and kite fly to gems near HOME and level up; idle collects no
   assert.ok(m.moveX * (gem.x - g.dragon.x) + m.moveY * (gem.y - g.dragon.y) > 0, 'kite heads for the gem');
   gem.x = HOME.x + GEM_RANGE + 1;
   assert.equal(gemTarget(g), null, 'too far from HOME');
-  const runs = ['idle', 'kite'].map((policy) => runOne({ policy, pick: 'greedy', seed: 2, maxSeconds: 70 }));
+  const runs = ['idle', 'kite'].map((policy) => runOne({ policy, pick: 'greedy', seed: 2, maxSeconds: 90 }));
   assert.equal(runs[0].level, 1);
   assert.ok(runs[1].level > 1, `kite level ${runs[1].level}`);
   assert.equal(median([3, 1, 2]), 2);

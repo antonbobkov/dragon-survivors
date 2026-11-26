@@ -1,0 +1,15 @@
+# pickup.magnet: pulls every gem. A red horseshoe magnet opening down, steel tips.
+key
+  r red
+  e red.dark
+  w white
+  s silver
+  g grey
+frame
+..rrrrr..
+.rrrrrrr.
+rrre..rre
+rr.....re
+rr.....re
+ww.....sg
+ss.....sg

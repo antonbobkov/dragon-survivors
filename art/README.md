@@ -110,3 +110,10 @@ What the pack's sprites look like (print any of them with `node tools/bmp-to-art
 | `icons/duration.txt` | `icon.duration` | Duration: an hourglass |
 | `icons/force.txt` | `icon.force` | Force (+knockback, poise damage): a war hammer |
 | `icons/amount.txt` | `icon.amount` | Amount (+1 projectile): three fireballs |
+| `world/brazier.txt` | `brazier.burn` | 12 × 16 iron brazier, 3-frame fire flicker (the pack's `burn` fire colours: red, gold, yellow, a cream core) |
+| `world/brazier-break.txt` | `brazier.break` | 4 frames: the fire flares into sparks, the bowl splits and falls under white smoke, the halves lie by the stand (the last frame holds 40 ticks) |
+| `pickups/heart.txt` | `pickup.heart` | 9 × 8 red heart, cream glint, dark red shade |
+| `pickups/magnet.txt` | `pickup.magnet` | 9 × 7 red horseshoe magnet with steel tips |
+| `pickups/bomb.txt` | `pickup.bomb` | 9 × 9 iron bomb, wide grey and silver lit side so it reads on grass, 2-frame fuse spark |
+
+World objects and pickups are drawn at 2× like everything else; dark objects (the bomb) need a broad lit side in `grey`/`silver`, because `charcoal` alone vanishes on the dark grass.
