@@ -310,7 +310,7 @@ An enemy whose HP drops to 0 or below stops being hit at once and is removed in 
 | Ghost | 2 | 36 | 10 | 8 | 1 | 0.6 | 0.25 | −0.5 | 0.75 | `ghost.ghost` | drawn at 60% alpha. Dies normally. |
 | Mega golem | ∞ | 75 | 56 | 40 | none | none | 0 | 0 | 0 | `golem` | §13. Takes no damage. Every hit pushes it `GOLEM_KNOCKBACK = 1` px away from the hitter, whatever the weapon. Immune to procs. |
 
-All numbers *unmeasured*. Fire, Arcane and Physical are the type's resistances to those damage types (§12.1): below 0 a weakness (−0.5 takes ×1.5), above 0 a resistance (0.5 takes half), 1 immune. A slime's row holds for both generations. The golem has no resistances; it takes no damage from any type. The table is tier 1; tiers scale HP, speed, radius, DPS and XP (§8.7). Mass divides the knockback of every hit (§8.7): below 1 an enemy is light and flies further, above 1 heavy; the golem has no mass and keeps its own rule (§8.4).
+All numbers *unmeasured*. Fire, Arcane and Physical are the type's resistances to those damage types (§12.1): below 0 a weakness (−0.5 takes ×1.5), above 0 a resistance (0.5 takes half), 1 immune. A slime's row holds for both generations. The golem has no resistances; it takes no damage from any type. The table is tier 1; tiers scale HP, speed, radius, DPS and XP (§8.6). Mass divides the knockback of every hit (§8.7): below 1 an enemy is light and flies further, above 1 heavy; the golem has no mass and keeps its own rule (§8.4).
 
 ### 8.1 Separation
 Enemies push apart so they do not stack. For each enemy, query the grid for neighbours within `r1 + r2` and move away by half the overlap along the separating axis. Cap at 6 neighbours per enemy per tick. The golem is immovable in separation; others move around it.
