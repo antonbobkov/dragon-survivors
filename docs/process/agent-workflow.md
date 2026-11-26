@@ -30,6 +30,8 @@ At most two implementers and one reviewer run at a time.
 
 The dispatch prompt names: the work file and reading order; what earlier tasks left (seams, helpers, gotchas); hard constraints (determinism, sim purity, no dependencies); how to verify; the authority to decide without asking; what not to do (edit the backlog, merge, push `main`); and the report shape (short and high-level first, then figures).
 
+**Browser checks:** agents share one browser pane. An agent serves its own worktree on its own port (the `game` launch config serves the main checkout), opens its own tab, and passes that `tabId` on every browser call, so keys never land in another agent's tab.
+
 ## Spec and reports
 
 - **Spec text is plain spec text.** No task ids, dates or "changed from" inside spec sections. After a task closes, the spec alone describes the game. History is git's job.
