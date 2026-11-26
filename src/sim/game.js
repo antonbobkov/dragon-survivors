@@ -57,6 +57,7 @@ export class Game {
     this.tower = createTower();
     this.enemies = [];
     this.seen = []; // enemy types met this run, in the order first spawned (§17.1)
+    this.seenTiers = {}; // type -> the tiers of it met this run, ascending (§8.6, §17.1)
     this.projectiles = [];
     this.enemyShots = []; // mage orbs (§8.5), apart from the player's projectiles
     this.effects = [];
@@ -186,7 +187,7 @@ export class Game {
   // Plain-data view of the state (no rng, grid or events).
   snapshot() {
     return {
-      seed: this.seed, meta: this.meta, seen: this.seen, tickCount: this.tickCount, phase: this.phase, dyingTicks: this.dyingTicks,
+      seed: this.seed, meta: this.meta, seen: this.seen, seenTiers: this.seenTiers, tickCount: this.tickCount, phase: this.phase, dyingTicks: this.dyingTicks,
       nextId: this.nextId, kills: this.kills, level: this.level, xp: this.xp,
       pendingLevelUps: this.pendingLevelUps, offers: this.offers, spawner: this.spawner,
       dragon: this.dragon, tower: this.tower, enemies: this.enemies,

@@ -231,7 +231,7 @@ test('timeline: rate interpolates between rows, weights switch at the boundary, 
   assert.equal(rateAt([{ t: 0, rate: 1 }, { t: 10, rate: 3 }], 5), 2);
   assert.equal(rowIndexAt(TIMELINE, 29.999), 0);
   assert.equal(rowIndexAt(TIMELINE, 30), 1);
-  assert.equal(rowIndexAt(TIMELINE, 1000), 6);
+  assert.equal(rowIndexAt(TIMELINE, 1000), TIMELINE.length - 1);
   assert.equal(pickType({ knight: 100, skeleton: 0 }, 0.999), 'knight');
   assert.equal(pickType({ knight: 70, skeleton: 30 }, 0.69), 'knight');
   assert.equal(pickType({ knight: 70, skeleton: 30 }, 0.71), 'skeleton');

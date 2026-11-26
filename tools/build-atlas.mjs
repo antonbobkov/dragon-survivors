@@ -119,6 +119,39 @@ export function swapChannels(rgba, [i, j]) {
 
 const SOURCES = ['list', 'files', 'file', 'art', 'from'];
 const FIELDS = new Set(['name', ...SOURCES, 'swap', 'tint', 'tintStrength', 'outline']);
+const TIER_FIELDS = new Set(['tier', 'swap', 'tint', 'tintStrength', 'outline']);
+
+/** Atlas name of an enemy anim at a tier above 1: `knight.walk@t3` (tier 1 is the plain anim). */
+export function tierAnimName(anim, tier) {
+  return `${anim}@t${tier}`;
+}
+
+/**
+ * The manifest's entries with its `tiers` block expanded: for every anim in `tiers.anims` and
+ * every variant in `tiers.variants` ({ tier, tint, tintStrength, outline, swap }), a `from`
+ * entry named `<anim>@t<tier>` with the variant's ops, appended after the hand-written entries
+ * (anim by anim, tiers in order). A manifest without `tiers` returns its entries unchanged.
+ */
+export function expandTiers(manifest) {
+  const entries = manifest.entries;
+  const t = manifest.tiers;
+  if (t === undefined) return entries;
+  if (!t || !Array.isArray(t.anims) || !Array.isArray(t.variants)) throw new Error('manifest "tiers" needs "anims" and "variants" arrays');
+  for (const k of Object.keys(t)) if (k !== 'anims' && k !== 'variants') throw new Error(`manifest "tiers": unknown field "${k}"`);
+  const seen = new Set();
+  for (const v of t.variants) {
+    for (const k of Object.keys(v)) if (!TIER_FIELDS.has(k)) throw new Error(`manifest "tiers" variant ${v.tier}: unknown field "${k}"`);
+    if (!Number.isInteger(v.tier) || v.tier < 2) throw new Error(`manifest "tiers": variant tier ${v.tier} is not an integer above 1`);
+    if (seen.has(v.tier)) throw new Error(`manifest "tiers": tier ${v.tier} listed twice`);
+    seen.add(v.tier);
+  }
+  const out = [...entries];
+  for (const anim of t.anims) {
+    if (typeof anim !== 'string' || !entries.some((e) => e.name === anim)) throw new Error(`manifest "tiers": anim "${anim}" is not an entry`);
+    for (const { tier, ...ops } of t.variants) out.push({ name: tierAnimName(anim, tier), from: anim, ...ops });
+  }
+  return out;
+}
 
 /**
  * The colour transforms of a manifest entry, always in the order swap, tint, outline. Each op
@@ -165,6 +198,7 @@ export function applyOps(d, ops) {
  * Keys: the BMP path, or `art/<path>:<index>`; then the suffix of every op (parseOps), so a
  * recoloured frame never collides with its original.
  * `from: "<earlier entry>"` reuses that entry's frames (its ops included) and adds its own ops.
+ * The `tiers` block is expanded into such `from` entries first (expandTiers).
  */
 export function resolveManifest(manifest, sourceRoot, { artRoot = ART_ROOT } = {}) {
   const anims = new Map();
@@ -178,7 +212,7 @@ export function resolveManifest(manifest, sourceRoot, { artRoot = ART_ROOT } = {
     }
     return palette;
   };
-  for (const e of manifest.entries) {
+  for (const e of expandTiers(manifest)) {
     const where = `manifest entry "${e.name}"`;
     if (typeof e.name !== 'string' || !e.name) throw new Error(`manifest entry without a name: ${JSON.stringify(e)}`);
     if (anims.has(e.name)) throw new Error(`duplicate manifest name "${e.name}"`);
