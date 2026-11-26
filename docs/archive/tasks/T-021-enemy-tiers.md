@@ -1,6 +1,6 @@
 # T-021: Enemy tiers: the colour/outline/scale scheme
 
-**Source:** [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §6 · **Model:** Opus · **Depends on:** T-017 (art variants: `from`, `tint`, `outline`; merged), T-018 (bestiary, resistances; merged)
+**Source:** [strategy-depth design](../../../reports/designs/2026-11-26-strategy-depth-design.md) §6 · **Model:** Opus · **Depends on:** T-017 (art variants: `from`, `tint`, `outline`; merged), T-018 (bestiary, resistances; merged)
 
 ## Why
 
