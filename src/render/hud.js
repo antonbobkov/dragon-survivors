@@ -1,6 +1,6 @@
 // HUD (§17): timer, tower HP bar, XP bar with level, weapon and buff icons with level pips.
 // Reads the game and never writes it.
-import { BUFFS, WEAPON_MAX_LEVEL, BUFF_MAX_LEVEL, xpToNext } from '../sim/content.js';
+import { BUFFS, BUFF_MAX_LEVEL, weaponMaxLevel, xpToNext } from '../sim/content.js';
 import { VIEW_W, VIEW_H } from '../viewport.js';
 import { drawAnim } from './draw.js';
 
@@ -13,12 +13,16 @@ export const HUD = {
   xp: { h: 14, back: '#10202e', fill: '#3fa9ff' },
 };
 
-// §17 weapon icons: fireball first frame, laser facing right, mini tower castle at 1×, ring icon.
+// §17 weapon icons: fireball first frame, laser facing right, mini tower castle at 1×, ring icon,
+// the claws' own icons.
 export const WEAPON_ICONS = {
   fireball: { anim: 'fireball.anim', frame: 0, scale: 1 },
   laser: { anim: 'laser.dir', frame: 12, scale: 1 },
   miniTower: { anim: 'castle', frame: 0, scale: 0.5 },
   ring: { anim: 'icon.ring', frame: 0, scale: 1 },
+  leftClaw: { anim: 'icon.leftclaw', frame: 0, scale: 1 },
+  rightClaw: { anim: 'icon.rightclaw', frame: 0, scale: 1 },
+  dualClaw: { anim: 'icon.dualclaw', frame: 0, scale: 1 },
 };
 
 export function buffIcon(id) {
@@ -42,11 +46,12 @@ export function shadowText(ctx, s, x, y, { align = 'left', font = FONT, color = 
   ctx.fillText(s, x, y);
 }
 
-// Icon slots for weapons then buffs, centred on the screen: [{ x, kind, id, level, max }].
+// Icon slots for weapons then buffs, centred on the screen: [{ x, kind, id, level, max }];
+// `max` is the number of pips: a weapon's top level (one for an evolution), 3 for buffs.
 export function iconSlots(weapons, buffs) {
   const { slot, gap } = HUD.icons;
   const items = [
-    ...weapons.map((w) => ({ kind: 'weapon', id: w.id, level: w.level, max: WEAPON_MAX_LEVEL })),
+    ...weapons.map((w) => ({ kind: 'weapon', id: w.id, level: w.level, max: weaponMaxLevel(w.id) })),
     ...buffs.map((b) => ({ kind: 'buff', id: b.id, level: b.level, max: BUFF_MAX_LEVEL })),
   ];
   const width = items.length * slot + (weapons.length && buffs.length ? gap : 0);

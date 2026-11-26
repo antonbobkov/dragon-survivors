@@ -4,6 +4,7 @@ import { WEAPONS, BUFFS, DT } from './content.js';
 import { spawnProjectile } from './projectiles.js';
 import { advanceAnim } from './effects.js';
 import { dealDamage } from './damage.js';
+import { clawVolley, tickSlashes } from './claws.js';
 
 const EPS = 1e-9;
 const DEG = Math.PI / 180;
@@ -28,9 +29,10 @@ const STAT_MOD = { might: 'damage', haste: 'cooldown', area: 'area', velocity: '
 
 // Multipliers from stat buffs, Amount's extra projectiles, and chance buffs' probabilities
 // and levels (§11). damage (Might): multiply then round up (buffDamage); cooldown (Haste):
-// every cooldown and fireRate; area: projectile radius, explosion radius, ring orbit; speed
-// (Velocity): projectile speed and range; duration: mini-tower life; force: every knock;
-// amount: extra fireballs and lasers per volley, ring balls, mini towers' maxActive.
+// every cooldown and fireRate; area: projectile radius, explosion radius, ring orbit, claw
+// rectangles and cone reach; speed (Velocity): projectile speed and range; duration:
+// mini-tower life; force: every knock; amount: extra fireballs and lasers per volley, ring
+// balls, mini towers' maxActive, claw rectangles per side and cone maxTargets.
 // procLevel holds the chance buffs' levels for their affinity (procChance).
 export function buffMods(game) {
   const m = {
@@ -256,10 +258,20 @@ export function collideRing(game) {
   }
 }
 
-const FIRE = { fireball: fireFireball, laser: fireLaser, miniTower: fireMiniTower, ring: spinRing };
+// §10.5–10.7: every cooldown a claw volley (claws.js); its slashes strike in step 8.
+export function fireClaw(game, w, mods) {
+  const L = weaponLevel(w);
+  if (ready(w, L.cooldown * mods.cooldown)) clawVolley(game, w, L, mods, buffDamage(L.damage, mods));
+}
 
-// Step 6.
+const FIRE = {
+  fireball: fireFireball, laser: fireLaser, miniTower: fireMiniTower, ring: spinRing,
+  leftClaw: fireClaw, rightClaw: fireClaw, dualClaw: fireClaw,
+};
+
+// Step 6. Pending claw slashes count down first, so a volley's own delays start next tick.
 export function stepWeapons(game) {
   const mods = buffMods(game);
+  tickSlashes(game);
   for (const w of game.weapons) FIRE[w.id](game, w, mods);
 }

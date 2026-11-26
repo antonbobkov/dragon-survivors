@@ -1,5 +1,5 @@
 // Game state, the tick order of §2.1 (one method per step), clock and game over.
-import { DT, TIMELINE, DYING_TIME, WEAPON_IDS, WEAPON_MAX_LEVEL, WEAPON_SLOTS } from './content.js';
+import { DT, TIMELINE, DYING_TIME, WEAPON_IDS, WEAPON_SLOTS, weaponMaxLevel } from './content.js';
 import { mulberry32 } from './rng.js';
 import { Grid } from './grid.js';
 import { createDragon, applyIntent, moveDragon } from './dragon.js';
@@ -7,11 +7,12 @@ import { createTower, stepTether, collideTower } from './tower.js';
 import { stepEnemies, stepDeaths } from './enemies.js';
 import { createSpawner, stepSpawner, spawnGolemIfDue } from './spawner.js';
 import { createWeapon, stepWeapons, collideRing } from './weapons.js';
+import { collideSlashes, stepSlashes } from './claws.js';
 import { stepProjectiles, collideProjectiles } from './projectiles.js';
 import { stepEnemyShots, collideEnemyShots } from './enemyShots.js';
 import { stepEffects, spawnEffect } from './effects.js';
 import { stepGems } from './gems.js';
-import { applyCard, openOffers } from './levelup.js';
+import { applyCard, openOffers, evolutionOf, evolve } from './levelup.js';
 import { normalizeMeta } from './damage.js';
 
 const DYING_TICKS = Math.round(DYING_TIME / DT);
@@ -63,6 +64,7 @@ export class Game {
     this.effects = [];
     this.gems = [];
     this.miniTowers = [];
+    this.slashes = []; // claw slashes, pending and playing (§10.5–10.7)
     this.spawner = createSpawner();
     this.grid = new Grid();
     this.kills = 0;
@@ -121,15 +123,18 @@ export class Game {
     else this.offers = [];
   }
   // §19 debug command, applied before step 1 of a world-advancing tick; the tick then runs
-  // as usual. grant: the weapon at level 5 (added if not owned and a slot is free).
-  // jumpTo: sets the clock forward to that time (never back); the spawner reads its row
-  // from the clock, nothing in between is simulated.
+  // as usual. grant: the weapon at its top level (added if not owned and a slot is free; an
+  // evolution whose weapons are all owned replaces them). jumpTo: sets the clock forward to
+  // that time (never back); the spawner reads its row from the clock, nothing in between is
+  // simulated.
   stepDebug(cmd) {
     if (!cmd) return;
     if (cmd.grant) {
       const w = this.weapons.find((x) => x.id === cmd.grant);
-      if (w) w.level = WEAPON_MAX_LEVEL;
-      else if (this.weapons.length < WEAPON_SLOTS) this.weapons.push(createWeapon(cmd.grant, WEAPON_MAX_LEVEL));
+      const evo = evolutionOf(cmd.grant);
+      if (w) w.level = weaponMaxLevel(cmd.grant);
+      else if (evo && evo.requires.every((id) => this.weapons.some((x) => x.id === id))) evolve(this, evo);
+      else if (this.weapons.length < WEAPON_SLOTS) this.weapons.push(createWeapon(cmd.grant, weaponMaxLevel(cmd.grant)));
     } else if (cmd.jumpTo !== undefined) {
       const ticks = Math.round(cmd.jumpTo / DT);
       if (ticks > this.tickCount) {
@@ -155,11 +160,13 @@ export class Game {
     stepProjectiles(this);
     stepEnemyShots(this);
   }
-  // 8. Projectile vs enemy (with procs), ring vs enemy, enemy vs tower, enemy shot vs dragon.
+  // 8. Projectile vs enemy (with procs), ring vs enemy, claw slashes vs enemy, enemy vs tower,
+  // enemy shot vs dragon.
   stepCollisions() {
     this.grid.build(this.enemies);
     collideProjectiles(this);
     collideRing(this);
+    collideSlashes(this);
     collideTower(this);
     collideEnemyShots(this);
   }
@@ -167,8 +174,11 @@ export class Game {
   stepDeaths() { stepDeaths(this); }
   // 10. §14: attract and collect gems, queue level-ups and roll offers.
   stepGems() { stepGems(this); }
-  // 11.
-  stepEffects() { stepEffects(this); }
+  // 11. Effects, then the claw slashes' effects.
+  stepEffects() {
+    stepEffects(this);
+    stepSlashes(this);
+  }
   // 12. Clock, golem at 5:00 (§9), game over.
   stepClock() {
     this.tickCount++;
@@ -191,7 +201,7 @@ export class Game {
       nextId: this.nextId, kills: this.kills, level: this.level, xp: this.xp,
       pendingLevelUps: this.pendingLevelUps, offers: this.offers, spawner: this.spawner,
       dragon: this.dragon, tower: this.tower, enemies: this.enemies,
-      projectiles: this.projectiles, enemyShots: this.enemyShots, effects: this.effects, gems: this.gems, miniTowers: this.miniTowers,
+      projectiles: this.projectiles, enemyShots: this.enemyShots, effects: this.effects, gems: this.gems, miniTowers: this.miniTowers, slashes: this.slashes,
       weapons: this.weapons, buffs: this.buffs,
     };
   }
