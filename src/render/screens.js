@@ -57,7 +57,7 @@ export function drawTitle(ctx, gold = null) {
   shadowText(ctx, 'DRAGON SURVIVORS', VIEW_W / 2, 100, { align: 'center', font: BIG_FONT, color: '#ffb84a' });
   shadowText(ctx, 'Keep the tower alive.', VIEW_W / 2, 150, { align: 'center' });
   controls(ctx, 196);
-  if (gold !== null) shadowText(ctx, `Gold ${gold}`, VIEW_W / 2, 330, { align: 'center', color: '#ffd23f' });
+  if (gold !== null) shadowText(ctx, `Gold ${gold}`, VIEW_W / 2, ARMOURY_BUTTON.y + ARMOURY_BUTTON.h + 12, { align: 'center', color: '#ffd23f' });
   button(ctx, 'Start');
   shadowText(ctx, 'click, Enter or A', VIEW_W / 2, BUTTON.y + BUTTON.h + 14, { align: 'center', color: '#aaa', font: FONT });
   button(ctx, 'Armoury  U / Y', ARMOURY_BUTTON, '#3a3248');

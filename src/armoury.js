@@ -138,8 +138,9 @@ export function createStore(getStorage) {
 // The text of a track for one type: `effect` what one rank does, `now` what the ranks owned do.
 export function trackText(track, typeName, rank) {
   const name = typeName.toLowerCase();
+  const none = rank > 0 ? null : 'none';
   if (track === 'power') {
-    return { effect: `+${Math.round(POWER_PER_RANK * 100)}% ${name} damage per rank`, now: `+${Math.round(POWER_PER_RANK * 100 * rank)}% damage` };
+    return { effect: `+${Math.round(POWER_PER_RANK * 100)}% ${name} damage per rank`, now: none ?? `+${Math.round(POWER_PER_RANK * 100 * rank)}% damage` };
   }
-  return { effect: `-${Math.round(SHRED_PER_RANK * 100)}% enemy ${name} resist per rank`, now: `-${Math.round(SHRED_PER_RANK * 100 * rank)}% resist` };
+  return { effect: `-${Math.round(SHRED_PER_RANK * 100)}% enemy ${name} resist per rank`, now: none ?? `-${Math.round(SHRED_PER_RANK * 100 * rank)}% resist` };
 }

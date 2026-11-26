@@ -332,7 +332,7 @@ test('armoury cells: one line per rank effect, the next cost coloured by afforda
   assert.equal(arc.effect, '-10% enemy arcane resist per rank');
   assert.equal(arc.now, 'Now -50% resist');
   assert.equal(arc.cost, 'Max rank');
-  assert.deepEqual(trackText('shred', 'Physical', 0), { effect: '-10% enemy physical resist per rank', now: '-0% resist' });
+  assert.deepEqual(trackText('shred', 'Physical', 0), { effect: '-10% enemy physical resist per rank', now: 'none' });
 });
 
 test('drawing the armoury, title and game over with gold does not throw or write the purse', () => {
