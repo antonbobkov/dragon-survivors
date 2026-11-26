@@ -37,7 +37,7 @@
 //   naive   card 0.
 //   greedy  Repair when tower HP < 40%; else a new weapon while a slot is free; else the
 //           upgrade of the highest-level weapon below 5; else a buff (upgrade an owned one
-//           first, then a new one); else card 0.
+//           first, then a new one; ties by BUFF_PRIORITY); else card 0.
 //
 // --set runs a what-if without editing content.js (repeatable): `rate.<row t>=<v>` sets a
 // timeline row's rate (row t in seconds), `towerHp=<v>` the starting tower HP, and
@@ -161,6 +161,17 @@ export const POLICIES = {
 
 const indexWhere = (offers, fn) => offers.findIndex(fn);
 
+// The greedy bot's buff preference, best first: damage and fire rate, then more shots and the
+// fireball's procs, then the rest.
+export const BUFF_PRIORITY = ['might', 'haste', 'amount', 'explode', 'split', 'pierce', 'area', 'velocity', 'force', 'duration'];
+const bestBuff = (offers, fn) => {
+  let best = -1;
+  offers.forEach((c, k) => {
+    if (c.kind === 'buff' && fn(c) && (best < 0 || BUFF_PRIORITY.indexOf(c.id) < BUFF_PRIORITY.indexOf(offers[best].id))) best = k;
+  });
+  return best;
+};
+
 // Pick rules: game (with offers open) -> card index.
 export const PICKS = {
   naive: () => 0,
@@ -173,8 +184,8 @@ export const PICKS = {
     let best = -1, bestLevel = -1;
     o.forEach((c, k) => { if (c.kind === 'weapon' && c.level > bestLevel) { best = k; bestLevel = c.level; } });
     if (best >= 0) return best;
-    if ((i = indexWhere(o, (c) => c.kind === 'buff' && c.level > 1)) >= 0) return i;
-    if ((i = indexWhere(o, (c) => c.kind === 'buff')) >= 0) return i;
+    if ((i = bestBuff(o, (c) => c.level > 1)) >= 0) return i;
+    if ((i = bestBuff(o, () => true)) >= 0) return i;
     return 0;
   },
 };

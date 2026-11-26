@@ -1,7 +1,7 @@
 // Bestiary (§17.1): every enemy type with its sprite, stats, resistances and the tiers met
 // (§8.6); types not met this run as silhouettes. One legend line gives the tier multipliers. Pure helpers (layout, rows, bar styles) are tested under node;
 // drawBestiary reads the game and never writes it.
-import { ENEMIES, ENEMY_TYPES, DAMAGE_TYPES, DAMAGE_TYPE_NAMES, TICK_HZ, TIERS, TIER_IDS } from '../sim/content.js';
+import { ENEMIES, ENEMY_TYPES, DAMAGE_TYPES, DAMAGE_TYPE_NAMES, TICK_HZ, TIERS, TIER_IDS, GOLEM_KNOCKBACK } from '../sim/content.js';
 import { effectiveResist } from '../sim/damage.js';
 import { VIEW_W, VIEW_H } from '../viewport.js';
 import { shadowText, BIG_FONT } from './hud.js';
@@ -11,7 +11,7 @@ export const BESTIARY = {
   titleY: 24, top: 72, bottom: 540, legendY: 546, hintY: 568,
   cols: 2, cardW: 452, colGap: 16, rowGap: 8, maxCardH: 110,
   spriteBox: 80, textX: 92, barsX: 232, nameW: 72,
-  barW: 52, barH: 10, rowH: 24,
+  barW: 52, barH: 10, rowH: 24, statH: 18,
   font: '16px monospace', small: '14px monospace',
   pip: 6, pipGap: 3, pipBottom: 6, // tier pips: px size, gap, and inset from the card's bottom
 };
@@ -67,6 +67,8 @@ export function bestiaryRows(game) {
       stats: seen ? [
         `HP ${def.hp === Infinity ? '∞' : def.hp}  XP ${def.xp}`,
         `SPD ${def.speed}  DPS ${def.dps}`,
+        // §8.7: mass divides knockback; the golem keeps its fixed push per hit.
+        def.mass ? `MASS ${def.mass}` : `KNOCKBACK ${GOLEM_KNOCKBACK}`,
       ] : [],
       resists: seen && !def.unkillable ? DAMAGE_TYPES.map((t) => {
         const r = effectiveResist(type, t, game.meta);
@@ -168,11 +170,11 @@ export function drawBestiary(ctx, game, atlas, ms = 0, { makeCanvas = defaultCan
     // Tier pips at the bottom of the sprite box: the tiers of this type met this run.
     if (row.tiers.length) drawPips(ctx, Math.round(c.x + 8 + (L.spriteBox - pipsWidth()) / 2), c.y + c.h - L.pipBottom - L.pip, row.tiers);
 
-    // Name and stats.
+    // Name, then the stat lines statH apart.
     const tx = c.x + L.textX;
     const ty = c.y + Math.round((c.h - 3 * L.rowH) / 2) + 2;
     shadowText(ctx, row.name, tx, ty, { font: L.font, color: row.seen ? '#fff' : '#777' });
-    row.stats.forEach((line, k) => shadowText(ctx, line, tx, ty + (k + 1) * L.rowH, { font: L.small, color: '#ddd' }));
+    row.stats.forEach((line, k) => shadowText(ctx, line, tx, ty + L.rowH + k * L.statH, { font: L.small, color: '#ddd' }));
 
     // Resistances: name, bar, label.
     const bx = c.x + L.barsX;

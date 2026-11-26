@@ -64,7 +64,7 @@ const NOT_STATE = new Set(['rng', 'grid', 'events', 'timeline', 't', 'debug']);
 test('snapshot(): every own field of Game except the documented exclusions is in it', () => {
   const g = new Game({ seed: 7 });
   g.weapons = ['fireball', 'laser', 'miniTower', 'ring'].map((id) => createWeapon(id, 2));
-  g.buffs = [{ id: 'damage', level: 1 }, { id: 'explode', level: 1 }];
+  g.buffs = [{ id: 'might', level: 1 }, { id: 'explode', level: 1 }];
   for (let i = 0; i < 400; i++) g.tick({ moveX: 0.3, aimX: 1, aimY: 0.2, hasAim: true });
   assert.ok(g.miniTowers.length > 0 && g.enemies.length > 0, 'a run with something in every list');
   const snap = g.snapshot();
@@ -90,7 +90,7 @@ test('digest(): changes when mini towers or buffs change', () => {
 
 test('explode: centred on the projectile, not the enemy; damage is the projectile damage (buff applied once)', () => {
   const g = still();
-  g.buffs = [{ id: 'explode', level: 1 }, { id: 'damage', level: 1 }];
+  g.buffs = [{ id: 'explode', level: 1 }, { id: 'might', level: 1 }];
   g.rng = () => 0;
   const R = EXPLODE_RADIUS;
   const hit = dummy(g, 10, 0); // the fireball at the origin overlaps it
@@ -137,7 +137,7 @@ test('ring: the golem is knocked back away from the ball, not from the dragon', 
 test('ring: spin ignores the cooldown buff', () => {
   const g = still();
   g.weapons = [createWeapon('ring', 1)];
-  g.buffs = [{ id: 'cooldown', level: 3 }];
+  g.buffs = [{ id: 'haste', level: 3 }];
   g.stepWeapons();
   assert.ok(near(g.weapons[0].angle, WEAPONS.ring.levels[0].spin * Math.PI / 180 * DT));
 });
@@ -248,11 +248,11 @@ test('fireball and laser switch to the big sprite and radius at level 4', () => 
 
 test('buffs: kept in the order gained; an upgrade keeps its place', () => {
   const g = still();
-  for (const id of ['speed', 'damage', 'pierce']) applyCard(g, { kind: 'buff', id, level: 1 });
-  assert.deepEqual(g.buffs.map((b) => b.id), ['speed', 'damage', 'pierce']);
-  applyCard(g, { kind: 'buff', id: 'speed', level: 2 });
+  for (const id of ['velocity', 'might', 'pierce']) applyCard(g, { kind: 'buff', id, level: 1 });
+  assert.deepEqual(g.buffs.map((b) => b.id), ['velocity', 'might', 'pierce']);
+  applyCard(g, { kind: 'buff', id: 'velocity', level: 2 });
   applyCard(g, { kind: 'buff', id: 'area', level: 1 });
-  assert.deepEqual(g.buffs.map((b) => `${b.id}${b.level}`), ['speed2', 'damage1', 'pierce1', 'area1']);
+  assert.deepEqual(g.buffs.map((b) => `${b.id}${b.level}`), ['velocity2', 'might1', 'pierce1', 'area1']);
 });
 
 // ---- d-pad highlight (§14.1) ---------------------------------------------------------

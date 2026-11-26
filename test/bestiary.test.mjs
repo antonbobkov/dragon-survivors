@@ -12,7 +12,7 @@ import {
   BESTIARY, RESIST_COLORS, bestiaryLayout, resistStyle, bestiaryRows, animFrameAt, spriteFit, drawBestiary,
 } from '../src/render/bestiary.js';
 import { CONTROLS } from '../src/render/screens.js';
-import { ENEMY_TYPES, ENEMIES } from '../src/sim/content.js';
+import { ENEMY_TYPES, ENEMIES, GOLEM_KNOCKBACK } from '../src/sim/content.js';
 import { VIEW_W, VIEW_H } from '../src/viewport.js';
 
 const atlasJson = JSON.parse(readFileSync(new URL('../assets/atlas.json', import.meta.url), 'utf8'));
@@ -50,6 +50,12 @@ test('layout: every type gets a card inside the screen, two centred columns, no 
   }
   assert.ok(BESTIARY.hintY > BESTIARY.bottom && BESTIARY.hintY + 16 <= VIEW_H);
   assert.ok(BESTIARY.barsX + BESTIARY.nameW + BESTIARY.barW + 8 + 'resist 75%'.length * 8.4 <= BESTIARY.cardW, 'labels fit the card at 14 px');
+  // name + three stat lines (HP/XP, SPD/DPS, MASS) fit the shortest card (10 types), and the
+  // widest stat line fits between the text column and the bars at 14 px
+  const h = bestiaryLayout(10)[0].h;
+  const top = Math.round((h - 3 * BESTIARY.rowH) / 2) + 2;
+  assert.ok(top + BESTIARY.rowH + 2 * BESTIARY.statH + 14 <= h, `stat lines fit a ${h} px card`);
+  assert.ok(BESTIARY.textX + 'SPD 27.5  DPS 10'.length * 8.4 <= BESTIARY.barsX + 4);
 });
 
 test('resistance bars: red weak, grey neutral, blue resists, gold immune, with the percentage', () => {
@@ -70,7 +76,7 @@ test('rows: met types show name, stats and resistances; others are ???; the gole
   const ghost = rows.find((r) => r.type === 'ghost');
   assert.equal(ghost.seen, true);
   assert.equal(ghost.name, 'Ghost');
-  assert.deepEqual(ghost.stats, [`HP ${ENEMIES.ghost.hp}  XP ${ENEMIES.ghost.xp}`, `SPD ${ENEMIES.ghost.speed}  DPS ${ENEMIES.ghost.dps}`]);
+  assert.deepEqual(ghost.stats, [`HP ${ENEMIES.ghost.hp}  XP ${ENEMIES.ghost.xp}`, `SPD ${ENEMIES.ghost.speed}  DPS ${ENEMIES.ghost.dps}`, `MASS ${ENEMIES.ghost.mass}`]);
   assert.deepEqual(ghost.resists.map((r) => [r.name, r.r, r.label]),
     [['Fire', 0.25, 'resist 25%'], ['Arcane', -0.5, 'weak 50%'], ['Physical', 0.75, 'resist 75%']], 'arcane −0.5 − 0.25 floors at −0.5');
   const knight = rows.find((r) => r.type === 'knight');
@@ -79,6 +85,8 @@ test('rows: met types show name, stats and resistances; others are ???; the gole
   assert.equal(golem.unkillable, true);
   assert.deepEqual(golem.resists, []);
   assert.match(golem.stats[0], /^HP ∞/);
+  assert.equal(golem.stats[2], `KNOCKBACK ${GOLEM_KNOCKBACK}`, 'the golem has no mass: its fixed push per hit');
+  assert.equal(ghost.stats[2], 'MASS 0.6');
 });
 
 test('anim frames loop over the atlas durations; sprites fit their box', () => {
