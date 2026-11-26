@@ -7,7 +7,7 @@ const EPS = 1e-9;
 
 // §4.1 `meta`: the armoury's per-damage-type modifiers, given at construction. `power[type]`
 // multiplies the damage of that type (default 1), `shred[type]` is taken off every enemy's
-// resistance to it (default 0). Missing, negative-power or non-finite entries read as neutral,
+// resistance to it (default 0). Missing, non-finite, zero or negative powers read as neutral,
 // so `new Game({ seed })` and `new Game({ seed, meta: {} })` play the same run.
 export function normalizeMeta(meta) {
   const m = meta && typeof meta === 'object' ? meta : {};
@@ -15,7 +15,7 @@ export function normalizeMeta(meta) {
   for (const t of DAMAGE_TYPES) {
     const p = m.power && m.power[t];
     const s = m.shred && m.shred[t];
-    power[t] = typeof p === 'number' && Number.isFinite(p) && p >= 0 ? p : 1;
+    power[t] = typeof p === 'number' && Number.isFinite(p) && p > 0 ? p : 1;
     shred[t] = typeof s === 'number' && Number.isFinite(s) ? s : 0;
   }
   return { power, shred };
