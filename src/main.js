@@ -10,6 +10,8 @@ import { createRenderer } from './render/draw.js';
 import { drawHud, shadowText } from './render/hud.js';
 import { drawTitle, drawPause, drawGameOver, drawLevelUp } from './render/screens.js';
 import { drawBestiary } from './render/bestiary.js';
+import { drawArmoury } from './render/armoury.js';
+import { createStore } from './armoury.js';
 import { drawDebugWorld, drawDebugStats } from './render/debug.js';
 
 const canvas = document.getElementById('game');
@@ -50,12 +52,14 @@ async function boot() {
   // (read it; do not write it).
   const debug = new URLSearchParams(location.search).get('debug') === '1';
   const app = new App({
-    makeGame: (seed) => new Game({ seed, debug }),
+    makeGame: (seed, meta) => new Game({ seed, debug, meta }),
     fixedSeed: parseSeed(location.search),
     randomSeed,
     audio,
     debug,
     now: () => performance.now(),
+    // §13.1: the purse lives in localStorage; reading `window.localStorage` itself can throw.
+    store: createStore(() => window.localStorage),
   });
   if (debug) window.app = app;
 
@@ -71,12 +75,13 @@ async function boot() {
     const game = app.game;
     renderer.drawWorld(ctx, game);
     if (debug) drawDebugWorld(ctx, game);
-    if (app.screen === 'title') { drawTitle(ctx); return; }
+    if (app.screen === 'title') { drawTitle(ctx, app.purse.gold); return; }
+    if (app.screen === 'armoury') { drawArmoury(ctx, app.purse, app.armourySel, app.resetArmed); return; }
     drawHud(ctx, game, atlas);
     if (debug) drawDebugStats(ctx, game, app.stats, app.speed);
     if (app.screen === 'bestiary') drawBestiary(ctx, game, atlas, now, { makeCanvas });
     else if (app.screen === 'paused') drawPause(ctx);
-    else if (game.phase === 'over') drawGameOver(ctx, game);
+    else if (game.phase === 'over') drawGameOver(ctx, game, app.goldLine());
     else if (app.levelUpOpen()) drawLevelUp(ctx, game, atlas, app.cardSel);
   });
 }

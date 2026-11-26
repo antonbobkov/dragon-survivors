@@ -25,7 +25,8 @@ dragon-survivors/
   index.html              canvas + script tag, nothing else
   src/
     main.js               load assets, build the App, start the loop (DOM glue only)
-    app.js                screen flow (title, play, pause, game over, Retry) and ticking; no DOM
+    app.js                screen flow (title, armoury, play, pause, game over, Retry) and ticking; no DOM
+    armoury.js            gold, the purse and its ranks, rank costs, ranks -> meta, storage wrapper (§13.1); no DOM
     loop.js               fixed-step accumulator + requestAnimationFrame driver
     input.js              keyboard, mouse, gamepad -> Intent
     viewport.js           canvas fit, CSS -> internal pixels, camera offset; no DOM
@@ -35,6 +36,7 @@ dragon-survivors/
       draw.js             world rendering (background, entities, effects)
       hud.js              timer, tower HP bar, XP bar, weapon/buff icons
       screens.js          title, pause, level-up cards, game over
+      armoury.js          armoury screen (§13.1)
       bestiary.js         enemy stats panel (§17.1)
       debug.js            debug overlay: collision circles, loop and entity stats (§19)
     sim/                  no DOM, no canvas, no Date. Pure state + tick.
@@ -160,7 +162,7 @@ Sounds copied as-is from the pack root: `shoot01`, `laser01`, `explosion01`, `ex
 
 The sim's state is plain data on the `Game` object. The loop and the renderer read it and never write it (the loop only calls `tick`).
 
-- **Construction:** `new Game({ seed, timeline, debug, meta })`. `timeline` defaults to the §9 table in `content.js`; tests may pass their own rows. `debug` (default false) makes the sim honour `intent.debug` (§19). `meta` is the out-of-game armoury's effect on the run, per damage type: `{ power: { fire, arcane, physical }, shred: { fire, arcane, physical } }`, where `power` multiplies the damage of that type and `shred` is taken off every enemy's resistance to it (§12.1). Any part may be left out; a missing, non-finite or negative power reads 1 and a missing or non-finite shred reads 0, so a run without `meta` is a run with neutral `meta`. It is stored normalised as `game.meta` (all six numbers present), never changes during a run, and is part of the snapshot.
+- **Construction:** `new Game({ seed, timeline, debug, meta })`. `timeline` defaults to the §9 table in `content.js`; tests may pass their own rows. `debug` (default false) makes the sim honour `intent.debug` (§19). `meta` is the out-of-game armoury's effect on the run (§13.1), per damage type: `{ power: { fire, arcane, physical }, shred: { fire, arcane, physical } }`, where `power` multiplies the damage of that type and `shred` is taken off every enemy's resistance to it (§12.1). Any part may be left out; a missing, non-finite or negative power reads 1 and a missing or non-finite shred reads 0, so a run without `meta` is a run with neutral `meta`. It is stored normalised as `game.meta` (all six numbers present), never changes during a run, and is part of the snapshot.
 - **RNG:** `game.rng` is a plain function returning a float in `[0, 1)`. Every random draw calls `game.rng()` at the point of use, never a reference cached at construction, so a test can replace it (`game.rng = () => 0`).
 - **Units and clock:** positions in world px, speeds in px/s, `DT = 1/60`. `game.tickCount` is an integer and `game.t = tickCount × DT` seconds, so time never drifts.
 - **Intent:** exactly the shape in §4. A missing, partial or non-finite field reads as 0, `false` or `-1` (`pick`). A move vector longer than 1 is normalised; a non-zero aim is normalised; `hasAim` is false when the aim is zero. The sim ignores `confirm`; `pick` is read only while level-up offers are open (§14). The loop turns a gamepad A press on the level-up screen into the `pick` of the highlighted card.
@@ -479,7 +481,7 @@ Each enemy type has a resistance `r` per damage type, in `[−0.5, 1]` (§8 tabl
 
 The damage buff is rounded up when a projectile is fired or the ring hits (§11), then the damage function rounds again: a level-1 fireball (2) deals 3 to a slime (fire −0.5) and 2 to a ghost (fire 0.25: `ceil(1.5)`); a level-1 laser (1) deals 1 to a mage (arcane 0.5: `ceil(0.5)`) and 2 to a ghost (arcane −0.5). The damage function draws no random numbers. Mage orbs hit the dragon and the tower, not an enemy, and do not use it.
 
-**Armoury.** `game.meta` (§4.1) holds the out-of-game upgrades per damage type: `power[type]` multiplies all damage of that type, `shred[type]` lowers every enemy's resistance to it, never below −0.5. Both are neutral (1 and 0) unless the `Game` is built with `meta`; the screen that sets them is not part of the demo yet.
+**Armoury.** `game.meta` (§4.1) holds the out-of-game upgrades per damage type: `power[type]` multiplies all damage of that type, `shred[type]` lowers every enemy's resistance to it, never below −0.5. Both are neutral (1 and 0) unless the `Game` is built with `meta`; the browser builds every `Game` with the meta of the armoury's ranks (§13.1).
 
 ---
 
@@ -491,11 +493,23 @@ The damage buff is rounded up when a projectile is fired or the ring hits (§11)
 
 **Screens** are the loop's business (`app.js`), drawn over the world:
 
-- **Title:** shown at page load over a fresh, unticked game: the name, one line of goal, the controls and a Start button. A click anywhere on the canvas, Enter or gamepad A starts the run. Start resumes the audio context and plays `start_game`.
+- **Title:** shown at page load over a fresh, unticked game: the name, one line of goal, the controls, the purse's gold, a Start button and below it an Armoury button. U, gamepad Y or a click on the Armoury button opens the armoury (§13.1); any other click on the canvas, Enter or gamepad A starts the run. Start resumes the audio context and plays `start_game`.
 - **Pause:** Esc, P or gamepad Start toggles it during a run (`'play'` or `'dying'`). It shows "Paused" and the controls; ticks stop. Window blur and a hidden tab also pause. Pause is ignored on the title and game-over screens.
 - **Bestiary:** Tab or gamepad Back opens the enemy stats panel during a run, from play or from pause; ticks stop (§17.1).
-- **Game over:** shown while the phase is `'over'`: time survived (`m:ss`), level reached, kills, score, and a Retry button. A click anywhere on the canvas, Enter or gamepad A retries. Retry builds a new `Game` with a new random seed, or the same seed when the page has `?seed=N`, skips the title and plays `start_game`.
+- **Game over:** shown while the phase is `'over'`: time survived (`m:ss`), level reached, kills, score, the gold the run earned and the purse after it (`Gold   +N  (M in purse)`, §13.1), and a Retry button. A click anywhere on the canvas, Enter or gamepad A retries. Retry builds a new `Game` with a new random seed, or the same seed when the page has `?seed=N`, and the armoury's current ranks, skips the title and plays `start_game`.
 - Without `?seed`, the seed is a random 32-bit integer from the browser (`Math.random` is allowed outside `src/sim/`).
+
+### 13.1 Gold and the armoury
+
+Out-of-game upgrades, bought between runs with gold. All numbers *unmeasured*.
+
+- **Gold.** When a run's phase becomes `'over'`, the browser pays `floor(score / 20)` gold into the purse, once per run, and saves it. A run abandoned by closing the page pays nothing.
+- **Tracks.** For each damage type (fire, arcane, physical, §12.1) two tracks of 5 ranks: **Power**, +8% damage of that type per rank, and **Shred**, −0.1 off every enemy's resistance to that type per rank (shown as `-10%`; a resistance never goes below −0.5, §12.1). Rank `n` costs `20 × n²` gold (20, 80, 180, 320, 500; 1100 for a whole track).
+- **Into the run.** Ranks map to the sim's `meta` (§4.1): `power[type] = 1 + 0.08 × Power rank`, `shred[type] = 0.1 × Shred rank`. Every `Game` the page builds, the unticked title game, every run and every Retry, with or without `?seed`, gets the meta of the ranks owned when it is built; it is part of the setup and the snapshot, so a run is still determined by its seed, its meta and its intents. Leaving the armoury with changed ranks rebuilds the title game with the same seed. The sim never reads storage.
+- **Screen** (`render/armoury.js`, 960×600 over the 60% black overlay, opened from the title only, ticks stopped): the title `ARMOURY` (32 px) centred at y 24 and `Gold N` at y 66; six cells of 290×150 px in a centred 3×2 grid from y 100 with 16 px gaps, Power on the first row and Shred on the second, columns fire, arcane, physical. A cell shows `<Type> <Track>` in the type's colour and `r/5`, five rank pips (yellow owned, dark not), what one rank does in one line (`+8% fire damage per rank`, `-10% enemy fire resist per rank`), what the owned ranks do (`Now +16% damage`, `Now -20% resist`), and `Next rank: C gold` in green when affordable, red when not, or `Max rank` in gold. Below the grid at y 440 two 180×40 buttons with a 20 px gap, centred: **Reset** and **Back**; two hint lines at y 540 and 564. The selected item has a yellow frame.
+- **Controls.** Move keys (WASD, arrows) or the d-pad move the selection one step per press: across and down the 3×2 grid, down from the first two columns to Reset and from the third to Back, left and right between Reset and Back, up from Reset to the first column and from Back to the third. Enter, gamepad A or a click on an item (which also selects it) activates the item: on a cell it buys the next rank when it is affordable and not at rank 5 (plays `powerup`; otherwise nothing happens); on Back it returns to the title. Esc, P, U, gamepad B, Y or Start return to the title too.
+- **Reset** refunds every rank for what it cost and sets all ranks to 0, in two steps: the first activation arms it (the button reads `Confirm reset` and a line says how much it refunds), the second refunds (plays `pickup`). Moving the selection or buying disarms it. With no ranks owned it does not arm.
+- **Storage.** The purse is saved in `localStorage` under the key `dragon-survivors.armoury.v1` as JSON `{ gold, ranks: { power: { fire, arcane, physical }, shred: { … } } }`, after every payout, purchase and reset, and read once at page load. Every read and write (and the access to `localStorage` itself) is wrapped in try/catch: unreadable, missing or malformed data gives an empty purse (0 gold, all ranks 0), gold is floored to a whole number, ranks are clamped to whole numbers in 0..5, and a failed write is ignored, so without storage the game plays with a purse that lasts until the page closes.
 
 ---
 
@@ -579,6 +593,8 @@ Checks per tick:
 | Pause | Esc or P | Start |
 | Bestiary (§17.1) | Tab | Back / Select |
 | Retry | Enter or click | A |
+| Armoury (§13.1), from the title | U or the Armoury button | Y |
+| Armoury: select, buy, back | move keys; Enter or click; Esc, P or U | d-pad; A; B, Y or Start |
 
 Mouse aim always sets `hasAim = true`. Gamepad aim sets `hasAim` only when the stick is outside the deadzone. The last device that produced input wins, so plugging in a controller just works.
 
@@ -587,6 +603,7 @@ Details:
 - **Keyboard:** keys are read by `KeyboardEvent.code`, so the layout does not matter. The move vector is (right − left, down − up) normalised; opposite keys cancel. Enter (and keypad Enter) is `confirm`; Digit1–3 and Numpad1–3 are `pick` 0–2; Tab is `bestiary` (its browser default, moving focus, is suppressed). Pause, bestiary, confirm and pick are edges: one per press, never from auto-repeat.
 - **Mouse:** the position is tracked over the whole window and converted from CSS pixels to internal pixels with the canvas's bounding rect (`x = (clientX − left) × 960 / width`, likewise y). The aim is the unit vector from the dragon's screen position (its centre) to the mouse; before the mouse has moved there is no mouse aim, and a mouse exactly on the dragon gives none. Only the left button counts as a click.
 - **Gamepad:** the first connected pad in the browser's standard mapping. Both sticks use a radial deadzone of 0.25: inside it the stick reads zero, outside it the raw vector clamped to length 1 (the left stick is analog movement). Buttons: A (0) is `confirm`, Start (9) pauses, Back / Select (8) is `bestiary`, d-pad left/right (14/15) navigate the level-up cards; all are edges against the previous frame.
+- **Menus:** U and gamepad Y (3) give the `armoury` edge, gamepad B (1) the `back` edge. Every press of a move key and every new d-pad press (up 12, down 13, left 14, right 15) gives a one-step `menu` edge `{ x, y }`, read only by the armoury screen; the level-up cards keep reading the d-pad's left/right.
 - **Last device:** a frame counts as keyboard-and-mouse activity when a key is held or pressed, or the mouse moved or clicked; as gamepad activity when a stick is outside its deadzone or a button was newly pressed. Move and aim come only from the current device. When both are active in the same frame the keyboard and mouse win.
 
 ---
@@ -653,6 +670,7 @@ Precisely:
 - **Procs:** with `rng` stubbed to return 0, a fireball with explode chance L1 spawns an explosion that damages a second enemy in range.
 - **Level-up:** the world is frozen while offers are open (the digest does not change on ticks without a pick); the same seed and the same intents, picks included, give the same digest.
 - **Damage types:** every weapon's hits (projectile, explosion, split child, mini-tower shot, ring) carry their type; resistance maths with weakness, resistance, immunity and rounding; `meta` power and shred (floored at −0.5); the golem takes nothing from any type and is still knocked back; `game.seen` records types as they are first created; the bestiary's layout, bar styles and silhouettes, drawn under node without writing the game.
+- **Armoury:** gold from score; rank costs; buying (affordable, unaffordable, maxed) and refunding; untrusted purse data clamped; the storage wrapper round trip and a throwing or blocked storage; ranks → `meta`; the App flow title ↔ armoury (keys, buttons, clicks), buying, Reset's confirm step, the game-over payout once, Retry and `?seed` runs using the ranks, a reload reading the purse back; the screen's layout and navigation; the input edges.
 - **Slime split:** killing a gen-0 slime yields two gen-1 slimes; killing those yields none.
 - **Ghost:** killing a ghost knight yields a ghost after the burn effect finishes.
 - **Mage:** a mage starts casting 8 s after it spawns and has spawned 4 skeletons 1 s later, unless within 80 px of the tower.
@@ -660,7 +678,7 @@ Precisely:
 - **Timeline:** at t = 300 s the golem exists; at t = 0 only knights spawn.
 - **Soak:** run 5 minutes with a scripted dragon that circles the tower, on the default timeline with every rate from 3:00 on raised to at least 30/s. Assert no exceptions, the spawner never spawns above the cap (§8.2), and the tower eventually dies. The test holds the tower at full HP until the golem has spawned, so the run reaches 5:00 whatever the balance; the horde reaches the cap on the way (asserted), and the golem then ends the run. It stays in the default suite (a few seconds).
 - **Atlas:** `build-atlas.mjs` run on the manifest produces every name the game asks for. `content.js` lists its required atlas names and the test cross-checks them.
-- **Balance instrument:** `node tools/measure.mjs` plays headless runs over a pool of seeds (16 by default, a 420 s cap) and prints, per bot, median, min and max survival time, how many runs reached 5:00 and the cap, kills, level, what ended the fallen runs and how often the tower moved, as Markdown. A bot is a movement policy plus a pick rule, named `<policy>+<pick>`. The tower follows the dragon, so every policy is anchored to a fixed world point, home (the dragon's start), never to the tower. Policies: `idle` gives no input (stands on home, fires right, collects nothing, dodges nothing); `aim` stands on home and lets the tower come to rest; `kite` walks a circle of 80 px around home, inside the tether, so the tower keeps following on a smaller circle. `aim` and `kite` aim at the enemy nearest the tower; whenever a gem that is not yet homing lies within 300 px of home (`--gem-range` changes it) they fly to the one nearest the dragon instead; and a mage orb within 100 px that will pass within its radius + `DRAGON_RADIUS` + 4 px of the dragon overrides both: they step straight away from its path, the most imminent orb first (`--no-dodge` turns it off). Pick rules, used while level-up offers are open: `naive` takes card 0; `greedy` takes Repair when tower HP is below 40%, else a new weapon, else the upgrade of the highest-level weapon, else a buff upgrade, else a new buff, else card 0. A fall's cause is the source (an enemy type's contact, or orbs) that took the most tower HP in the 30 s before it. `--timeline` adds tower HP, enemies alive, kills, spawned and level over time; `--causes` adds the tower HP lost by source per window and the HP repaired; `--set` runs a what-if (a timeline rate, the tower HP, an enemy field) without editing `content.js`. Tests run one short seed per bot and pin the anchoring, the dodge and the damage split.
+- **Balance instrument:** `node tools/measure.mjs` plays headless runs over a pool of seeds (16 by default, a 420 s cap) and prints, per bot, median, min and max survival time, how many runs reached 5:00 and the cap, kills, level, what ended the fallen runs and how often the tower moved, as Markdown. A bot is a movement policy plus a pick rule, named `<policy>+<pick>`. The tower follows the dragon, so every policy is anchored to a fixed world point, home (the dragon's start), never to the tower. Policies: `idle` gives no input (stands on home, fires right, collects nothing, dodges nothing); `aim` stands on home and lets the tower come to rest; `kite` walks a circle of 80 px around home, inside the tether, so the tower keeps following on a smaller circle. `aim` and `kite` aim at the enemy nearest the tower; whenever a gem that is not yet homing lies within 300 px of home (`--gem-range` changes it) they fly to the one nearest the dragon instead; and a mage orb within 100 px that will pass within its radius + `DRAGON_RADIUS` + 4 px of the dragon overrides both: they step straight away from its path, the most imminent orb first (`--no-dodge` turns it off). Pick rules, used while level-up offers are open: `naive` takes card 0; `greedy` takes Repair when tower HP is below 40%, else a new weapon, else the upgrade of the highest-level weapon, else a buff upgrade, else a new buff, else card 0. A fall's cause is the source (an enemy type's contact, or orbs) that took the most tower HP in the 30 s before it. `--timeline` adds tower HP, enemies alive, kills, spawned and level over time; `--causes` adds the tower HP lost by source per window and the HP repaired; `--set` runs a what-if (a timeline rate, the tower HP, an enemy field) without editing `content.js`; `--meta fire:P/S,arcane:P/S,physical:P/S` plays every run with those armoury ranks (Power/Shred, types left out 0/0), mapped to `meta` as the browser maps them (§13.1). Tests run one short seed per bot and pin the anchoring, the dodge and the damage split.
 
 ---
 
@@ -678,7 +696,7 @@ Each milestone is playable on its own.
 
 ## 22. Out of scope
 
-Unchanged from the design: meta progression (beyond the `meta` construction hook, §4.1), multiple stages, evolutions, terrain, mobile, music, controller rumble, merchants, royals, fireball lob, claw.
+Unchanged from the design: meta progression beyond the armoury (§13.1), multiple stages, evolutions, terrain, mobile, music, controller rumble, merchants, royals, fireball lob, claw.
 
 ## 23. Open decisions
 

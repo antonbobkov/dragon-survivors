@@ -6,7 +6,7 @@ import { cssToInternal } from './viewport.js';
 export const STICK_DEADZONE = 0.25;
 
 // Standard gamepad mapping.
-export const PAD = { A: 0, BACK: 8, START: 9, LEFT: 14, RIGHT: 15 };
+export const PAD = { A: 0, B: 1, Y: 3, BACK: 8, START: 9, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
 
 const MOVE_KEYS = {
   left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
@@ -15,6 +15,7 @@ const MOVE_KEYS = {
 const PAUSE_KEYS = ['Escape', 'KeyP'];
 const BESTIARY_KEYS = ['Tab']; // §17.1; gamepad Back/Select
 const CONFIRM_KEYS = ['Enter', 'NumpadEnter'];
+const ARMOURY_KEYS = ['KeyU']; // §13.1; gamepad Y
 const PICK_KEYS = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 };
 
 // §19 debug keys (read always, acted on only by a debug App): F1–F4 grant a weapon at
@@ -58,8 +59,10 @@ const anyHeld = (held, codes) => codes.some((c) => held.has(c));
 //   dragon: { x, y } dragon position on screen (internal px),
 // }
 // state: from createInputState(); updated in place (device, previous pad buttons).
-// Returns { intent, device, pause, bestiary, confirm, pick, nav, click, debug };
-// pause/bestiary/confirm/pick/nav are edges, and so is debug: { grants: weapon ids in press order, jump: bool, speed: -1 | 0 | 1 }.
+// Returns { intent, device, pause, bestiary, armoury, back, confirm, pick, nav, menu, click, debug };
+// pause/bestiary/armoury/back/confirm/pick/nav/menu are edges. `nav` is the d-pad's left/right
+// (level-up cards); `menu` { x, y } is one step from a move key or the d-pad (armoury).
+// debug is { grants: weapon ids in press order, jump: bool, speed: -1 | 0 | 1 }.
 export function readFrame(raw, state) {
   const held = raw.held || new Set();
   const pressed = raw.pressed || [];
@@ -102,6 +105,13 @@ export function readFrame(raw, state) {
   let pick = -1;
   for (const c of pressed) if (c in PICK_KEYS) pick = PICK_KEYS[c];
   const nav = (padEdge(PAD.RIGHT) ? 1 : 0) - (padEdge(PAD.LEFT) ? 1 : 0);
+  const armoury = pressed.some((c) => ARMOURY_KEYS.includes(c)) || padEdge(PAD.Y);
+  const back = padEdge(PAD.B);
+  const pressedAny = (codes) => pressed.some((c) => codes.includes(c));
+  const menu = {
+    x: (pressedAny(MOVE_KEYS.right) || padEdge(PAD.RIGHT) ? 1 : 0) - (pressedAny(MOVE_KEYS.left) || padEdge(PAD.LEFT) ? 1 : 0),
+    y: (pressedAny(MOVE_KEYS.down) || padEdge(PAD.DOWN) ? 1 : 0) - (pressedAny(MOVE_KEYS.up) || padEdge(PAD.UP) ? 1 : 0),
+  };
   const click = clicks.length ? clicks[clicks.length - 1] : null;
   const debug = { grants: [], jump: false, speed: 0 };
   for (const c of pressed) {
@@ -112,7 +122,7 @@ export function readFrame(raw, state) {
 
   return {
     intent: { moveX, moveY, aimX, aimY, hasAim, confirm, pick },
-    device: state.device, pause, bestiary, confirm, pick, nav, click, debug,
+    device: state.device, pause, bestiary, armoury, back, confirm, pick, nav, menu, click, debug,
   };
 }
 

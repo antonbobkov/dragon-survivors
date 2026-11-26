@@ -6,6 +6,8 @@ import { drawAnim } from './draw.js';
 import { cardInfo } from '../sim/levelup.js';
 
 export const BUTTON = { x: VIEW_W / 2 - 90, y: 430, w: 180, h: 44 };
+// The title's second button (§13.1); a click on it opens the armoury instead of starting.
+export const ARMOURY_BUTTON = { x: VIEW_W / 2 - 90, y: 514, w: 180, h: 36 };
 export const OVERLAY = 'rgba(0, 0, 0, 0.6)';
 
 export const CONTROLS = [
@@ -15,14 +17,21 @@ export const CONTROLS = [
   'Foes   Tab             Back',
 ];
 
-// Game-over lines: time survived, level reached, kills, score.
-export function gameOverLines(game) {
-  return [
+export function inRect(r, x, y) {
+  return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
+}
+
+// Game-over lines: time survived, level reached, kills, score, and with `gold`
+// ({ earned, purse }) the gold this run earned and the purse after it (§13.1).
+export function gameOverLines(game, gold = null) {
+  const lines = [
     `Time   ${formatTime(game.t)}`,
     `Level  ${game.level}`,
     `Kills  ${game.kills}`,
     `Score  ${game.score()}`,
   ];
+  if (gold) lines.push(`Gold   +${gold.earned}  (${gold.purse} in purse)`);
+  return lines;
 }
 
 function overlay(ctx) {
@@ -30,11 +39,10 @@ function overlay(ctx) {
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 }
 
-function button(ctx, label) {
-  const b = BUTTON;
+function button(ctx, label, b = BUTTON, fill = '#b8402a') {
   ctx.fillStyle = '#000';
   ctx.fillRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4);
-  ctx.fillStyle = '#b8402a';
+  ctx.fillStyle = fill;
   ctx.fillRect(b.x, b.y, b.w, b.h);
   shadowText(ctx, label, b.x + b.w / 2, b.y + b.h / 2, { align: 'center', baseline: 'middle' });
 }
@@ -43,13 +51,16 @@ function controls(ctx, y) {
   CONTROLS.forEach((line, i) => shadowText(ctx, line, VIEW_W / 2, y + i * 24, { align: 'center', color: '#ddd' }));
 }
 
-export function drawTitle(ctx) {
+// `gold`: the purse's gold, shown when given (§13.1).
+export function drawTitle(ctx, gold = null) {
   overlay(ctx);
   shadowText(ctx, 'DRAGON SURVIVORS', VIEW_W / 2, 100, { align: 'center', font: BIG_FONT, color: '#ffb84a' });
   shadowText(ctx, 'Keep the tower alive.', VIEW_W / 2, 150, { align: 'center' });
   controls(ctx, 196);
+  if (gold !== null) shadowText(ctx, `Gold ${gold}`, VIEW_W / 2, 330, { align: 'center', color: '#ffd23f' });
   button(ctx, 'Start');
   shadowText(ctx, 'click, Enter or A', VIEW_W / 2, BUTTON.y + BUTTON.h + 14, { align: 'center', color: '#aaa', font: FONT });
+  button(ctx, 'Armoury  U / Y', ARMOURY_BUTTON, '#3a3248');
 }
 
 export function drawPause(ctx) {
@@ -59,10 +70,10 @@ export function drawPause(ctx) {
   shadowText(ctx, 'Esc, P or Start to resume', VIEW_W / 2, 440, { align: 'center', color: '#aaa' });
 }
 
-export function drawGameOver(ctx, game) {
+export function drawGameOver(ctx, game, gold = null) {
   overlay(ctx);
   shadowText(ctx, 'The tower has fallen', VIEW_W / 2, 90, { align: 'center', font: BIG_FONT, color: '#ff6a4a' });
-  gameOverLines(game).forEach((line, i) => shadowText(ctx, line, VIEW_W / 2 - 80, 140 + i * 28));
+  gameOverLines(game, gold).forEach((line, i) => shadowText(ctx, line, VIEW_W / 2 - 80, 140 + i * 28));
   button(ctx, 'Retry');
   shadowText(ctx, 'click, Enter or A', VIEW_W / 2, BUTTON.y + BUTTON.h + 14, { align: 'center', color: '#aaa' });
 }
