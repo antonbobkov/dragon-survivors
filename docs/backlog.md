@@ -4,7 +4,7 @@ Every open task, one table. Only the orchestrator edits this file. Work files li
 
 | Id | Task | Source | Depends on | Model | Status |
 |---|---|---|---|---|---|
-| T-019 | Generic buff set, knockback and mass, Explode/Pierce affinity (D-7) | reports/designs/2026-11-26-strategy-depth-design.md §3 | T-017, T-018 | Opus | planned |
+| T-019 | Generic buff set, knockback and mass, Explode/Pierce affinity (D-7) | reports/designs/2026-11-26-strategy-depth-design.md §3 | T-017, T-018 | Opus | in progress |
 | T-020 | Damage calculator (`tools/dps.mjs`, `--check`) | reports/designs/2026-11-26-strategy-depth-design.md §11 | T-018, T-019 | Opus | planned |
 | T-021 | Enemy tiers: colour/outline/scale scheme | reports/designs/2026-11-26-strategy-depth-design.md §6 | T-017, T-018 | Opus | planned |
 | T-022 | Claws: left, right, dual claw evolution | reports/designs/2026-11-26-strategy-depth-design.md §4 | T-017, T-019 | Opus | planned |
