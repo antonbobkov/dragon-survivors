@@ -17,3 +17,4 @@ Every open task, one table. Only the orchestrator edits this file. Work files li
 | T-030 | Merchant | D-8 (accepted) | T-029 | Opus | planned |
 | T-031 | Princess | D-9 (accepted) | T-029 | Opus | planned |
 | T-032 | Prince | D-10 (accepted) | T-029 | Opus | planned |
+| T-033 | Art pipeline: fixes from the T-017 review | reports/reviews/2026-11-26-T-017-review.md | T-021 | Sonnet | open |
