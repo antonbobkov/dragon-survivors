@@ -1,19 +1,25 @@
-// Bestiary (§17.1): every enemy type with its sprite, stats and resistances; types not met
-// this run as silhouettes. Pure helpers (layout, rows, bar styles) are tested under node;
+// Bestiary (§17.1): every enemy type with its sprite, stats, resistances and the tiers met
+// (§8.6); types not met this run as silhouettes. One legend line gives the tier multipliers. Pure helpers (layout, rows, bar styles) are tested under node;
 // drawBestiary reads the game and never writes it.
-import { ENEMIES, ENEMY_TYPES, DAMAGE_TYPES, DAMAGE_TYPE_NAMES, TICK_HZ, GOLEM_KNOCKBACK } from '../sim/content.js';
+import { ENEMIES, ENEMY_TYPES, DAMAGE_TYPES, DAMAGE_TYPE_NAMES, TICK_HZ, TIERS, TIER_IDS, GOLEM_KNOCKBACK } from '../sim/content.js';
 import { effectiveResist } from '../sim/damage.js';
 import { VIEW_W, VIEW_H } from '../viewport.js';
 import { shadowText, BIG_FONT } from './hud.js';
 import { frameRect, SPRITE_SCALE } from './draw.js';
 
 export const BESTIARY = {
-  titleY: 24, top: 72, bottom: 548, hintY: 568,
+  titleY: 24, top: 72, bottom: 540, legendY: 546, hintY: 568,
   cols: 2, cardW: 452, colGap: 16, rowGap: 8, maxCardH: 110,
   spriteBox: 80, textX: 92, barsX: 232, nameW: 72,
   barW: 52, barH: 10, rowH: 24, statH: 18,
   font: '16px monospace', small: '14px monospace',
+  pip: 6, pipGap: 3, pipBottom: 6, // tier pips: px size, gap, and inset from the card's bottom
 };
+
+// §8.6 tier colours: the outline colours of the generated tier sprites (tools/manifest.json),
+// plain as a light grey. A pip not met yet is TIER_UNMET.
+export const TIER_COLORS = { 1: '#e8e8e8', 2: '#d8702c', 3: '#a0b4d8', 4: '#f8c000' };
+export const TIER_UNMET = '#3a3448';
 
 export const RESIST_COLORS = { weak: '#e0533a', neutral: '#8a8a8a', resist: '#4a9cff', immune: '#ffd23f' };
 const SILHOUETTE = '#0b0b12';
@@ -42,7 +48,14 @@ export function resistStyle(r) {
   return { label: '0%', color: RESIST_COLORS.neutral, fill: 0 };
 }
 
+// The tier legend's text: each multiplier for tiers 1–4, `HP ×1/2.5/6/15  DPS ×…  XP ×…  SPD ×…`.
+export function tierLegend() {
+  const col = (k) => TIER_IDS.map((t) => TIERS[t][k]).join('/');
+  return `HP ×${col('hp')}  DPS ×${col('dps')}  XP ×${col('xp')}  SPD ×${col('speed')}`;
+}
+
 // One entry per enemy type, in ENEMY_TYPES order. Resistances are after the armoury's shred.
+// `tiers`: the tiers of a met type seen this run, ascending (none for the golem, always tier 1).
 export function bestiaryRows(game) {
   return ENEMY_TYPES.map((type) => {
     const def = ENEMIES[type];
@@ -50,10 +63,11 @@ export function bestiaryRows(game) {
     return {
       type, seen, name: seen ? def.name : '???',
       walk: def.walk, alpha: def.alpha, unkillable: !!def.unkillable,
+      tiers: seen && !def.unkillable ? [...((game.seenTiers && game.seenTiers[type]) || [])] : [],
       stats: seen ? [
         `HP ${def.hp === Infinity ? '∞' : def.hp}  XP ${def.xp}`,
         `SPD ${def.speed}  DPS ${def.dps}`,
-        // §8.6: mass divides knockback; the golem keeps its fixed push per hit.
+        // §8.7: mass divides knockback; the golem keeps its fixed push per hit.
         def.mass ? `MASS ${def.mass}` : `KNOCKBACK ${GOLEM_KNOCKBACK}`,
       ] : [],
       resists: seen && !def.unkillable ? DAMAGE_TYPES.map((t) => {
@@ -105,6 +119,19 @@ function defaultCanvas(w, h) {
   return Object.assign(document.createElement('canvas'), { width: w, height: h });
 }
 
+// One pip per tier, met ones in the tier's colour, left to right from (x, y), each with a black edge.
+function drawPips(ctx, x, y, met) {
+  const L = BESTIARY;
+  TIER_IDS.forEach((t, i) => {
+    const px = x + i * (L.pip + L.pipGap);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(px - 1, y - 1, L.pip + 2, L.pip + 2);
+    ctx.fillStyle = met.includes(t) ? TIER_COLORS[t] : TIER_UNMET;
+    ctx.fillRect(px, y, L.pip, L.pip);
+  });
+}
+const pipsWidth = () => TIER_IDS.length * BESTIARY.pip + (TIER_IDS.length - 1) * BESTIARY.pipGap;
+
 // `ms` animates the walks while the panel is open (the sim is stopped). `makeCanvas(w, h)`
 // builds the offscreen canvases for silhouettes.
 export function drawBestiary(ctx, game, atlas, ms = 0, { makeCanvas = defaultCanvas } = {}) {
@@ -140,6 +167,9 @@ export function drawBestiary(ctx, game, atlas, ms = 0, { makeCanvas = defaultCan
       }
     }
 
+    // Tier pips at the bottom of the sprite box: the tiers of this type met this run.
+    if (row.tiers.length) drawPips(ctx, Math.round(c.x + 8 + (L.spriteBox - pipsWidth()) / 2), c.y + c.h - L.pipBottom - L.pip, row.tiers);
+
     // Name, then the stat lines statH apart.
     const tx = c.x + L.textX;
     const ty = c.y + Math.round((c.h - 3 * L.rowH) / 2) + 2;
@@ -165,5 +195,14 @@ export function drawBestiary(ctx, game, atlas, ms = 0, { makeCanvas = defaultCan
       shadowText(ctx, res.label, barX + L.barW + 8, y, { font: L.small, color: res.color });
     });
   });
+  // Legend: `Tiers`, the four tier pips, then the multipliers in that order, centred.
+  const label = 'Tiers', text = tierLegend();
+  ctx.font = L.small;
+  const lw = ctx.measureText(label).width, tw = ctx.measureText(text).width;
+  let x = Math.round((VIEW_W - (lw + 8 + pipsWidth() + 8 + tw)) / 2);
+  shadowText(ctx, label, x, L.legendY, { font: L.small, color: '#ddd' });
+  x += lw + 8;
+  drawPips(ctx, x, L.legendY + 4, TIER_IDS);
+  shadowText(ctx, text, x + pipsWidth() + 8, L.legendY, { font: L.small, color: '#ddd' });
   shadowText(ctx, 'Tab or Esc to close', VIEW_W / 2, L.hintY, { align: 'center', color: '#aaa' });
 }

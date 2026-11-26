@@ -1,6 +1,6 @@
 // Damage types, resistances and the one damage function every hit on an enemy goes through
 // (§12.1): projectiles, explosions, the ring, and every later weapon. Knockback by weapon
-// knock and enemy mass (§8.6) is applied here, right after the damage.
+// knock and enemy mass (§8.7) is applied here, right after the damage.
 import { ENEMIES, DAMAGE_TYPES, RESIST_MIN } from './content.js';
 import { onEnemyHit } from './enemies.js';
 
@@ -41,7 +41,7 @@ export function damageTaken(amount, r, power = 1) {
   return Math.max(1, Math.ceil(v - EPS));
 }
 
-// §8.6 knockback: the px a hit of effective knock `knock` (the weapon's knock × Force) pushes
+// §8.7 knockback: the px a hit of effective knock `knock` (the weapon's knock × Force) pushes
 // an enemy type: knock / mass. 0 for a type without a mass (the golem, which has its own rule).
 export function knockDistance(enemyType, knock) {
   const def = ENEMIES[enemyType];
@@ -64,7 +64,7 @@ export function knockBack(e, knock, source) {
 
 // Every hit on an enemy: `amount` is the hit's damage after buffs, `type` one of
 // DAMAGE_TYPES, `source` the hitter ({ x, y }: the projectile, ring fireball or explosion
-// centre), `knock` the hit's knock after Force (§8.6, default 0). Applies the resistance and
+// centre), `knock` the hit's knock after Force (§8.7, default 0). Applies the resistance and
 // the armoury, takes the result off the enemy's HP, then knocks a survivor back from
 // `source`, and returns the damage (not capped at the HP left). A killing hit pushes nothing.
 // An unkillable enemy (the golem) takes nothing and returns 0; it ignores `knock` and keeps

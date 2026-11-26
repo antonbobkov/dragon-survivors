@@ -1,7 +1,7 @@
 // World rendering (§5): background, tether ring, entities in draw order, effects.
 // Reads the game and never writes it.
 import { mulberry32 } from '../sim/rng.js';
-import { TETHER_LENGTH, WEAPONS, TICK_HZ } from '../sim/content.js';
+import { TETHER_LENGTH, WEAPONS, TICK_HZ, tierAnim, tierOf } from '../sim/content.js';
 import { VIEW_W, VIEW_H, cameraOffset } from '../viewport.js';
 
 export const SPRITE_SCALE = 2;
@@ -55,6 +55,14 @@ export function drawAnim(ctx, atlas, name, frame, x, y, opts = {}) {
     ctx.drawImage(atlas.image, r.x, r.y, r.w, r.h, dx, dy, dw, dh);
   }
   ctx.restore();
+}
+
+// §8.6 what an enemy or a death effect of tier `ent.tier` draws: the tier's anim (`<anim>@t<n>`;
+// the plain anim if the atlas has no such variant) at the tier's screen scale, as a multiple of
+// the standard 2× (an effect's own `scale` multiplies it).
+export function tierSprite(atlas, ent) {
+  const name = tierAnim(ent.anim, ent.tier);
+  return { anim: atlas.anims[name] ? name : ent.anim, scale: tierOf(ent).scale / SPRITE_SCALE };
 }
 
 // Speckle positions of the grass tile, from its own fixed-seed RNG.
@@ -187,7 +195,8 @@ export function createRenderer({ atlas, makeCanvas }) {
     }
 
     for (const e of enemyDrawOrder(game.enemies, sorted)) {
-      drawAnim(ctx, atlas, e.anim, e.frame, e.x + o.x, e.y + o.y, { flip: e.flip, alpha: e.alpha });
+      const s = tierSprite(atlas, e);
+      drawAnim(ctx, atlas, s.anim, e.frame, e.x + o.x, e.y + o.y, { flip: e.flip, alpha: e.alpha, scale: s.scale });
     }
     sorted.length = 0;
 
@@ -211,7 +220,8 @@ export function createRenderer({ atlas, makeCanvas }) {
     drawAnim(ctx, atlas, d.anim, d.frame, d.x + o.x, d.y + o.y, { flip: d.flip });
 
     for (const fx of game.effects) {
-      drawAnim(ctx, atlas, fx.anim, fx.frame, fx.x + o.x, fx.y + o.y, { flip: fx.flip, alpha: fx.alpha, scale: fx.scale });
+      const s = tierSprite(atlas, fx);
+      drawAnim(ctx, atlas, s.anim, fx.frame, fx.x + o.x, fx.y + o.y, { flip: fx.flip, alpha: fx.alpha, scale: (fx.scale ?? 1) * s.scale });
     }
   }
 

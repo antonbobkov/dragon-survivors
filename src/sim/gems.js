@@ -1,12 +1,12 @@
 // XP gems (§14): drop on kill, home in once the dragon comes near, collect, queue level-ups.
-import { ENEMIES, DT, DRAGON_PICKUP_RADIUS, GEM_SPEED, GEM_COLLECT_RADIUS, MAX_GEMS, xpToNext } from './content.js';
+import { ENEMIES, tierOf, DT, DRAGON_PICKUP_RADIUS, GEM_SPEED, GEM_COLLECT_RADIUS, MAX_GEMS, xpToNext } from './content.js';
 import { openOffers } from './levelup.js';
 
 // Called once per killed enemy (step 9), at its death position, before its death effect.
-// Enemies worth no XP (the golem) drop nothing. Past MAX_GEMS the oldest gem is merged
+// The gem is worth the type's XP times the tier's (§8.6). Enemies worth no XP (the golem) drop nothing. Past MAX_GEMS the oldest gem is merged
 // into the gem nearest to it (ties: lower id).
 export function dropGem(game, enemy) {
-  const value = ENEMIES[enemy.type].xp;
+  const value = ENEMIES[enemy.type].xp * tierOf(enemy).xp;
   if (!(value > 0)) return;
   game.gems.push({ id: game.nextId++, x: enemy.x, y: enemy.y, value, homing: false });
   if (game.gems.length > MAX_GEMS) mergeOldest(game.gems);

@@ -1,6 +1,6 @@
 # T-028: Armoury: out-of-game upgrades
 
-**Source:** [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §9 · **Model:** Opus · **Depends on:** T-018 (merged: `meta` hook in `new Game({ meta })`, `dealDamage`)
+**Source:** [strategy-depth design](../../../reports/designs/2026-11-26-strategy-depth-design.md) §9 · **Model:** Opus · **Depends on:** T-018 (merged: `meta` hook in `new Game({ meta })`, `dealDamage`)
 
 ## Why
 

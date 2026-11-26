@@ -1,17 +1,22 @@
-// Screen flow and ticking (§4, §13, §14): title -> play <-> paused, level-up cards, game
-// over -> Retry. No DOM: main.js feeds it timestamps and input frames, so it is tested
-// under node. Only `game.tick(intent)` enters the sim.
+// Screen flow and ticking (§4, §13, §14): title <-> armoury, title -> play <-> paused,
+// level-up cards, game over (gold) -> Retry. No DOM: main.js feeds it timestamps, input
+// frames and a storage wrapper, so it is tested under node. Only `game.tick(intent)` enters
+// the sim; the armoury reaches it only as the `meta` a Game is built with (§13.1).
 import { Accumulator, SPEEDS } from './loop.js';
-import { cardAt } from './render/screens.js';
+import { cardAt, inRect, ARMOURY_BUTTON } from './render/screens.js';
+import { armouryNav, armouryItemAt, cellItem, ITEMS, RESET, BACK } from './render/armoury.js';
+import { createStore, metaFromRanks, goldFor, addGold, buy, refundAll, totalSpent } from './armoury.js';
 
 // §19: F5 jumps the clock to 4:50.
 export const DEBUG_JUMP_TO = 290;
 
 export class App {
-  // makeGame(seed) -> Game; fixedSeed: the ?seed=N value or null; randomSeed() -> a new seed;
-  // audio: { play(name), resume() -> Promise }. debug: §19 tools (the page has ?debug=1;
-  // makeGame must then build the Game with { debug: true }); now() -> ms, for tick timing.
-  constructor({ makeGame, fixedSeed = null, randomSeed, audio, debug = false, now = () => 0 }) {
+  // makeGame(seed, meta) -> Game (meta from the armoury's ranks, §13.1); fixedSeed: the
+  // ?seed=N value or null; randomSeed() -> a new seed; audio: { play(name), resume() ->
+  // Promise }. debug: §19 tools (the page has ?debug=1; makeGame must then build the Game
+  // with { debug: true }); now() -> ms, for tick timing. store: { load() -> purse,
+  // save(purse) } (armoury.js createStore); the default keeps the purse in memory only.
+  constructor({ makeGame, fixedSeed = null, randomSeed, audio, debug = false, now = () => 0, store = createStore(null) }) {
     this.makeGame = makeGame;
     this.debug = debug;
     this.now = now;
@@ -21,8 +26,15 @@ export class App {
     this.randomSeed = randomSeed;
     this.audio = audio;
     this.acc = new Accumulator();
-    this.game = makeGame(this.nextSeed());
-    this.screen = 'title'; // 'title' | 'play' | 'paused' | 'bestiary'
+    this.store = store;
+    this.purse = store.load(); // { gold, ranks } (§13.1)
+    this.armourySel = 0; // highlighted armoury item
+    this.resetArmed = false; // the armoury's Reset waits for its confirm
+    this.ranksAtOpen = '';
+    this.goldGame = null; // the game whose gold has been paid out
+    this.goldEarned = 0; // gold earned by that game
+    this.game = makeGame(this.nextSeed(), this.meta());
+    this.screen = 'title'; // 'title' | 'armoury' | 'play' | 'paused' | 'bestiary'
     this.bestiaryFrom = 'play'; // the screen the bestiary returns to when closed (§17.1)
     this.pending = { confirm: false, pick: -1, debug: [] };
     this.cardSel = 0; // highlighted level-up card (d-pad + A), reset for every new set of offers
@@ -31,6 +43,85 @@ export class App {
 
   nextSeed() {
     return this.fixedSeed ?? this.randomSeed();
+  }
+
+  // The sim's `meta` for the current ranks (§4.1, §13.1).
+  meta() {
+    return metaFromRanks(this.purse.ranks);
+  }
+
+  setPurse(purse) {
+    this.purse = purse;
+    this.store.save(purse);
+  }
+
+  openArmoury() {
+    this.screen = 'armoury';
+    this.armourySel = 0;
+    this.resetArmed = false;
+    this.ranksAtOpen = JSON.stringify(this.purse.ranks);
+  }
+
+  // Back to the title. If the ranks changed, the title's unticked game is rebuilt (same
+  // seed) so the run that starts from it uses them.
+  closeArmoury() {
+    this.screen = 'title';
+    this.resetArmed = false;
+    if (JSON.stringify(this.purse.ranks) !== this.ranksAtOpen) this.game = this.makeGame(this.game.seed, this.meta());
+  }
+
+  // Enter / A / a click on armoury item `i`: buy a rank, Reset (twice: arm, then refund), Back.
+  activateArmoury(i) {
+    if (i === BACK) { this.closeArmoury(); return; }
+    if (i === RESET) {
+      if (this.resetArmed) {
+        this.setPurse(refundAll(this.purse));
+        this.resetArmed = false;
+        this.audio.play('pickup');
+      } else {
+        this.resetArmed = totalSpent(this.purse) > 0;
+      }
+      return;
+    }
+    this.resetArmed = false;
+    const { track, type } = cellItem(i);
+    const next = buy(this.purse, track, type);
+    if (next) {
+      this.setPurse(next);
+      this.audio.play('powerup');
+    }
+  }
+
+  handleArmoury(input) {
+    if (input.armoury || input.pause || input.back) { this.closeArmoury(); return; }
+    const m = input.menu || { x: 0, y: 0 };
+    if (m.x || m.y) {
+      const sel = armouryNav(this.armourySel, m.x, m.y);
+      if (sel !== this.armourySel) this.resetArmed = false;
+      this.armourySel = sel;
+    }
+    let act = input.confirm ? this.armourySel : -1;
+    if (input.click) {
+      const i = armouryItemAt(input.click.x, input.click.y);
+      if (i >= 0) {
+        if (i !== this.armourySel) this.resetArmed = false;
+        this.armourySel = act = i;
+      }
+    }
+    if (act >= 0 && act < ITEMS) this.activateArmoury(act);
+  }
+
+  // Pays out a finished run's gold, once per game (§13.1).
+  payGold() {
+    if (this.game.phase !== 'over' || this.goldGame === this.game) return;
+    this.goldGame = this.game;
+    this.goldEarned = goldFor(this.game.score());
+    this.setPurse(addGold(this.purse, this.goldEarned));
+  }
+
+  // The gold line of the game-over screen ({ earned, purse }), or null before the payout.
+  goldLine() {
+    return this.goldGame === this.game ? { earned: this.goldEarned, purse: this.purse.gold } : null;
   }
 
   // Ticks run only while playing (title, pause and the bestiary stop them). The sim itself
@@ -61,7 +152,7 @@ export class App {
 
   // New game with a new random seed (or the fixed ?seed), straight into play.
   retry() {
-    this.game = this.makeGame(this.nextSeed());
+    this.game = this.makeGame(this.nextSeed(), this.meta());
     this.start();
   }
 
@@ -82,7 +173,14 @@ export class App {
   handle(input) {
     if (this.debug && input.debug && input.debug.speed) this.changeSpeed(input.debug.speed);
     if (this.screen === 'title') {
-      if (input.confirm || input.click) this.start();
+      // §13.1: U / Y or a click on the Armoury button opens the armoury; any other click,
+      // Enter or A starts the run.
+      if (input.armoury || (input.click && inRect(ARMOURY_BUTTON, input.click.x, input.click.y))) this.openArmoury();
+      else if (input.confirm || input.click) this.start();
+      return;
+    }
+    if (this.screen === 'armoury') {
+      this.handleArmoury(input);
       return;
     }
     // §17.1: Tab / Back opens the bestiary during a run (from play or pause; ticks stop);
@@ -152,6 +250,7 @@ export class App {
       this.stats.tickMs = this.stats.tickMs ? this.stats.tickMs * 0.9 + ms * 0.1 : ms;
     }
     this.stats.ticks = n;
+    this.payGold();
     this.syncOffers();
     return n;
   }

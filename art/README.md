@@ -57,6 +57,18 @@ Recolours are generated, never drawn: one manifest line each, derived from any e
 
 Ops always run swap, then tint, then outline (the outline is never tinted). A thin sprite (the skeleton) fills in under an outline; prefer a strength around 0.5–0.7 so the original colours still show through.
 
+### Enemy tiers
+
+The bronze, silver and gold enemies ([§8.6](../docs/demo-spec.md#86-tiers)) are not listed one by one: the manifest's `tiers` block names the enemy anims once and the three tier variants once, and the build makes `<anim>@t2`, `@t3` and `@t4` of each (45 anims). A new enemy anim gets its tiers by joining `tiers.anims` (a test checks the list against `content.js`).
+
+| Tier | Tint | Strength | Outline | Why |
+|---|---|---|---|---|
+| bronze | `#c86428` | 0.6 | `#d8702c` | copper: warm and mid-bright, so it stands off the dark green grass and away from gold |
+| silver | `#b0c8f0` | 0.6 | `#a0b4d8` | cold pale blue; the outline is a shade darker than the tinted body so pale sprites (skeleton, ghost knight) keep their detail |
+| gold | `#ffd000` | 0.7 | `#f8c000` | the brightest and most saturated, read at a glance; slightly stronger so grey armour turns gold |
+
+The outlines are the pips' colours in the bestiary. Check a change on grass for every enemy: filter the art preview by `@t` (silver and gold are 3× in game).
+
 ## The palette
 
 [`palette.txt`](palette.txt) is the pack's colours, sampled by `node tools/palette.mjs` (the most common colours of every imported BMP frame; regenerating keeps the names). Use these names. The pack is a classic 16-colour-style palette: each hue in steps of `ff`, `bf`, `7f`, `3f`.
@@ -86,7 +98,7 @@ What the pack's sprites look like (print any of them with `node tools/bmp-to-art
 
 1. Draw or edit the text file (start from a pack sprite with `node tools/bmp-to-art.mjs <anim or bmp>` if it helps).
 2. `npm run build:assets` (needs the pack at `sourceRoot`, `--source` or `DRAGONGAME_ASSETS`).
-3. `npm run serve` and open <http://localhost:8000/tools/art-preview.html>: every anim, animating, at 2× and 4× on grass and on black. Type a name prefix (`icon.`) in the filter; tick "all frames" for a frame strip.
+3. `npm run serve` and open <http://localhost:8000/tools/art-preview.html>: every anim, animating, at 2×, 3× and 4× on grass and on black. Type a name prefix (`icon.`, or `@t` for the enemy tiers) in the filter; tick "all frames" for a frame strip.
 4. Iterate until it reads at 2× next to the pack's sprites. Commit the art file, the manifest line and the rebuilt `assets/` and `src/sim/anims.js` together. Never commit screenshots.
 
 ## What is here

@@ -25,7 +25,8 @@ dragon-survivors/
   index.html              canvas + script tag, nothing else
   src/
     main.js               load assets, build the App, start the loop (DOM glue only)
-    app.js                screen flow (title, play, pause, game over, Retry) and ticking; no DOM
+    app.js                screen flow (title, armoury, play, pause, game over, Retry) and ticking; no DOM
+    armoury.js            gold, the purse and its ranks, rank costs, ranks -> meta, storage wrapper (§13.1); no DOM
     loop.js               fixed-step accumulator + requestAnimationFrame driver
     input.js              keyboard, mouse, gamepad -> Intent
     viewport.js           canvas fit, CSS -> internal pixels, camera offset; no DOM
@@ -35,6 +36,7 @@ dragon-survivors/
       draw.js             world rendering (background, entities, effects)
       hud.js              timer, tower HP bar, XP bar, weapon/buff icons
       screens.js          title, pause, level-up cards, game over
+      armoury.js          armoury screen (§13.1)
       bestiary.js         enemy stats panel (§17.1)
       debug.js            debug overlay: collision circles, loop and entity stats (§19)
     sim/                  no DOM, no canvas, no Date. Pure state + tick.
@@ -66,7 +68,7 @@ dragon-survivors/
     manifest.json         which dragongame sequences and art files to import, under which names
     palette.mjs           samples the pack's colours into art/palette.txt
     bmp-to-art.mjs        prints pack BMPs or atlas anims as art files (to study or start from)
-    art-preview.html/.mjs every atlas anim, animated, at 2× and 4× on grass and black (not loaded by the game)
+    art-preview.html/.mjs every atlas anim, animated, at 2×, 3× and 4× on grass and black (not loaded by the game)
     copy-sounds.mjs
     measure.mjs           balance instrument: headless bot runs over a seed pool, Markdown tables
   test/
@@ -107,7 +109,7 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 
 `tools/build-atlas.mjs`:
 
-1. Reads `manifest.json`: a list of entries like `{ "name": "knight.walk", "list": "knight/knight.txt" }` for sequences `{ "name": "castle", "file": "castle/castle0000.bmp" }` for single frames, and `{ "name": "explosion.big", "files": [...] }` for numbered BMP ranges that have no `.txt`. Frame keys are the source path relative to the source root, with forward slashes; a frame used by several anims is packed once. Two more sources: `{ "name": "icon.might", "art": "icons/might.txt" }` reads a text pixel-art file under `art/` (§3.4), its frame keys `art/<path>:<index>` (`art/icons/might.txt:0`), which never meet a BMP path; and `{ "name": "knight.walk.gold", "from": "knight.walk", ... }` reuses the frames and ticks of an earlier entry so a variant can be derived from it. Each entry has exactly one source; an unknown field is an error. Any entry may add colour variants (§3.5): `"swap"`, `"tint"` with `"tintStrength"`, `"outline"`. An entry with `"swap": "rg"` (any two different channels of `r`, `g`, `b`) swaps those colour channels of every pixel after decoding. Every variant op appends a suffix to the frame keys (`#rg`, `#tint=rrggbb@s`, `#outline=rrggbb`), so a recoloured frame is packed apart from the original. The source root is `sourceRoot` in the manifest, overridden by `--source <dir>` or the `DRAGONGAME_ASSETS` environment variable. The manifest also lists the `sounds` to copy.
+1. Reads `manifest.json`: a list of entries like `{ "name": "knight.walk", "list": "knight/knight.txt" }` for sequences `{ "name": "castle", "file": "castle/castle0000.bmp" }` for single frames, and `{ "name": "explosion.big", "files": [...] }` for numbered BMP ranges that have no `.txt`. Frame keys are the source path relative to the source root, with forward slashes; a frame used by several anims is packed once. Two more sources: `{ "name": "icon.might", "art": "icons/might.txt" }` reads a text pixel-art file under `art/` (§3.4), its frame keys `art/<path>:<index>` (`art/icons/might.txt:0`), which never meet a BMP path; and `{ "name": "knight.walk.gold", "from": "knight.walk", ... }` reuses the frames and ticks of an earlier entry so a variant can be derived from it. Each entry has exactly one source; an unknown field is an error. Any entry may add colour variants (§3.5): `"swap"`, `"tint"` with `"tintStrength"`, `"outline"`. An entry with `"swap": "rg"` (any two different channels of `r`, `g`, `b`) swaps those colour channels of every pixel after decoding. Every variant op appends a suffix to the frame keys (`#rg`, `#tint=rrggbb@s`, `#outline=rrggbb`), so a recoloured frame is packed apart from the original. The source root is `sourceRoot` in the manifest, overridden by `--source <dir>` or the `DRAGONGAME_ASSETS` environment variable. The manifest also lists the `sounds` to copy. Its `tiers` block, `{ "anims": [...], "variants": [{ "tier": 2, "tint": ..., "tintStrength": ..., "outline": ... }, ...] }`, generates the enemy tier sprites (§8.6): for every listed anim (an earlier entry) and every variant, a `from` entry named `<anim>@t<tier>` with the variant's ops, appended after the written entries; a variant's `tier` is a whole number above 1, each at most once, and its other fields are those of a variant (§3.5).
 2. Decodes each BMP with its own decoder (handles `biBitCount` 8 and 24, bottom-up rows, and top-down rows when the height is negative, 4-byte row padding) and sets the key colour to alpha 0. Parses each art file (§3.4). Then applies the entry's variant ops (§3.5), always in the order swap, tint, outline; a `from` entry applies its own ops after those of the entry it derives from. Art colours outside `art/palette.txt` print a warning; every other problem (unknown colour, ragged rows, bad durations, a bad variant field) fails the build with the file and line.
 3. Packs all unique frames into one PNG with a shelf packer (fixed width 512 px, height grows, tallest frames first) and 1px padding. Writes the PNG using Node's built-in `zlib` (no library).
 4. Writes `atlas.json`:
@@ -147,6 +149,7 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 | `burn` | `burn/burn.txt` | 16px, reserved |
 | `icon.laser`, `icon.explode`, `icon.split`, `icon.ring`, `icon.speed`, `icon.big`, `icon.multi`, `icon.nuke` | `bonus/bonuslaser1.bmp`, `bonus/bonusexplosion1.bmp`, `bonus/bonussplit1.bmp`, `bonus/bonusring1.bmp`, `bonus/bonusspeed1.bmp`, `bonus/bonusbig1.bmp`, `bonus/bonusmulti1.bmp`, `bonus/bonusnuke1.bmp` | level-up card icons, roughly 9px. `icon.big` and `icon.multi` are unused in the demo (Might and Haste have their own icons) but imported for later |
 | `icon.might`, `icon.haste`, `icon.duration`, `icon.force`, `icon.amount` | `art/icons/might.txt`, `art/icons/haste.txt`, `art/icons/duration.txt`, `art/icons/force.txt`, `art/icons/amount.txt` | drawn for this game (§3.4), 9×9, the pack's bonus tray under a sword, a lightning bolt, an hourglass, a war hammer and three fireballs. Icons of the buffs Might, Haste, Duration, Force and Amount (§11) |
+| Tier sprites (§8.6) | the manifest's `tiers` block | named `<anim>@t2`, `<anim>@t3` and `<anim>@t4` after every anim of every enemy type except the golem (walk, die, summon, split, spell, burn), recoloured and outlined per tier (§8.6): bronze tint `#c86428` at 0.6 with outline `#d8702c`, silver tint `#b0c8f0` at 0.6 with outline `#a0b4d8`, gold tint `#ffd000` at 0.7 with outline `#f8c000`. 2 px larger than the plain frame each way |
 | `gem` | none, drawn procedurally | 6px diamond, two colours |
 
 Sounds copied as-is from the pack root: `shoot01`, `laser01`, `explosion01`, `explosion02`, `death01`, `death02`, `pickup`, `powerup`, `hit_golem`, `megaslime_hit`, `slime_poke`, `destroy_castle_sound`, `start_game`, `ohno`, `win_level_2`.
@@ -161,7 +164,7 @@ Sprites the pack lacks are drawn for this game as text under `art/`, in the pack
 - `art/palette.txt` lists the pack's colours with names: `tools/palette.mjs` counts the opaque colours of every BMP frame the manifest imports (variants excluded) and keeps the 32 most common with at least 5 pixels (26 colours), keeping existing names by colour. Art uses palette colours; a `#rrggbb` outside the palette is a build warning, not an error.
 - The style: side view facing right (sprites are mirrored in game), flat colours with no anti-aliasing and no semi-transparency, light from the top left, a dark outline only where the pack's sprites have one (most have none), 16 px standard enemies, 2-frame walks, 9×9 icons on the pack's gold bonus tray.
 
-`tools/art-preview.html`, served with the rest of the repo, shows every atlas anim animating at 2× and 4×, on grass and on black, with a name filter and a frame strip; the game never loads it.
+`tools/art-preview.html`, served with the rest of the repo, shows every atlas anim animating at 2×, 3× and 4× (2× is the game scale, 3× that of the silver and gold tiers, §8.6), on grass and on black, with a name filter and a frame strip; the game never loads it.
 
 ### 3.5 Variants
 
@@ -190,7 +193,7 @@ No op turns a transparent pixel opaque except the outline, and no op produces an
 
 The sim's state is plain data on the `Game` object. The loop and the renderer read it and never write it (the loop only calls `tick`).
 
-- **Construction:** `new Game({ seed, timeline, debug, meta })`. `timeline` defaults to the §9 table in `content.js`; tests may pass their own rows. `debug` (default false) makes the sim honour `intent.debug` (§19). `meta` is the out-of-game armoury's effect on the run, per damage type: `{ power: { fire, arcane, physical }, shred: { fire, arcane, physical } }`, where `power` multiplies the damage of that type and `shred` is taken off every enemy's resistance to it (§12.1). Any part may be left out; a missing, non-finite, zero or negative power reads 1 (power is always positive, so the at-least-1 rule of §12.1 holds) and a missing or non-finite shred reads 0, so a run without `meta` is a run with neutral `meta`. It is stored normalised as `game.meta` (all six numbers present), never changes during a run, and is part of the snapshot.
+- **Construction:** `new Game({ seed, timeline, debug, meta })`. `timeline` defaults to the §9 table in `content.js`; tests may pass their own rows. `debug` (default false) makes the sim honour `intent.debug` (§19). `meta` is the out-of-game armoury's effect on the run (§13.1), per damage type: `{ power: { fire, arcane, physical }, shred: { fire, arcane, physical } }`, where `power` multiplies the damage of that type and `shred` is taken off every enemy's resistance to it (§12.1). Any part may be left out; a missing, non-finite, zero or negative power reads 1 (power is always positive, so the at-least-1 rule of §12.1 holds) and a missing or non-finite shred reads 0, so a run without `meta` is a run with neutral `meta`. It is stored normalised as `game.meta` (all six numbers present), never changes during a run, and is part of the snapshot.
 - **RNG:** `game.rng` is a plain function returning a float in `[0, 1)`. Every random draw calls `game.rng()` at the point of use, never a reference cached at construction, so a test can replace it (`game.rng = () => 0`).
 - **Units and clock:** positions in world px, speeds in px/s, `DT = 1/60`. `game.tickCount` is an integer and `game.t = tickCount × DT` seconds, so time never drifts.
 - **Intent:** exactly the shape in §4. A missing, partial or non-finite field reads as 0, `false` or `-1` (`pick`). A move vector longer than 1 is normalised; a non-zero aim is normalised; `hasAim` is false when the aim is zero. The sim ignores `confirm`; `pick` is read only while level-up offers are open (§14). The loop turns a gamepad A press on the level-up screen into the `pick` of the highlighted card.
@@ -198,17 +201,17 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 - **Events:** `game.events` is cleared at the start of every tick. Systems push `{ type: 'sound', name }`, at most one per sound name per tick; the browser plays them. Events are output, not state.
 - **Ids:** every enemy, projectile, enemy shot, effect, gem and mini tower gets its `id` from one counter, `game.nextId`.
 - **Start:** the dragon at (0, 0), the tower at (0, `TOWER_REST_DIST`) = (0, 40), below the dragon and at rest (§7.1), so nothing moves before the first input.
-- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.offers` (`[]`, the level-up cards on show, §14), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`, entries `{ id, level }` in the order gained), `game.gems` (`[]`), `game.miniTowers` (`[]`), `game.enemyShots` (`[]`, mage orbs, §8.5), `game.spawner` (`{ budget, spawned, golem }`, `golem` true once the golem has spawned), `game.seen` (`[]`, the enemy types met this run in the order first met: a type is added when the first enemy of that type is created, by the spawner, a summon, a slime split, a rising ghost or the golem; read by the bestiary, §17.1). `game.score()` = `floor(t) + kills`.
+- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.offers` (`[]`, the level-up cards on show, §14), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`, entries `{ id, level }` in the order gained), `game.gems` (`[]`), `game.miniTowers` (`[]`), `game.enemyShots` (`[]`, mage orbs, §8.5), `game.spawner` (`{ budget, spawned, golem }`, `golem` true once the golem has spawned), `game.seen` (`[]`, the enemy types met this run in the order first met: a type is added when the first enemy of that type is created, by the spawner, a summon, a slime split, a rising ghost or the golem; read by the bestiary, §17.1), `game.seenTiers` (`{}`, per enemy type the tiers of it met this run, ascending, added as enemies are created, §8.6; read by the bestiary). `game.score()` = `floor(t) + kills`.
 
 | Entity | Fields |
 |---|---|
 | every drawable | `x, y, anim, frame, frameTicks` |
 | `game.dragon` | `aimX, aimY` (unit fire direction), `moveX, moveY`, `aimed` (an aim has ever been given), `flip` (facing left, §6.3); `anim` is `dragon.walk` |
 | `game.tower` | `hp, maxHp`, `moved` (the tower moved this tick, §7.1); `anim` is `castle` |
-| `game.enemies[]` | `id, type, r, hp, gen, flip, alpha`. `type` is a key of `ENEMIES` in `content.js`: `knight`, `skeleton`, `slime`, `mage`, `ghostKnight`, `ghost`, `golem`. Mages also have `castTimer` (§8.4) and `orbTimer` (§8.5); the golem has `unkillable` and `procImmune` set to true and `hp = GOLEM_HP = 1e9`, a finite stand-in for ∞ |
-| `game.projectiles[]` | `id, kind, type, dx, dy` (unit), `speed, r, damage, knock, range, travelled, hits` (ids of enemies hit, at most 8), `gen, dirFrame` (for 16-direction sprites). `kind` is `fireball` (mini-tower shots included, §10.3) or `laser`; `type` is its damage type (§12.1); `knock` its knock after Force (§8.6) |
+| `game.enemies[]` | `id, type, tier, r, hp, gen, flip, alpha`. `tier` is 1–4 (§8.6). `type` is a key of `ENEMIES` in `content.js`: `knight`, `skeleton`, `slime`, `mage`, `ghostKnight`, `ghost`, `golem`. Mages also have `castTimer` (§8.4) and `orbTimer` (§8.5); the golem has `unkillable` and `procImmune` set to true and `hp = GOLEM_HP = 1e9`, a finite stand-in for ∞ |
+| `game.projectiles[]` | `id, kind, type, dx, dy` (unit), `speed, r, damage, knock, range, travelled, hits` (ids of enemies hit, at most 8), `gen, dirFrame` (for 16-direction sprites). `kind` is `fireball` (mini-tower shots included, §10.3) or `laser`; `type` is its damage type (§12.1); `knock` its knock after Force (§8.7) |
 | `game.enemyShots[]` | `id, kind, dx, dy` (unit), `speed, r, damage, range, travelled`. `kind` is `orb` (§8.5). Kept apart from `game.projectiles`: no player weapon touches them |
-| `game.effects[]` | `id, scale, alpha, flip, hold, life, done`. `scale` multiplies the standard 2× sprite scale; `life` (ticks, usually 0) is a minimum length: the effect holds its last frame until `life` ticks have passed |
+| `game.effects[]` | `id, scale, alpha, flip, tier, hold, life, done`. `scale` multiplies the standard 2× sprite scale; `tier` is the tier of the enemy whose death it shows (1 for every other effect), drawn as in §8.6; `life` (ticks, usually 0) is a minimum length: the effect holds its last frame until `life` ticks have passed |
 | `game.gems[]` | `id, x, y, value, homing` (§14) |
 | `game.miniTowers[]` | `id, x, y` (landing point), `fromX, fromY` (where the lob started), `lobTicks` (ticks of flight left), `life` (ticks left after landing), `timer` (seconds to the next shot) (§10.3) |
 | ring weapon | also `angle` (radians), `balls` (`[{ x, y }]`, the fireball positions this tick), `rehit` (enemy id → `tickCount` from which it may be hit again), and its own `anim, frame, frameTicks` (§10.4) |
@@ -221,12 +224,12 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 ## 5. World, camera, rendering
 
 - **Internal resolution:** 960×600, matching the original. The canvas is scaled to fit the window with CSS (`image-rendering: pixelated`), keeping the aspect ratio: the scale is `min(windowW / 960, windowH / 600)`, rounded down to an integer when it is at least 1, fractional below 1. The page background is near-black and the canvas is centred.
-- **Sprite scale:** every sprite is drawn at **2×** source size (a 16px knight is 32px on screen). World coordinates are internal screen pixels, so all radii below are in those units.
+- **Sprite scale:** every sprite is drawn at **2×** source size (a 16px knight is 32px on screen), except silver and gold enemies and their death effects at **3×** (§8.6); screen scales are always whole numbers. World coordinates are internal screen pixels, so all radii below are in those units.
 - **World:** unbounded plane. No terrain in the demo. The camera is centred on the dragon: a world point is drawn at `world + offset` with `offset = (round(480 − dragon.x), round(300 − dragon.y))`, an integer so sprites do not shimmer. Sprites are drawn centred on the entity position, at integer screen pixels.
 - **Background:** a 64×64 grass tile generated once at startup into an offscreen canvas (dark green base, 28 lighter or darker 2×2 px speckles), tiled with the camera offset. The speckles come from the tile's own `mulberry32` with a fixed seed, never from `game.rng`, so drawing cannot change a run. A faint darker ring (2 px, black at 18% alpha) of radius `TETHER_LENGTH` around the tower makes the tether rule readable.
 - **Gem:** drawn procedurally as a 6×6 px diamond, a blue edge around a pale cyan core, at 2× (12 px on screen), centred on the gem.
 - **Draw order:** background, gems, tower, mini towers, enemies sorted by y, ring fireballs, projectiles, enemy shots (mage orbs), dragon, effects, HUD, then any screen (title, pause, game over) over a 60% black overlay. Enemies are sorted by y then id in a copy owned by the renderer; the game's enemy list is never reordered, because its order is part of the sim.
-- **Sprites:** `scale` and `alpha` of effects and enemies apply as given (`scale` multiplies the 2×); `flip` mirrors around the sprite's centre. Projectiles whose anim is a 16-direction sheet (`laser.dir`, `laser.bigdir`) draw frame `dirFrame`; others draw `frame`. Enemy shots draw `frame` of their anim. The dragon draws `frame` of `dragon.walk`, mirrored when `flip`. Ring fireballs draw the ring weapon's `frame` at each of its `balls`. A mini tower in flight is drawn on the straight line from `(fromX, fromY)` to `(x, y)` at progress `p = 1 − lobTicks / 30`, raised by `sin(p × π) × 30` px; a landed one at `(x, y)`.
+- **Sprites:** `scale` and `alpha` of effects and enemies apply as given (`scale` multiplies the 2×). An enemy or effect of tier 2–4 draws its anim's tier sprite `<anim>@t<tier>` (the plain anim if the atlas has no such sprite) at the tier's screen scale over the standard 2× (tiers 3 and 4: 1.5, times an effect's `scale`), with the same `frame`; `flip` mirrors around the sprite's centre. Projectiles whose anim is a 16-direction sheet (`laser.dir`, `laser.bigdir`) draw frame `dirFrame`; others draw `frame`. Enemy shots draw `frame` of their anim. The dragon draws `frame` of `dragon.walk`, mirrored when `flip`. Ring fireballs draw the ring weapon's `frame` at each of its `balls`. A mini tower in flight is drawn on the straight line from `(fromX, fromY)` to `(x, y)` at progress `p = 1 − lobTicks / 30`, raised by `sin(p × π) × 30` px; a landed one at `(x, y)`.
 - **Facing:** enemies flip horizontally when moving left (`ctx.scale(-1, 1)`). The dragon flips the same way when facing left (§6.3).
 - `draw.js` reads the game state and never writes it. Animation indices live in the entity (`anim`, `frame`, `frameTicks`) and advance during the tick, so rendering is stateless.
 
@@ -280,7 +283,7 @@ The tower always trails the dragon. Each tick, in this order:
 So a dragon walking away faster than the follow speed opens the gap until the tether is tight and then drags the tower at its own speed; once the dragon stops, the tower walks up to the rest distance and stops. `tower.moved` is true on a tick when either step moved the tower, false otherwise. The tower never moves except toward the dragon.
 
 ### 7.2 Damage
-Enemies whose circle overlaps the tower circle deal `contactDps × DT` each tick (continuous, not per hit). A mage orb that hits the dragon takes `MAGE_ORB_DAMAGE` from the tower at once (§8.5). When HP reaches 0 the run ends (§13). Tower HP does not regenerate; the Repair card restores 25. HP never goes below 0.
+Enemies whose circle overlaps the tower circle deal `contactDps × DT` each tick (continuous, not per hit), `contactDps` being the type's DPS times its tier's multiplier (§8.6). A mage orb that hits the dragon takes `MAGE_ORB_DAMAGE` from the tower at once (§8.5). When HP reaches 0 the run ends (§13). Tower HP does not regenerate; the Repair card restores 25. HP never goes below 0.
 
 Circles overlap when the distance between centres is less than the sum of the radii. An enemy walking at the tower stops advancing once its centre is `r + TOWER_RADIUS − 1` px from the tower's (1 px inside contact range, *unmeasured*), so it keeps dealing damage without walking into the tower. Enemies never push the tower; when the tower follows or is dragged into enemies they simply overlap it.
 
@@ -307,7 +310,7 @@ An enemy whose HP drops to 0 or below stops being hit at once and is removed in 
 | Ghost | 2 | 36 | 10 | 8 | 1 | 0.6 | 0.25 | −0.5 | 0.75 | `ghost.ghost` | drawn at 60% alpha. Dies normally. |
 | Mega golem | ∞ | 75 | 56 | 40 | none | none | 0 | 0 | 0 | `golem` | §13. Takes no damage. Every hit pushes it `GOLEM_KNOCKBACK = 1` px away from the hitter, whatever the weapon. Immune to procs. |
 
-All numbers *unmeasured*. Fire, Arcane and Physical are the type's resistances to those damage types (§12.1): below 0 a weakness (−0.5 takes ×1.5), above 0 a resistance (0.5 takes half), 1 immune. A slime's row holds for both generations. The golem has no resistances; it takes no damage from any type. Mass divides the knockback of every hit (§8.6): below 1 an enemy is light and flies further, above 1 heavy; the golem has no mass and keeps its own rule (§8.4).
+All numbers *unmeasured*. Fire, Arcane and Physical are the type's resistances to those damage types (§12.1): below 0 a weakness (−0.5 takes ×1.5), above 0 a resistance (0.5 takes half), 1 immune. A slime's row holds for both generations. The golem has no resistances; it takes no damage from any type. The table is tier 1; tiers scale HP, speed, radius, DPS and XP (§8.7). Mass divides the knockback of every hit (§8.7): below 1 an enemy is light and flies further, above 1 heavy; the golem has no mass and keeps its own rule (§8.4).
 
 ### 8.1 Separation
 Enemies push apart so they do not stack. For each enemy, query the grid for neighbours within `r1 + r2` and move away by half the overlap along the separating axis. Cap at 6 neighbours per enemy per tick. The golem is immovable in separation; others move around it.
@@ -324,11 +327,11 @@ An enemy farther than `DESPAWN_DIST = 1400 px` from the tower is removed silentl
 
 Specials run in the enemies step before the enemy walks; a busy enemy (a casting mage, a summoning skeleton) does not walk that tick but still takes part in separation and can be hit.
 
-- **Slime split.** When a `gen == 0` slime dies it counts as a kill, plays `death01` and drops its gem like any enemy, but its effect is `slime.split` (with its `flip` and `alpha`) instead of `slime.die`. Two slimes with `gen = 1`, HP 1 and radius 8 appear in the deaths step. With `u` the unit direction from the parent to the tower (`(0, 1)` if the parent is at the tower centre), the first appears at `parent + 20 × (−u.y, u.x)` and the second at `parent − 20 × (−u.y, u.x)`, so they flank its path. They inherit nothing else and drop their own gems when killed. A `gen = 1` slime dies normally.
-- **Mage cast.** A mage's `castTimer` counts enemies steps since it spawned, or since its last cast started. When it reaches `MAGE_CAST_INTERVAL` (480 ticks) the timer restarts at 0 and a cast starts, unless the mage's centre is less than 80 px from the tower's centre at that moment: then the cast is skipped and the mage walks on. A cast lasts 60 ticks (1 s) counting the tick it starts; the mage stands still and loops `mage.spell`. At the end of its last cast tick it returns to `mage.walk` and summons 4 skeletons 40 px from its centre, at 45°, 135°, 225° and 315° from its direction toward the tower, so it walks on between the front two. Casts therefore start every 8 s; the 1 s cast is part of the 8 s. The summon has no sound (`death02` is not used).
+- **Slime split.** When a `gen == 0` slime dies it counts as a kill, plays `death01` and drops its gem like any enemy, but its effect is `slime.split` (with its `flip` and `alpha`) instead of `slime.die`. Two slimes with `gen = 1` and the parent's tier, HP 1 and radius 8 at tier 1 (scaled by the tier like any enemy's, §8.6), appear in the deaths step. With `u` the unit direction from the parent to the tower (`(0, 1)` if the parent is at the tower centre), the first appears at `parent + 20 × (−u.y, u.x)` and the second at `parent − 20 × (−u.y, u.x)`, so they flank its path. They inherit nothing else (the tier aside) and drop their own gems when killed. A `gen = 1` slime dies normally.
+- **Mage cast.** A mage's `castTimer` counts enemies steps since it spawned, or since its last cast started. When it reaches `MAGE_CAST_INTERVAL` (480 ticks) the timer restarts at 0 and a cast starts, unless the mage's centre is less than 80 px from the tower's centre at that moment: then the cast is skipped and the mage walks on. A cast lasts 60 ticks (1 s) counting the tick it starts; the mage stands still and loops `mage.spell`. At the end of its last cast tick it returns to `mage.walk` and summons 4 skeletons of its own tier 40 px from its centre, at 45°, 135°, 225° and 315° from its direction toward the tower, so it walks on between the front two. Casts therefore start every 8 s; the 1 s cast is part of the 8 s. The summon has no sound (`death02` is not used).
 - **Summoned skeletons** start on `skelly.summon` frame 0. They join the enemy list at once (separation, collisions, the cap) but first act on the next tick. While `skelly.summon` plays they do not walk; they can be hit and damaged and they do touch the tower. On the tick the anim ends they switch to `skelly.walk` and walk from the next tick on.
-- **Ghost knight burn.** A dying ghost knight counts as a kill, plays `death01` and drops its gem; its effect is `ghost.burn` with its `flip` and `alpha` and `life` 30 ticks (0.5 s): the anim is 22 ticks long and holds its last frame for the rest. The burn is an effect, so it is not hit and does not touch the tower. In the effects step of the tick it finishes, the burn is removed and a ghost appears at its position with its `flip`. The ghost is added even when the cap is full. No ghost rises once the phase is no longer `'play'`.
-- **Golem.** It spawns with `hp = GOLEM_HP` and `unkillable`; it never dies and never despawns. A hit takes nothing off its HP (the damage function deals it 0, §12.1), which stays `GOLEM_HP`; on every hit, whatever the hit's knock (§8.6), it moves `GOLEM_KNOCKBACK` (1 px) along the unit direction from the hitting projectile's position (for the ring, the ring fireball; for an explosion, its centre) to the golem's centre, `(0, 1)` if they coincide, and sound `hit_golem` plays. The knockback is applied at once, before the next separation. `procImmune` marks it as immune to procs (§12). It is immovable in separation (§8.1) and deals 40 DPS on contact (§7.2).
+- **Ghost knight burn.** A dying ghost knight counts as a kill, plays `death01` and drops its gem; its effect is `ghost.burn` with its `flip`, `alpha` and tier and `life` 30 ticks (0.5 s): the anim is 22 ticks long and holds its last frame for the rest. The burn is an effect, so it is not hit and does not touch the tower. In the effects step of the tick it finishes, the burn is removed and a ghost appears at its position with its `flip` and tier, so the ghost has the ghost knight's tier. The ghost is added even when the cap is full. No ghost rises once the phase is no longer `'play'`.
+- **Golem.** It spawns with `hp = GOLEM_HP` and `unkillable`; it never dies and never despawns. A hit takes nothing off its HP (the damage function deals it 0, §12.1), which stays `GOLEM_HP`; on every hit, whatever the hit's knock (§8.7), it moves `GOLEM_KNOCKBACK` (1 px) along the unit direction from the hitting projectile's position (for the ring, the ring fireball; for an explosion, its centre) to the golem's centre, `(0, 1)` if they coincide, and sound `hit_golem` plays. The knockback is applied at once, before the next separation. `procImmune` marks it as immune to procs (§12). It is immovable in separation (§8.1) and deals 40 DPS on contact (§7.2).
 
 ### 8.5 Mage orbs
 
@@ -347,7 +350,23 @@ Mages shoot slow green orbs at the dragon, so dodging matters. The dragon cannot
 - **Orb.** An orb starts at the mage's centre and flies in a straight line toward the dragon's position at the moment of firing (no lead; `(0, 1)` if they coincide), at `MAGE_ORB_SPEED`. It is a `{ kind: 'orb' }` entry of `game.enemyShots`, drawn above enemies and projectiles and below the dragon. In step 7, after the player's projectiles, it moves, expires once it has travelled 400 px, and its anim loops.
 - **Hit,** in step 8 after enemy vs tower: an orb whose circle overlaps the dragon's (`DRAGON_RADIUS`) is removed and the tower loses `MAGE_ORB_DAMAGE` HP (never below 0); sound `slime_poke`. Orbs ignore enemies and the tower itself; player projectiles and the ring do not touch them. An orb in flight outlives the mage that fired it. A tower brought to 0 by an orb ends the run like any other damage (§13).
 
-### 8.6 Knockback
+### 8.6 Tiers
+
+Any enemy but the golem comes in four tiers: one sprite serves the whole run, and its colour, outline and size say how dangerous it is. All multipliers *unmeasured*.
+
+| Tier | Name | Tint | Outline | Screen scale | HP | DPS | XP | Speed | Radius |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | plain | none | none | 2 | ×1 | ×1 | ×1 | ×1 | ×1 |
+| 2 | bronze | warm copper | 1 px copper | 2 | ×2.5 | ×1.25 | ×2 | ×1 | ×1 |
+| 3 | silver | cold pale blue | 1 px pale steel | 3 | ×6 | ×1.5 | ×4 | ×0.9 | ×1.5 |
+| 4 | gold | gold | 1 px gold | 3 | ×15 | ×2 | ×8 | ×0.8 | ×1.5 |
+
+- **State.** Every enemy has `tier` (1–4), set when it is created and never changed. The spawner draws it from the timeline's tier weights (§9); a summoned skeleton has its mage's tier, a slime child its parent's, and a ghost the tier of the ghost knight it rose from (§8.4). The golem is always tier 1, whatever it is created with.
+- **Multipliers** apply to the type's §8 numbers (a slime child's HP 1 and radius 8 included): HP is `ceil(HP × multiplier)` (a bronze knight has 8; every hit deals whole damage, §12.1, so rounding up kills on the same hit as the exact product), the speed and the radius are multiplied as they are, contact DPS is multiplied where it is dealt (§7.2), and the gem is worth the type's XP times the tier's (§14). Resistances, mage orbs (§8.5) and every timer are the same at every tier.
+- **Sprites.** The tier sprites are generated from the plain ones at build time (§3.3, §3.5): each tier's tint (luminance-preserving, so the shading survives), then a 1 px outline in the tier's colour, which also fills thin sprites' gaps. `<anim>@t<tier>` exists for every anim of every enemy type but the golem, with the plain anim's frame durations, so `frame` and `frameTicks` mean the same at every tier. The sim keeps the plain anim names in `anim`; the renderer draws the tier's sprite at the tier's screen scale (§5), always a whole multiple of the source pixels. Death effects (`die`, `slime.split`, `ghost.burn`) carry the dying enemy's tier and are drawn the same way.
+- **The bestiary** shows the tiers met per type and the multipliers (§17.1).
+
+### 8.7 Knockback
 
 Hits push enemies back, so a build can hold a crowd off the tower. Every weapon has a `knock` in px (§10), an explosion has `EXPLODE_KNOCK = 10`, and every enemy type a `mass` (§8 table).
 
@@ -355,6 +374,7 @@ Hits push enemies back, so a build can hold a crowd off the tower. Every weapon 
 - The push is applied in the damage function (§12.1) right after the damage, at once. It is a displacement, not a velocity: one hit moves an enemy exactly that far, never more, and nothing carries over to later ticks. Separation (§8.1) sorts out any overlap on the next enemies step.
 - A killing hit pushes nothing: the enemy dies, drops its gem and plays its death where it was hit.
 - The knock is read with the other stats: a projectile carries `knock × (1 + force)` from the moment it is fired (§11), and its split children inherit it; the ring's and an explosion's are read at the hit.
+- Mass is the type's at every tier (§8.6): a gold knight is pushed as far as a plain one.
 - The golem has no mass and ignores knock: every hit moves it `GOLEM_KNOCKBACK` px (§8.4).
 - Knockback draws no random numbers. Every knock and mass is *unmeasured*.
 
@@ -366,19 +386,21 @@ Enemies spawn on a ring just outside the view: pick a random angle and place the
 
 `rate(t)` and type weights come from the timeline table in `content.js`. `rate` is linearly interpolated between rows; weights switch at the row boundary.
 
-The spawner uses `t` at the start of the tick. The weights are those of the last row with `row.t <= t`. Each spawn draws its type from the weights, then its angle, both from `game.rng`. The camera centre is the dragon's position.
+The spawner uses `t` at the start of the tick. The weights are those of the last row with `row.t <= t`. Each spawn draws, from `game.rng`, its type from the weights, then its tier from the row's tier weights (§8.6) **only when the row has tier weights**, then its angle. A row without tier weights spawns tier 1 and draws no tier, so a timeline without tier weights draws exactly as it would without tiers; a row whose tier weights are all 0 draws one and spawns tier 1. A draw picks the first entry (types in column order, tiers 1 to 4) whose weight exceeds what is left of `rng × total weight`. The camera centre is the dragon's position.
 
-| Time | Rate (enemies/s) | Knight | Skeleton | Slime | Mage | Ghost knight |
-|---|---|---|---|---|---|---|
-| 0:00 | 0.3 | 100 | 0 | 0 | 0 | 0 |
-| 0:30 | 0.5 | 70 | 30 | 0 | 0 | 0 |
-| 1:00 | 0.6 | 50 | 30 | 20 | 0 | 0 |
-| 2:00 | 2.5 | 40 | 25 | 25 | 10 | 0 |
-| 3:00 | 10 | 30 | 25 | 20 | 10 | 15 |
-| 4:00 | 16 | 25 | 25 | 20 | 10 | 20 |
-| 5:00 | 18 + golem | 25 | 25 | 20 | 10 | 20 |
+| Time | Rate (enemies/s) | Knight | Skeleton | Slime | Mage | Ghost knight | Plain | Bronze | Silver | Gold |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 0:00 | 0.3 | 100 | 0 | 0 | 0 | 0 | – | – | – | – |
+| 0:30 | 0.5 | 70 | 30 | 0 | 0 | 0 | – | – | – | – |
+| 1:00 | 0.6 | 50 | 30 | 20 | 0 | 0 | – | – | – | – |
+| 2:00 | 2.5 | 40 | 25 | 25 | 10 | 0 | – | – | – | – |
+| 2:30 | 6.25 | 40 | 25 | 25 | 10 | 0 | 90 | 10 | 0 | 0 |
+| 3:00 | 10 | 30 | 25 | 20 | 10 | 15 | 85 | 15 | 0 | 0 |
+| 3:30 | 13 | 30 | 25 | 20 | 10 | 15 | 80 | 15 | 5 | 0 |
+| 4:00 | 16 | 25 | 25 | 20 | 10 | 20 | 75 | 17 | 8 | 0 |
+| 5:00 | 18 + golem | 25 | 25 | 20 | 10 | 20 | 65 | 20 | 10 | 5 |
 
-*unmeasured*. At 5:00 the mega golem spawns on the ring on the far side of the tower from the dragon and `ohno` plays: in the clock step of the first tick where `t >= 300` (the `t` of the timeline row marked `golem`; a timeline without such a row has no golem), once per run, at `dragon + 560 px × normalize(tower − dragon)`, or straight below the dragon if dragon and tower coincide. It ignores the cap. The timeline keeps running after 5:00 (rate stays at 18) until the tower falls.
+*unmeasured*. Plain, Bronze, Silver and Gold are the tier weights; `–` means the row has none. The 2:30 and 3:30 rows start tiers: their rates are the ones interpolated between their neighbours and their type weights are the row before's, so they change only the tiers. At 5:00 the mega golem spawns on the ring on the far side of the tower from the dragon and `ohno` plays: in the clock step of the first tick where `t >= 300` (the `t` of the timeline row marked `golem`; a timeline without such a row has no golem), once per run, at `dragon + 560 px × normalize(tower − dragon)`, or straight below the dragon if dragon and tower coincide. It ignores the cap. The timeline keeps running after 5:00 (rate stays at 18) until the tower falls.
 
 ---
 
@@ -386,7 +408,7 @@ The spawner uses `t` at the start of the tick. The weights are those of the last
 
 The player has up to **4 weapon slots**. Each weapon has levels 1–5. Weapons fire automatically on cooldown; there is no fire button. Stat buffs (§11) multiply the base values below.
 
-`cooldown` is in seconds, `damage` is per hit, before resistances. Every weapon has a damage type (`type` in its `content.js` entry, §12.1): Fireball, Mini tower and Ring are fire, Laser is arcane. Every weapon also has a `knock` (§8.6), the px one of its hits pushes an enemy of mass 1 before Force:
+`cooldown` is in seconds, `damage` is per hit, before resistances. Every weapon has a damage type (`type` in its `content.js` entry, §12.1): Fireball, Mini tower and Ring are fire, Laser is arcane. Every weapon also has a `knock` (§8.7), the px one of its hits pushes an enemy of mass 1 before Force:
 
 | Weapon | Knock px |
 |---|---|
@@ -395,7 +417,7 @@ The player has up to **4 weapon slots**. Each weapon has levels 1–5. Weapons f
 | Mini tower (its shots) | 4 |
 | Ring | 8 |
 
-*unmeasured*. Explosions knock `EXPLODE_KNOCK` (§8.6). Projectiles live until they hit (unless they win a pierce roll, §12) or have travelled `range` px.
+*unmeasured*. Explosions knock `EXPLODE_KNOCK` (§8.7). Projectiles live until they hit (unless they win a pierce roll, §12) or have travelled `range` px.
 
 A weapon fires on the first weapons step after it is gained, then every `cooldown` (0.9 s = 54 ticks). Aimed weapons fire on cooldown whether or not there are enemies. Projectiles start at the dragon's position. In the collisions step a projectile hits the nearest live enemy it overlaps and has not hit before (ties to the lower id), at most one enemy per tick. No hit spawns an effect, from any weapon: explosions appear only from the Explode proc (§12).
 
@@ -464,7 +486,7 @@ Precisely, in the weapons step:
 
 Sprite `fireball.anim`, radius 6 px.
 
-Precisely: in the weapons step the ring turns by `spin × DT` degrees (its `angle` starts at 0 and wraps at 2π) and places its `n = count + amount` fireballs at `dragon + orbit × area × (cos, sin)(angle + i × 2π / n)`, after the dragon has moved, in `balls`. In the collisions step, after the projectiles, every ball hits every live enemy whose circle overlaps its own (radius 6, not scaled by area) and whose `rehit` entry is absent or not after the current `tickCount`; a hit deals `damage` (× Might, rounded up) as fire damage with the ring's knock × Force through the damage function (§12.1), which pushes the enemy away from the ball (§8.6; the golem by its own rule, §8.4), and sets the entry to `tickCount + rehit` in ticks; it spawns no effect. Balls are checked in order and enemies in grid order, so two balls over one enemy hit it once. Expired entries are dropped in the weapons step, so ids of dead enemies do not pile up. The ring takes Might, Area, Amount and Force only: Haste and Velocity do not change `rehit` or `spin`. It rolls no procs and draws no random numbers.
+Precisely: in the weapons step the ring turns by `spin × DT` degrees (its `angle` starts at 0 and wraps at 2π) and places its `n = count + amount` fireballs at `dragon + orbit × area × (cos, sin)(angle + i × 2π / n)`, after the dragon has moved, in `balls`. In the collisions step, after the projectiles, every ball hits every live enemy whose circle overlaps its own (radius 6, not scaled by area) and whose `rehit` entry is absent or not after the current `tickCount`; a hit deals `damage` (× Might, rounded up) as fire damage with the ring's knock × Force through the damage function (§12.1), which pushes the enemy away from the ball (§8.7; the golem by its own rule, §8.4), and sets the entry to `tickCount + rehit` in ticks; it spawns no effect. Balls are checked in order and enemies in grid order, so two balls over one enemy hit it once. Expired entries are dropped in the weapons step, so ids of dead enemies do not pile up. The ring takes Might, Area, Amount and Force only: Haste and Velocity do not change `rehit` or `spin`. It rolls no procs and draws no random numbers.
 
 ---
 
@@ -479,7 +501,7 @@ Up to **4 buff slots**, levels 1–3. Seven generic buffs reach every weapon whe
 | Area | `icon.nuke` | +20% | +40% | +60% | projectile radius, explosion radius, ring orbit |
 | Velocity | `icon.speed` | +20% | +40% | +60% | projectile speed and range |
 | Duration | `icon.duration` | +25% | +50% | +75% | mini-tower life |
-| Force | `icon.force` | +50% | +100% | +150% | the knock of every hit (§8.6) |
+| Force | `icon.force` | +50% | +100% | +150% | the knock of every hit (§8.7) |
 | Amount | `icon.amount` | +1 | +2 | +3 | fireballs and lasers per volley, ring fireballs, mini towers' maxActive |
 | Explode | `icon.explode` | 20% | 35% | 50% | fire projectiles; at L3 also arcane (lasers explode) |
 | Split | `icon.split` | 20% | 35% | 50% | fire projectiles |
@@ -494,7 +516,7 @@ Buff maths, with `m, h, a, v, u, f, n` the current Might, Haste (negative), Area
 - projectile radius (fireball, laser, mini-tower shot), explosion radius and ring orbit × `(1 + a)`;
 - projectile speed and range × `(1 + v)`;
 - mini-tower life × `(1 + u)`;
-- every knock × `(1 + f)` (§8.6);
+- every knock × `(1 + f)` (§8.7);
 - `n` more fireballs per fireball volley (§10.1), lasers per laser volley (§10.2), ring fireballs (§10.4) and mini towers standing at once (§10.3). A mini tower's shots stay single.
 
 Stats are read when a projectile is fired or a mini tower lobbed, so a buff gained later does not change projectiles already in flight. Buffs live in `game.buffs` in the order gained, which is also their HUD order.
@@ -503,7 +525,7 @@ Stats are read when a projectile is fired or a mini tower lobbed, so a buff gain
 
 ## 12. Procs
 
-Resolved in `projectiles.js` when a projectile hits an enemy, in this order: damage (with its knockback, §8.6), explode roll, split roll, pierce roll. Explosions and piercing are earned: without the Explode buff nothing explodes, and without the Pierce buff every projectile stops at its first hit.
+Resolved in `projectiles.js` when a projectile hits an enemy, in this order: damage (with its knockback, §8.7), explode roll, split roll, pierce roll. Explosions and piercing are earned: without the Explode buff nothing explodes, and without the Pierce buff every projectile stops at its first hit.
 
 **Affinity.** A chance buff applies to a projectile by the projectile's damage type (§12.1), from the buff level shown:
 
@@ -523,7 +545,7 @@ So fireballs and mini-tower shots explode and split from L1 and pierce only at P
 Precisely:
 
 - **Rolls.** Each roll is `game.rng() < chance`, in the order explode, split, pierce, after the damage and the hit memory. A roll happens only when its chance buff is owned at a level that reaches the projectile's damage type in the affinity table, so a game without chance buffs, or with only buffs that do not reach that type, draws no extra numbers. A projectile with `gen >= 2` does not roll split. Against a proc-immune enemy (the golem) nothing is rolled at all, and any projectile that hits it is used up.
-- **Explode.** The circle has radius `60 × area` around the projectile's position at the hit. Every live enemy whose circle overlaps it, except the one just hit, takes the projectile's damage, of the projectile's type, once (§12.1), and is pushed `EXPLODE_KNOCK × (1 + force)` (by its mass) away from the centre (§8.6); proc-immune enemies are not affected at all (no damage, no knockback). The effect is `explosion.big` with `scale = 2 × radius / (2 × 57 px)` for a fire explosion, or `explosion.laser` with `scale = 2 × radius / (2 × 45 px)` for an arcane one, the source width, so the sprite's diameter matches the circle. Explosion kills are ordinary kills in the deaths step.
+- **Explode.** The circle has radius `60 × area` around the projectile's position at the hit. Every live enemy whose circle overlaps it, except the one just hit, takes the projectile's damage, of the projectile's type, once (§12.1), and is pushed `EXPLODE_KNOCK × (1 + force)` (by its mass) away from the centre (§8.7); proc-immune enemies are not affected at all (no damage, no knockback). The effect is `explosion.big` with `scale = 2 × radius / (2 × 57 px)` for a fire explosion, or `explosion.laser` with `scale = 2 × radius / (2 × 45 px)` for an arcane one, the source width, so the sprite's diameter matches the circle. Explosion kills are ordinary kills in the deaths step.
 - **Split.** The two children are `fireball` projectiles leaving the hit point at −45° then +45° from the parent's direction, with the parent's damage, knock, damage type, radius, speed and sprite, range = the parent's range minus the distance it has travelled, `gen + 1`, and the enemy just hit already in their `hits`. They join the projectile list at once but first move and collide on the next tick. The parent is removed unless it also pierces.
 - **Pierce.** A projectile that wins the roll stays in the list and hits its next enemy on a later tick; one that loses it is removed. The roll is made again on every hit.
 
@@ -539,15 +561,15 @@ Every hit on an enemy has a damage type: **fire**, **arcane** or **physical** (`
 
 Each enemy type has a resistance `r` per damage type, in `[−0.5, 1]` (§8 table): `r < 0` is a weakness, `r > 0` a resistance, `r = 1` immunity.
 
-**The damage function.** Every hit on an enemy, from every weapon, goes through one function, `dealDamage(game, enemy, amount, type, source, knock)` in `damage.js`: projectile hits (§10, §12), explosions (§12) and the ring (§10.4) today, and every later weapon. `amount` is the hit's damage after Might (§11), `type` its damage type, `source` the hitter's position (the projectile, the ring fireball or the explosion centre), `knock` the hit's knock after Force (§8.6; 0 when left out). It:
+**The damage function.** Every hit on an enemy, from every weapon, goes through one function, `dealDamage(game, enemy, amount, type, source, knock)` in `damage.js`: projectile hits (§10, §12), explosions (§12) and the ring (§10.4) today, and every later weapon. `amount` is the hit's damage after Might (§11), `type` its damage type, `source` the hitter's position (the projectile, the ring fireball or the explosion centre), `knock` the hit's knock after Force (§8.7; 0 when left out). It:
 
 1. against an unkillable enemy (the golem) deals nothing: its HP stays `GOLEM_HP`, it is knocked back `GOLEM_KNOCKBACK` from `source` whatever the `knock` and `hit_golem` plays (§8.4); returns 0. Damage types do not affect the golem.
 2. otherwise takes the effective resistance `r' = max(−0.5, r − shred[type])` and deals `0` when `r' ≥ 1`, else `max(1, ceil(amount × power[type] × (1 − r')))`, with `power` and `shred` from `game.meta` (§4.1; 1 and 0 without an armoury). Rounding up comes after every multiplier, so any hit that is not immune does at least 1.
-3. takes that off the enemy's HP; if the enemy's HP is still above 0, pushes it `knock / mass` px straight away from `source` (§8.6); returns the damage (not capped at the HP the enemy had left). The enemy dies in the deaths step as before (§8), when its HP is 0 or below.
+3. takes that off the enemy's HP; if the enemy's HP is still above 0, pushes it `knock / mass` px straight away from `source` (§8.7); returns the damage (not capped at the HP the enemy had left). The enemy dies in the deaths step as before (§8), when its HP is 0 or below.
 
 Might is rounded up when a projectile is fired or the ring hits (§11), then the damage function rounds again: a level-1 fireball (2) deals 3 to a slime (fire −0.5) and 2 to a ghost (fire 0.25: `ceil(1.5)`); a level-1 laser (1) deals 1 to a mage (arcane 0.5: `ceil(0.5)`) and 2 to a ghost (arcane −0.5). The damage function draws no random numbers. Mage orbs hit the dragon and the tower, not an enemy, and do not use it.
 
-**Armoury.** `game.meta` (§4.1) holds the out-of-game upgrades per damage type: `power[type]` multiplies all damage of that type, `shred[type]` lowers every enemy's resistance to it, never below −0.5. Both are neutral (1 and 0) unless the `Game` is built with `meta`; the screen that sets them is not part of the demo yet.
+**Armoury.** `game.meta` (§4.1) holds the out-of-game upgrades per damage type: `power[type]` multiplies all damage of that type, `shred[type]` lowers every enemy's resistance to it, never below −0.5. Both are neutral (1 and 0) unless the `Game` is built with `meta`; the browser builds every `Game` with the meta of the armoury's ranks (§13.1).
 
 ---
 
@@ -559,17 +581,29 @@ Might is rounded up when a projectile is fired or the ring hits (§11), then the
 
 **Screens** are the loop's business (`app.js`), drawn over the world:
 
-- **Title:** shown at page load over a fresh, unticked game: the name, one line of goal, the controls and a Start button. A click anywhere on the canvas, Enter or gamepad A starts the run. Start resumes the audio context and plays `start_game`.
+- **Title:** shown at page load over a fresh, unticked game: the name, one line of goal, the controls, the purse's gold, a Start button and below it an Armoury button. U, gamepad Y or a click on the Armoury button opens the armoury (§13.1); any other click on the canvas, Enter or gamepad A starts the run. Start resumes the audio context and plays `start_game`.
 - **Pause:** Esc, P or gamepad Start toggles it during a run (`'play'` or `'dying'`). It shows "Paused" and the controls; ticks stop. Window blur and a hidden tab also pause. Pause is ignored on the title and game-over screens.
 - **Bestiary:** Tab or gamepad Back opens the enemy stats panel during a run, from play or from pause; ticks stop (§17.1).
-- **Game over:** shown while the phase is `'over'`: time survived (`m:ss`), level reached, kills, score, and a Retry button. A click anywhere on the canvas, Enter or gamepad A retries. Retry builds a new `Game` with a new random seed, or the same seed when the page has `?seed=N`, skips the title and plays `start_game`.
+- **Game over:** shown while the phase is `'over'`: time survived (`m:ss`), level reached, kills, score, the gold the run earned and the purse after it (`Gold   +N  (M in purse)`, §13.1), and a Retry button. A click anywhere on the canvas, Enter or gamepad A retries. Retry builds a new `Game` with a new random seed, or the same seed when the page has `?seed=N`, and the armoury's current ranks, skips the title and plays `start_game`.
 - Without `?seed`, the seed is a random 32-bit integer from the browser (`Math.random` is allowed outside `src/sim/`).
+
+### 13.1 Gold and the armoury
+
+Out-of-game upgrades, bought between runs with gold. All numbers *unmeasured*.
+
+- **Gold.** When a run's phase becomes `'over'`, the browser pays `floor(score / 20)` gold into the purse, once per run, and saves it. A run abandoned by closing the page pays nothing.
+- **Tracks.** For each damage type (fire, arcane, physical, §12.1) two tracks of 5 ranks: **Power**, +8% damage of that type per rank, and **Shred**, −0.1 off every enemy's resistance to that type per rank (shown as `-10%`; a resistance never goes below −0.5, §12.1). Rank `n` costs `20 × n²` gold (20, 80, 180, 320, 500; 1100 for a whole track).
+- **Into the run.** Ranks map to the sim's `meta` (§4.1): `power[type] = 1 + 0.08 × Power rank`, `shred[type] = 0.1 × Shred rank`. Every `Game` the page builds, the unticked title game, every run and every Retry, with or without `?seed`, gets the meta of the ranks owned when it is built; it is part of the setup and the snapshot, so a run is still determined by its seed, its meta and its intents. Leaving the armoury with changed ranks rebuilds the title game with the same seed. The sim never reads storage.
+- **Screen** (`render/armoury.js`, 960×600 over the 60% black overlay, opened from the title only, ticks stopped): the title `ARMOURY` (32 px) centred at y 24 and `Gold N` at y 66; six cells of 290×150 px in a centred 3×2 grid from y 100 with 16 px gaps, Power on the first row and Shred on the second, columns fire, arcane, physical. A cell shows `<Type> <Track>` in the type's colour and `r/5`, five rank pips (yellow owned, dark not), what one rank does in one line (`+8% fire damage per rank`, `-10% enemy fire resist per rank`), what the owned ranks do (`Now +16% damage`, `Now -20% resist`, `Now none` at rank 0), and `Next rank: C gold` in green when affordable, red when not, or `Max rank` in gold. Below the grid at y 440 two 180×40 buttons with a 20 px gap, centred: **Reset** and **Back**; two hint lines at y 540 and 564. The selected item has a yellow frame.
+- **Controls.** Move keys (WASD, arrows) or the d-pad move the selection one step per press: across and down the 3×2 grid, down from the first two columns to Reset and from the third to Back, left and right between Reset and Back, up from Reset to the first column and from Back to the third. Enter, gamepad A or a click on an item (which also selects it) activates the item: on a cell it buys the next rank when it is affordable and not at rank 5 (plays `powerup`; otherwise nothing happens); on Back it returns to the title. Esc, P, U, gamepad B, Y or Start return to the title too.
+- **Reset** refunds every rank for what it cost and sets all ranks to 0, in two steps: the first activation arms it (the button reads `Confirm reset` and a line says how much it refunds), the second refunds (plays `pickup`). Moving the selection or buying disarms it. With no ranks owned it does not arm.
+- **Storage.** The purse is saved in `localStorage` under the key `dragon-survivors.armoury.v1` as JSON `{ gold, ranks: { power: { fire, arcane, physical }, shred: { … } } }`, after every payout, purchase and reset, and read once at page load. Every read and write (and the access to `localStorage` itself) is wrapped in try/catch: unreadable, missing or malformed data gives an empty purse (0 gold, all ranks 0), gold is floored to a whole number, ranks are clamped to whole numbers in 0..5, and a failed write is ignored, so without storage the game plays with a purse that lasts until the page closes.
 
 ---
 
 ## 14. XP, gems, level-up
 
-- Each enemy drops a gem worth its `XP` value at its death position. Gems are static. A gem within `DRAGON_PICKUP_RADIUS` moves toward the dragon at 500 px/s and is collected on contact. Sound `pickup`. Gems never expire. `MAX_GEMS = 600`; when exceeded, the oldest gem's value is merged into the gem nearest to it.
+- Each enemy drops a gem worth its `XP` value times its tier's XP multiplier (§8.6) at its death position. Gems are static. A gem within `DRAGON_PICKUP_RADIUS` moves toward the dragon at 500 px/s and is collected on contact. Sound `pickup`. Gems never expire. `MAX_GEMS = 600`; when exceeded, the oldest gem's value is merged into the gem nearest to it.
 - XP to next level: `xpToNext(level) = 3 + 3 × level` (level 1 needs 6, level 10 needs 33). *unmeasured*.
 - On level-up the sim increments `game.pendingLevelUps`. The loop sees it and shows the level-up screen. Several pending level-ups are shown one after the other.
 
@@ -631,7 +665,7 @@ Checks per tick:
 - explosion vs enemy: grid query at the explosion centre within its radius plus the largest radius, then a circle test.
 - mini tower target: grid query in a 300 px radius, pick the nearest.
 
-Knockback (§8.6) moves enemies during the collisions step without rebuilding the grid: later queries that tick use the cells of the step's build and test circles at the enemies' current positions, so an enemy pushed into another cell can be missed until the next build.
+Knockback (§8.7) moves enemies during the collisions step without rebuilding the grid: later queries that tick use the cells of the step's build and test circles at the enemies' current positions, so an enemy pushed into another cell can be missed until the next build.
 - gem vs dragon: gems are not in the grid; a linear scan is fine at 600.
 - enemy shot vs dragon: a linear scan of `game.enemyShots`, one circle test each.
 
@@ -649,6 +683,8 @@ Knockback (§8.6) moves enemies during the collisions step without rebuilding th
 | Pause | Esc or P | Start |
 | Bestiary (§17.1) | Tab | Back / Select |
 | Retry | Enter or click | A |
+| Armoury (§13.1), from the title | U or the Armoury button | Y |
+| Armoury: select, buy, back | move keys; Enter or click; Esc, P or U | d-pad; A; B, Y or Start |
 
 Mouse aim always sets `hasAim = true`. Gamepad aim sets `hasAim` only when the stick is outside the deadzone. The last device that produced input wins, so plugging in a controller just works.
 
@@ -657,6 +693,7 @@ Details:
 - **Keyboard:** keys are read by `KeyboardEvent.code`, so the layout does not matter. The move vector is (right − left, down − up) normalised; opposite keys cancel. Enter (and keypad Enter) is `confirm`; Digit1–3 and Numpad1–3 are `pick` 0–2; Tab is `bestiary` (its browser default, moving focus, is suppressed). Pause, bestiary, confirm and pick are edges: one per press, never from auto-repeat.
 - **Mouse:** the position is tracked over the whole window and converted from CSS pixels to internal pixels with the canvas's bounding rect (`x = (clientX − left) × 960 / width`, likewise y). The aim is the unit vector from the dragon's screen position (its centre) to the mouse; before the mouse has moved there is no mouse aim, and a mouse exactly on the dragon gives none. Only the left button counts as a click.
 - **Gamepad:** the first connected pad in the browser's standard mapping. Both sticks use a radial deadzone of 0.25: inside it the stick reads zero, outside it the raw vector clamped to length 1 (the left stick is analog movement). Buttons: A (0) is `confirm`, Start (9) pauses, Back / Select (8) is `bestiary`, d-pad left/right (14/15) navigate the level-up cards; all are edges against the previous frame.
+- **Menus:** U and gamepad Y (3) give the `armoury` edge, gamepad B (1) the `back` edge. Every press of a move key and every new d-pad press (up 12, down 13, left 14, right 15) gives a one-step `menu` edge `{ x, y }`, read only by the armoury screen; the level-up cards keep reading the d-pad's left/right.
 - **Last device:** a frame counts as keyboard-and-mouse activity when a key is held or pressed, or the mouse moved or clicked; as gamepad activity when a stick is outside its deadzone or a button was newly pressed. Move and aim come only from the current device. When both are active in the same frame the keyboard and mouse win.
 
 ---
@@ -684,8 +721,9 @@ The title and pause screens list the controls: move, aim, pause and the bestiary
 An enemy stats panel, so a player can read the matchups (§12.1) at any time.
 
 - **Open and close** (`app.js`): Tab or gamepad Back / Select opens it during a run, from play (the level-up screen included) or from pause, in `'play'` or `'dying'`; it is ignored on the title and game-over screens. While it is open the loop runs no ticks, as with pause. Tab, Back, Esc, P or Start closes it, back to the screen it was opened from (the run or pause). Window blur leaves it open.
-- **Layout** (`render/bestiary.js`, 960×600 over a 60% black overlay): the title `BESTIARY` (32 px) centred at y 24; one card per enemy type, in the order of the §8 table, in two columns of 452 px cards with a 16 px gap, centred, filled row by row from y 72; each card is `min(110, floor((476 − 8 × (rows − 1)) / rows))` px high with 8 px between rows, so up to 10 types fit above y 548; the hint `Tab or Esc to close` centred at y 568.
-- **A card of a type met this run** (`game.seen`, §4.1): its walk anim, animated in real time at the sim's 60 Hz frame durations while the panel is open, centred in an 80 px box at the card's left, at the standard 2× (1× when 2× does not fit the box, as for the golem), with the type's alpha; its name (16 px); `HP n  XP n`, `SPD n  DPS n` and `MASS n` below (14 px, 18 px apart; the golem's HP is `∞`, and having no mass its third line is `KNOCKBACK 1`, its fixed push per hit, §8.6); and three resistance rows, Fire, Arcane and Physical: the name, a 52×10 px bar filled to `|r|` of its width (full at 100%), and a label in the bar's colour: `weak N%` in red for `r < 0`, `0%` in grey (a thin grey line instead of a fill) for `r = 0`, `resist N%` in blue for `0 < r < 1`, `immune` in gold for `r ≥ 1`, with `N = round(|r| × 100)`. The resistance shown is the effective one, after `game.meta`'s shred (§12.1). The golem shows `takes no damage` instead of the three rows.
+- **Layout** (`render/bestiary.js`, 960×600 over a 60% black overlay): the title `BESTIARY` (32 px) centred at y 24; one card per enemy type, in the order of the §8 table, in two columns of 452 px cards with a 16 px gap, centred, filled row by row from y 72; each card is `min(110, floor((468 − 8 × (rows − 1)) / rows))` px high with 8 px between rows, so up to 10 types fit above y 540; the tier legend at y 546; the hint `Tab or Esc to close` centred at y 568.
+- **A card of a type met this run** (`game.seen`, §4.1): its walk anim, animated in real time at the sim's 60 Hz frame durations while the panel is open, centred in an 80 px box at the card's left, at the standard 2× (1× when 2× does not fit the box, as for the golem), with the type's alpha; its name (16 px); `HP n  XP n`, `SPD n  DPS n` and `MASS n` below (14 px, 18 px apart; the golem's HP is `∞`, and having no mass its third line is `KNOCKBACK 1`, its fixed push per hit, §8.7); and three resistance rows, Fire, Arcane and Physical: the name, a 52×10 px bar filled to `|r|` of its width (full at 100%), and a label in the bar's colour: `weak N%` in red for `r < 0`, `0%` in grey (a thin grey line instead of a fill) for `r = 0`, `resist N%` in blue for `0 < r < 1`, `immune` in gold for `r ≥ 1`, with `N = round(|r| × 100)`. The resistance shown is the effective one, after `game.meta`'s shred (§12.1). The golem shows `takes no damage` instead of the three rows. Under the sprite, 6 px from the card's bottom, a row of four 6×6 px tier pips 3 px apart with a 1 px black edge, centred in the box: a tier of this type met this run (`game.seenTiers`) in its colour (plain `#e8e8e8`, then the bronze, silver and gold outline colours of §3.3), one not met dark. The golem, always tier 1, has no pips.
+- **Tier legend:** one 14 px line centred at y 546: `Tiers`, the four pips in their colours, then the multipliers of the tiers in that order, `HP ×1/2.5/6/15  DPS ×1/1.25/1.5/2  XP ×1/2/4/8  SPD ×1/1/0.9/0.8`, made from the §8.6 table.
 - **A type not met yet:** frame 0 of its walk as a flat dark silhouette, the name `???`, no stats and no resistances.
 - The panel reads the game and never writes it. All layout numbers *unmeasured*.
 
@@ -725,7 +763,9 @@ Precisely:
 - **Knockback:** a hit pushes `knock × (1 + force) / mass` straight away from its source (projectile, ring fireball, explosion centre); a killing hit pushes nothing; the golem still moves exactly `GOLEM_KNOCKBACK`.
 - **Level-up:** the world is frozen while offers are open (the digest does not change on ticks without a pick); the same seed and the same intents, picks included, give the same digest.
 - **Damage types:** every weapon's hits (projectile, explosion, split child, mini-tower shot, ring) carry their type; resistance maths with weakness, resistance, immunity and rounding; `meta` power and shred (floored at −0.5); the golem takes nothing from any type and is still knocked back; `game.seen` records types as they are first created; the bestiary's layout, bar styles and silhouettes, drawn under node without writing the game.
+- **Armoury:** gold from score; rank costs; buying (affordable, unaffordable, maxed) and refunding; untrusted purse data clamped; the storage wrapper round trip and a throwing or blocked storage; ranks → `meta`; the App flow title ↔ armoury (keys, buttons, clicks), buying, Reset's confirm step, the game-over payout once, Retry and `?seed` runs using the ranks, a reload reading the purse back; the screen's layout and navigation; the input edges.
 - **Slime split:** killing a gen-0 slime yields two gen-1 slimes; killing those yields none.
+- **Tiers:** the multipliers and the radius at every tier; the golem stays tier 1; children inherit the tier through a slime split, a ghost knight's burn and a mage's summon; gems and contact damage scale; a timeline without tier weights draws no extra random number (the same digest with and without tier rows before the first one); the draw order type, tier, angle; `game.seenTiers`; the manifest's tier expansion and every tier sprite in the committed atlas (the plain frames with the tier's ops, 2 px larger, the same ticks); the renderer drawing the tier sprite at the tier's scale; the bestiary's pips and legend.
 - **Ghost:** killing a ghost knight yields a ghost after the burn effect finishes.
 - **Mage:** a mage starts casting 8 s after it spawns and has spawned 4 skeletons 1 s later, unless within 80 px of the tower.
 - **Mage orbs:** a mage fires only within `MAGE_ORB_RANGE` of the dragon and never while casting, every 3 s from its spawn offset; an orb flies straight at where the dragon was; a hit removes it and takes `MAGE_ORB_DAMAGE` from the tower; a dodged orb expires after 400 px; a game without mages draws no extra random numbers.
@@ -733,7 +773,7 @@ Precisely:
 - **Soak:** run 5 minutes with a scripted dragon that circles the tower, on the default timeline with every rate from 3:00 on raised to at least 30/s. Assert no exceptions, the spawner never spawns above the cap (§8.2), and the tower eventually dies. The test holds the tower at full HP until the golem has spawned, so the run reaches 5:00 whatever the balance; the horde reaches the cap on the way (asserted), and the golem then ends the run. It stays in the default suite (a few seconds).
 - **Atlas:** `build-atlas.mjs` run on the manifest produces every name the game asks for. `content.js` lists its required atlas names and the test cross-checks them.
 - **Art:** the art parser (frames, key by name or hex, transparency, durations, every error with its file and line), the palette file and tool, the off-palette warning, the variants on synthetic frames (tint keeps luminance and its order, outline grows by 2 px and borders opaque pixels edge-on only, op order swap → tint → outline, frame-key suffixes), art and `from` entries built into an atlas, and the committed atlas holding every art file pixel for pixel. Every file under `art/` parses with no warning and is used by the manifest. None of these needs the pack.
-- **Balance instrument:** `node tools/measure.mjs` plays headless runs over a pool of seeds (16 by default, a 420 s cap) and prints, per bot, median, min and max survival time, how many runs reached 5:00 and the cap, kills, level, what ended the fallen runs and how often the tower moved, as Markdown. A bot is a movement policy plus a pick rule, named `<policy>+<pick>`. The tower follows the dragon, so every policy is anchored to a fixed world point, home (the dragon's start), never to the tower. Policies: `idle` gives no input (stands on home, fires right, collects nothing, dodges nothing); `aim` stands on home and lets the tower come to rest; `kite` walks a circle of 80 px around home, inside the tether, so the tower keeps following on a smaller circle. `aim` and `kite` aim at the enemy nearest the tower; whenever a gem that is not yet homing lies within 300 px of home (`--gem-range` changes it) they fly to the one nearest the dragon instead; and a mage orb within 100 px that will pass within its radius + `DRAGON_RADIUS` + 4 px of the dragon overrides both: they step straight away from its path, the most imminent orb first (`--no-dodge` turns it off). Pick rules, used while level-up offers are open: `naive` takes card 0; `greedy` takes Repair when tower HP is below 40%, else a new weapon, else the upgrade of the highest-level weapon, else a buff upgrade, else a new buff (among buffs in the order Might, Haste, Amount, Explode, Split, Pierce, Area, Velocity, Force, Duration), else card 0. A fall's cause is the source (an enemy type's contact, or orbs) that took the most tower HP in the 30 s before it. `--timeline` adds tower HP, enemies alive, kills, spawned and level over time; `--causes` adds the tower HP lost by source per window and the HP repaired; `--set` runs a what-if (a timeline rate, the tower HP, an enemy field) without editing `content.js`. Tests run one short seed per bot and pin the anchoring, the dodge and the damage split.
+- **Balance instrument:** `node tools/measure.mjs` plays headless runs over a pool of seeds (16 by default, a 420 s cap) and prints, per bot, median, min and max survival time, how many runs reached 5:00 and the cap, kills, level, what ended the fallen runs and how often the tower moved, as Markdown. A bot is a movement policy plus a pick rule, named `<policy>+<pick>`. The tower follows the dragon, so every policy is anchored to a fixed world point, home (the dragon's start), never to the tower. Policies: `idle` gives no input (stands on home, fires right, collects nothing, dodges nothing); `aim` stands on home and lets the tower come to rest; `kite` walks a circle of 80 px around home, inside the tether, so the tower keeps following on a smaller circle. `aim` and `kite` aim at the enemy nearest the tower; whenever a gem that is not yet homing lies within 300 px of home (`--gem-range` changes it) they fly to the one nearest the dragon instead; and a mage orb within 100 px that will pass within its radius + `DRAGON_RADIUS` + 4 px of the dragon overrides both: they step straight away from its path, the most imminent orb first (`--no-dodge` turns it off). Pick rules, used while level-up offers are open: `naive` takes card 0; `greedy` takes Repair when tower HP is below 40%, else a new weapon, else the upgrade of the highest-level weapon, else a buff upgrade, else a new buff (among buffs in the order Might, Haste, Amount, Explode, Split, Pierce, Area, Velocity, Force, Duration), else card 0. A fall's cause is the source (an enemy type's contact, or orbs) that took the most tower HP in the 30 s before it. `--timeline` adds tower HP, enemies alive, kills, spawned and level over time; `--causes` adds the tower HP lost by source per window and the HP repaired; `--set` runs a what-if (a timeline rate, the tower HP, an enemy field) without editing `content.js`; `--meta fire:P/S,arcane:P/S,physical:P/S` plays every run with those armoury ranks (Power/Shred, types left out 0/0), mapped to `meta` as the browser maps them (§13.1). Tests run one short seed per bot and pin the anchoring, the dodge and the damage split.
 
 ---
 
@@ -751,7 +791,7 @@ Each milestone is playable on its own.
 
 ## 22. Out of scope
 
-Unchanged from the design: meta progression (beyond the `meta` construction hook, §4.1), multiple stages, evolutions, terrain, mobile, music, controller rumble, merchants, royals, fireball lob, claw.
+Unchanged from the design: meta progression beyond the armoury (§13.1), multiple stages, evolutions, terrain, mobile, music, controller rumble, merchants, royals, fireball lob, claw.
 
 ## 23. Open decisions
 

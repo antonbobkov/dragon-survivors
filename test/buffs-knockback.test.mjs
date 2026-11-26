@@ -1,5 +1,5 @@
 // Generic buffs (§11: Might, Haste, Area, Velocity, Duration, Force, Amount) and knockback by
-// weapon knock and enemy mass (§8.6).
+// weapon knock and enemy mass (§8.7).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Game } from '../src/sim/game.js';
@@ -30,7 +30,7 @@ const fire = (id, level, buffs = []) => {
   return g;
 };
 
-// ---- knockback (§8.6) ------------------------------------------------------------------
+// ---- knockback (§8.7) ------------------------------------------------------------------
 
 test('knockback: knock / mass px straight away from the source, by enemy mass', () => {
   const masses = {};

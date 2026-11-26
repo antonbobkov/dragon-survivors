@@ -4,7 +4,7 @@ import {
   ENEMIES, TOWER_RADIUS, CONTACT_INSET, SEPARATION_MAX_NEIGHBOURS, DESPAWN_DIST, DT, MAX_ENEMIES,
   SLIME_CHILDREN, SLIME_CHILD_HP, SLIME_CHILD_R, SLIME_CHILD_OFFSET,
   MAGE_CAST_INTERVAL, MAGE_CAST_TIME, MAGE_SUMMON_COUNT, MAGE_SUMMON_RING, MAGE_NO_CAST_DIST,
-  GHOST_BURN_TIME, GOLEM_KNOCKBACK, GOLEM_HP,
+  GHOST_BURN_TIME, GOLEM_KNOCKBACK, GOLEM_HP, TIERS, tierOf, tierHp,
 } from './content.js';
 import { advanceAnim, setAnim, spawnEffect } from './effects.js';
 import { dropGem } from './gems.js';
@@ -17,11 +17,15 @@ const GHOST_BURN_TICKS = Math.round(GHOST_BURN_TIME / DT);
 // that direction (45°, 135°, ... for 4), so the mage walks on between the first two.
 const SUMMON_ANGLES = Array.from({ length: MAGE_SUMMON_COUNT }, (_, i) => ((i + 0.5) / MAGE_SUMMON_COUNT) * 2 * Math.PI);
 
-export function createEnemy(game, type, x, y) {
+// `tier` (§8.6, default 1) scales HP and radius here; DPS, XP and speed are read through
+// tierOf(e) where they are used. The golem is always tier 1.
+export function createEnemy(game, type, x, y, tier = 1) {
   const def = ENEMIES[type];
   if (!def) throw new Error(`unknown enemy type "${type}"`);
+  if (def.unkillable) tier = 1;
+  if (!TIERS[tier]) throw new Error(`unknown enemy tier "${tier}"`);
   const e = {
-    id: game.nextId++, type, x, y, r: def.r, hp: def.hp, gen: 0,
+    id: game.nextId++, type, tier, x, y, r: def.r * TIERS[tier].r, hp: tierHp(def.hp, tier), gen: 0,
     flip: false, alpha: def.alpha,
     anim: def.walk, frame: 0, frameTicks: 0,
   };
@@ -30,7 +34,16 @@ export function createEnemy(game, type, x, y) {
   if (def.procImmune) e.procImmune = true;
   game.enemies.push(e);
   if (!game.seen.includes(type)) game.seen.push(type); // §17.1 bestiary
+  noteTier(game.seenTiers, type, tier);
   return e;
+}
+
+// §17.1 the tiers met per type, ascending.
+function noteTier(seenTiers, type, tier) {
+  const list = seenTiers[type] || (seenTiers[type] = []);
+  if (list.includes(tier)) return;
+  list.push(tier);
+  list.sort((a, b) => a - b);
 }
 
 // ---- specials ------------------------------------------------------------------
@@ -79,7 +92,7 @@ function summonSkeletons(game, e) {
   for (const a of SUMMON_ANGLES) {
     if (game.enemies.length >= MAX_ENEMIES) break;
     const s = createEnemy(game, 'skeleton',
-      e.x + Math.cos(base + a) * MAGE_SUMMON_RING, e.y + Math.sin(base + a) * MAGE_SUMMON_RING);
+      e.x + Math.cos(base + a) * MAGE_SUMMON_RING, e.y + Math.sin(base + a) * MAGE_SUMMON_RING, e.tier);
     setAnim(s, ENEMIES.skeleton.summon);
   }
 }
@@ -106,7 +119,7 @@ export function onEnemyDeath(game, e) {
     return true;
   }
   if (e.type === 'ghostKnight') {
-    spawnEffect(game, ENEMIES.ghostKnight.die, e.x, e.y, { flip: e.flip, alpha: e.alpha, life: GHOST_BURN_TICKS });
+    spawnEffect(game, ENEMIES.ghostKnight.die, e.x, e.y, { flip: e.flip, alpha: e.alpha, life: GHOST_BURN_TICKS, tier: e.tier });
     return true;
   }
   return false;
@@ -114,27 +127,29 @@ export function onEnemyDeath(game, e) {
 
 // §8.4 slime: the parent plays `split`; two gen-1 children appear SLIME_CHILD_OFFSET px to
 // either side, perpendicular to the unit direction u from the parent to the tower: the
-// first at parent + offset × (−uy, ux), the second at parent − offset × (−uy, ux).
+// first at parent + offset × (−uy, ux), the second at parent − offset × (−uy, ux). The
+// children take the parent's tier (HP and radius scaled like any enemy's).
 function splitSlime(game, e) {
-  spawnEffect(game, ENEMIES.slime.split, e.x, e.y, { flip: e.flip, alpha: e.alpha });
+  spawnEffect(game, ENEMIES.slime.split, e.x, e.y, { flip: e.flip, alpha: e.alpha, tier: e.tier });
   const t = game.tower;
   let ux = t.x - e.x, uy = t.y - e.y;
   const d = Math.sqrt(ux * ux + uy * uy);
   if (d > 0) { ux /= d; uy /= d; } else { ux = 0; uy = 1; }
   for (let i = 0; i < SLIME_CHILDREN; i++) {
     const sgn = i === 0 ? 1 : -1;
-    const c = createEnemy(game, 'slime', e.x - uy * SLIME_CHILD_OFFSET * sgn, e.y + ux * SLIME_CHILD_OFFSET * sgn);
+    const c = createEnemy(game, 'slime', e.x - uy * SLIME_CHILD_OFFSET * sgn, e.y + ux * SLIME_CHILD_OFFSET * sgn, e.tier);
     c.gen = 1;
-    c.hp = SLIME_CHILD_HP;
-    c.r = SLIME_CHILD_R;
+    c.hp = tierHp(SLIME_CHILD_HP, c.tier);
+    c.r = SLIME_CHILD_R * tierOf(c).r;
   }
 }
 
 // Step 11, from onEffectDone: a finished ghost burn becomes a ghost at its spot. Nothing
-// rises once the run is no longer in play (enemies are frozen while dying).
+// rises once the run is no longer in play (enemies are frozen while dying). The ghost takes
+// the burn's tier, which is the ghost knight's.
 export function riseGhost(game, fx) {
   if (game.phase !== 'play') return;
-  const g = createEnemy(game, 'ghost', fx.x, fx.y);
+  const g = createEnemy(game, 'ghost', fx.x, fx.y, fx.tier || 1);
   g.flip = fx.flip;
 }
 
@@ -156,7 +171,7 @@ export function stepEnemies(game) {
     const dist = Math.sqrt(dx * dx + dy * dy);
     const stop = e.r + TOWER_RADIUS - CONTACT_INSET;
     if (dist > stop) {
-      const step = Math.min(def.speed * DT, dist - stop);
+      const step = Math.min(def.speed * tierOf(e).speed * DT, dist - stop);
       const vx = (dx / dist) * step;
       e.x += vx;
       e.y += (dy / dist) * step;
@@ -227,7 +242,7 @@ export function stepDeaths(game) {
     game.sound('death01');
     dropGem(game, e);
     if (!onEnemyDeath(game, e)) {
-      spawnEffect(game, ENEMIES[e.type].die, e.x, e.y, { flip: e.flip, alpha: e.alpha });
+      spawnEffect(game, ENEMIES[e.type].die, e.x, e.y, { flip: e.flip, alpha: e.alpha, tier: e.tier });
     }
   }
 }

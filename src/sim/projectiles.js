@@ -11,7 +11,7 @@ import { buffMods, procChance } from './weapons.js';
 const SPRITE_SCALE = 2; // §5: every sprite is drawn at 2× source size
 
 // p: { kind, x, y, dx, dy (unit), speed, range, r, damage, anim, type?, knock?, gen?, hits? }
-// `type` (§12.1) defaults to the kind's damage type; `knock` (§8.6, after Force) to 0.
+// `type` (§12.1) defaults to the kind's damage type; `knock` (§8.7, after Force) to 0.
 export function spawnProjectile(game, p) {
   const proj = {
     id: game.nextId++, kind: p.kind, type: p.type || PROJECTILE_KINDS[p.kind].type, x: p.x, y: p.y, dx: p.dx, dy: p.dy,
@@ -94,7 +94,7 @@ export function split(game, p, hit) {
   }
 }
 
-// Damage and knockback (§12.1, §8.6), memory of the hit, procs; no hit effect. Returns true
+// Damage and knockback (§12.1, §8.7), memory of the hit, procs; no hit effect. Returns true
 // if the projectile survives.
 export function resolveHit(game, p, e) {
   dealDamage(game, e, p.damage, p.type, p, p.knock);

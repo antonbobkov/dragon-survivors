@@ -4,6 +4,7 @@
 // Usage: node tools/measure.mjs [--policy idle|aim|kite|all] [--pick naive|greedy|both] [--gem-range PX]
 //                               [--no-dodge] [--seeds N] [--first-seed S] [--max-seconds T]
 //                               [--timeline] [--causes] [--step S] [--set k=v ...]
+//                               [--meta fire:P/S,arcane:P/S,physical:P/S]
 //
 // A bot is a movement policy plus a level-up pick rule, named `<policy>+<pick>`.
 // Defaults: all three policies with both pick rules, 16 seeds (1..16), 420 s cap (7:00).
@@ -42,8 +43,12 @@
 // timeline row's rate (row t in seconds), `towerHp=<v>` the starting tower HP, and
 // `<enemy>.<field>=<v>` a field of ENEMIES, for example `knight.dps=2` (this mutates the
 // table for the rest of the process, so only the CLI does it).
+//
+// --meta plays every run with armoury ranks (§13.1), mapped to the sim's `meta` as the
+// browser does: `fire:3/1` is Power rank 3 and Shred rank 1 for fire; types left out are 0/0.
 import { Game } from '../src/sim/game.js';
-import { DT, TIMELINE, ENEMIES, ENEMY_TYPES, DRAGON_START, DRAGON_RADIUS, TOWER_RADIUS } from '../src/sim/content.js';
+import { DT, TIMELINE, ENEMIES, ENEMY_TYPES, DAMAGE_TYPES, DRAGON_START, DRAGON_RADIUS, TOWER_RADIUS, tierOf } from '../src/sim/content.js';
+import { emptyRanks, metaFromRanks, MAX_RANK } from '../src/armoury.js';
 import { pathToFileURL } from 'node:url';
 
 export const HOME = { x: DRAGON_START.x, y: DRAGON_START.y };
@@ -218,7 +223,7 @@ function trackDamage(game) {
     for (const e of game.enemies) {
       if (e.hp <= 0) continue;
       const rr = e.r + TOWER_RADIUS, dx = e.x - t.x, dy = e.y - t.y;
-      if (dx * dx + dy * dy < rr * rr) { const v = ENEMIES[e.type].dps * DT; by[e.type] = (by[e.type] || 0) + v; total += v; }
+      if (dx * dx + dy * dy < rr * rr) { const v = ENEMIES[e.type].dps * tierOf(e).dps * DT; by[e.type] = (by[e.type] || 0) + v; total += v; }
     }
     const s = Math.floor(game.t + 1e-9);
     const b = lost[s] || (lost[s] = {});
@@ -229,9 +234,9 @@ function trackDamage(game) {
 
 // One run. Returns { seed, policy, pick, bot, survived, capped, kills, level, spawned,
 // samples, lost (per-second HP lost by source), repaired, cause (null if capped), moved }.
-export function runOne({ policy, pick = 'naive', seed, maxSeconds = 420, step = 0, timeline, towerHp, gemRange, dodge } = {}) {
+export function runOne({ policy, pick = 'naive', seed, maxSeconds = 420, step = 0, timeline, towerHp, gemRange, dodge, meta } = {}) {
   botIntent(new Game({ seed: 1 }), policy, pick); // validates the names
-  const game = new Game(timeline ? { seed, timeline } : { seed });
+  const game = new Game({ seed, ...(timeline ? { timeline } : {}), ...(meta ? { meta } : {}) });
   if (towerHp) { game.tower.hp = towerHp; game.tower.maxHp = towerHp; }
   const lost = trackDamage(game);
   const maxTicks = Math.round(maxSeconds / DT);
@@ -343,7 +348,7 @@ export function causesTable(runs, step, maxSeconds) {
 }
 
 function parseArgs(argv) {
-  const o = { policy: 'all', pick: 'both', gemRange: undefined, dodge: true, seeds: 16, firstSeed: 1, maxSeconds: 420, timeline: false, causes: false, step: 30, set: [] };
+  const o = { policy: 'all', pick: 'both', gemRange: undefined, dodge: true, seeds: 16, firstSeed: 1, maxSeconds: 420, timeline: false, causes: false, step: 30, set: [], meta: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i], v = argv[i + 1];
     if (a === '--policy') { o.policy = v; i++; }
@@ -354,6 +359,7 @@ function parseArgs(argv) {
     else if (a === '--max-seconds') { o.maxSeconds = Number(v); i++; }
     else if (a === '--step') { o.step = Number(v); i++; }
     else if (a === '--set') { o.set.push(v); i++; }
+    else if (a === '--meta') { o.meta = v; i++; }
     else if (a === '--timeline') o.timeline = true;
     else if (a === '--causes') o.causes = true;
     else if (a === '--no-dodge') o.dodge = false;
@@ -361,6 +367,21 @@ function parseArgs(argv) {
     else throw new Error(`unknown option ${a}`);
   }
   return o;
+}
+
+// --meta "fire:3/1,arcane:0/2": armoury ranks (Power/Shred per damage type, 0..MAX_RANK).
+// Returns { ranks, meta } with `meta` mapped as the browser maps it.
+export function parseMeta(text) {
+  const ranks = emptyRanks();
+  for (const part of String(text ?? '').split(',').map((x) => x.trim()).filter(Boolean)) {
+    const m = /^([a-z]+):(\d+)\/(\d+)$/.exec(part);
+    if (!m || !DAMAGE_TYPES.includes(m[1])) throw new Error(`bad --meta "${part}" (want type:power/shred, type one of ${DAMAGE_TYPES.join(', ')})`);
+    const p = Number(m[2]), sh = Number(m[3]);
+    if (p > MAX_RANK || sh > MAX_RANK) throw new Error(`bad --meta "${part}" (ranks 0..${MAX_RANK})`);
+    ranks.power[m[1]] = p;
+    ranks.shred[m[1]] = sh;
+  }
+  return { ranks, meta: metaFromRanks(ranks) };
 }
 
 // --set overrides: returns { timeline, towerHp } for runOne; enemy fields are written to ENEMIES.
@@ -385,24 +406,25 @@ export function applySets(sets) {
 
 export function main(argv) {
   const o = parseArgs(argv);
-  if (o.help) { console.log('node tools/measure.mjs [--policy idle|aim|kite|all] [--pick naive|greedy|both] [--gem-range PX] [--no-dodge] [--seeds N] [--first-seed S] [--max-seconds T] [--timeline] [--causes] [--step S] [--set k=v ...]'); return; }
+  if (o.help) { console.log('node tools/measure.mjs [--policy idle|aim|kite|all] [--pick naive|greedy|both] [--gem-range PX] [--no-dodge] [--seeds N] [--first-seed S] [--max-seconds T] [--timeline] [--causes] [--step S] [--set k=v ...] [--meta fire:P/S,arcane:P/S,physical:P/S]'); return; }
   const names = o.policy === 'all' ? Object.keys(POLICIES) : o.policy.split(',');
   const picks = o.pick === 'both' ? Object.keys(PICKS) : o.pick.split(',');
   const { timeline, towerHp } = applySets(o.set);
+  const meta = o.meta !== null ? parseMeta(o.meta).meta : undefined;
   const rows = [], all = {};
   const start = process.hrtime.bigint();
   for (const policy of names) {
     for (const pick of picks) {
       const runs = [];
       for (let s = 0; s < o.seeds; s++) {
-        runs.push(runOne({ policy, pick, seed: o.firstSeed + s, maxSeconds: o.maxSeconds, step: o.timeline ? o.step : 0, timeline, towerHp, gemRange: o.gemRange, dodge: o.dodge }));
+        runs.push(runOne({ policy, pick, seed: o.firstSeed + s, maxSeconds: o.maxSeconds, step: o.timeline ? o.step : 0, timeline, towerHp, gemRange: o.gemRange, dodge: o.dodge, meta }));
       }
       all[`${policy}+${pick}`] = runs;
       rows.push(summarize(runs, o.maxSeconds));
     }
   }
   const secs = Number(process.hrtime.bigint() - start) / 1e9;
-  const notes = [o.gemRange !== undefined ? `gem range ${o.gemRange} px` : '', o.dodge ? '' : 'no dodge', o.set.length ? `set ${o.set.join(' ')}` : ''].filter(Boolean);
+  const notes = [o.gemRange !== undefined ? `gem range ${o.gemRange} px` : '', o.dodge ? '' : 'no dodge', o.set.length ? `set ${o.set.join(' ')}` : '', o.meta !== null ? `meta ${o.meta}` : ''].filter(Boolean);
   console.log(`Seeds ${o.firstSeed}..${o.firstSeed + o.seeds - 1}, cap ${o.maxSeconds} s${notes.length ? ', ' + notes.join(', ') : ''}\n`);
   console.log(summaryTable(rows));
   for (const bot of Object.keys(all)) {
