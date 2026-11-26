@@ -1,6 +1,6 @@
 # T-018: Damage types, resistances, enemy stats panel
 
-**Source:** [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §2 · **Model:** Opus · **Depends on:** nothing open
+**Source:** [strategy-depth design](../../../reports/designs/2026-11-26-strategy-depth-design.md) §2 · **Model:** Opus · **Depends on:** nothing open
 
 ## Why
 

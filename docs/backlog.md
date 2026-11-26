@@ -5,7 +5,6 @@ Every open task, one table. Only the orchestrator edits this file. Work files li
 | Id | Task | Source | Depends on | Model | Status |
 |---|---|---|---|---|---|
 | T-017 | Pixel-art pipeline (`art/`, palette, tint/outline variants) and the new buff icons | reports/designs/2026-11-26-strategy-depth-design.md §6, §10 | — | Opus | in progress |
-| T-018 | Damage types, resistances, enemy stats panel | reports/designs/2026-11-26-strategy-depth-design.md §2 | — | Opus | in progress |
 | T-019 | Generic buff set, knockback and mass, Explode/Pierce affinity (D-7) | reports/designs/2026-11-26-strategy-depth-design.md §3 | T-017, T-018 | Opus | planned |
 | T-020 | Damage calculator (`tools/dps.mjs`, `--check`) | reports/designs/2026-11-26-strategy-depth-design.md §11 | T-018, T-019 | Opus | planned |
 | T-021 | Enemy tiers: colour/outline/scale scheme | reports/designs/2026-11-26-strategy-depth-design.md §6 | T-017, T-018 | Opus | planned |
