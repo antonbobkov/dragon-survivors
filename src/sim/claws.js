@@ -2,9 +2,10 @@
 // game.slashes in the weapons step (6); a slash strikes in the collisions step (8) once its
 // delay has run out, hitting through the damage function (§12.1) with knockback away from the
 // dragon (§8.7); a struck slash plays its effect and is removed when the effect ends (step 11).
-import { WEAPONS, DT, CLAW_RECT_ANIM, CLAW_CONE_ANIMS, CLAW_RECT_SOUND, CLAW_CONE_SOUND } from './content.js';
+import { WEAPONS, DT, CLAW_RECT_ANIM, CLAW_CONE_ANIMS, CLAW_SOUND } from './content.js';
 import { dealDamage } from './damage.js';
 import { advanceAnim } from './effects.js';
+import { breakBraziersWhere } from './braziers.js';
 
 const DEG = Math.PI / 180;
 const scratch = [];
@@ -94,6 +95,12 @@ export function circleInCone(cx, cy, r, ax, ay, dx, dy, angle, reach) {
   return segDist2(px, py, e1x, e1y) < r * r || segDist2(px, py, e2x, e2y) < r * r;
 }
 
+// A circle (cx, cy, r) overlaps slash `s` struck from (x, y).
+export function slashOverlaps(s, x, y, cx, cy, r) {
+  if (s.shape === 'rect') return circleInRect(cx, cy, r, slashRect(s, x, y));
+  return circleInCone(cx, cy, r, x, y, s.dx, s.dy, s.angle, s.reach);
+}
+
 // The live enemies a slash struck from (x, y) hits, in hit order: a rectangle hits every enemy
 // overlapping it in grid order; a cone the maxTargets nearest overlapping it (by centre distance
 // from (x, y), ties to the lower id).
@@ -103,12 +110,12 @@ export function slashTargets(game, s, x, y) {
     const R = slashRect(s, x, y);
     const q = Math.max(s.w, s.h) / 2 + game.grid.maxR;
     for (const e of game.grid.nearby((R.x0 + R.x1) / 2, y, q, scratch)) {
-      if (e.hp > 0 && circleInRect(e.x, e.y, e.r, R)) out.push(e);
+      if (e.hp > 0 && slashOverlaps(s, x, y, e.x, e.y, e.r)) out.push(e);
     }
     return out;
   }
   for (const e of game.grid.nearby(x, y, s.reach + game.grid.maxR, scratch)) {
-    if (e.hp > 0 && circleInCone(e.x, e.y, e.r, x, y, s.dx, s.dy, s.angle, s.reach)) out.push(e);
+    if (e.hp > 0 && slashOverlaps(s, x, y, e.x, e.y, e.r)) out.push(e);
   }
   const d2 = (e) => (e.x - x) ** 2 + (e.y - y) ** 2;
   out.sort((a, b) => d2(a) - d2(b) || a.id - b.id);
@@ -118,8 +125,8 @@ export function slashTargets(game, s, x, y) {
 
 // Step 8, after the ring: every slash whose delay has run out strikes from the dragon's centre,
 // once: each target takes the slash's damage as physical damage (§12.1) and is pushed its knock
-// away from the dragon (§8.7). No procs. The golem is hit and knocked by its own rule.
-// Breakable world objects (braziers) are hit here too once they exist.
+// away from the dragon (§8.7), then every brazier the slash overlaps breaks (§14.2). No procs.
+// The golem is hit and knocked by its own rule.
 export function collideSlashes(game) {
   const d = game.dragon;
   for (const s of game.slashes) {
@@ -132,7 +139,8 @@ export function collideSlashes(game) {
       dealDamage(game, e, s.damage, WEAPONS[s.weapon].type, src, s.knock);
       s.hits.push(e.id);
     }
-    game.sound(s.shape === 'rect' ? CLAW_RECT_SOUND : CLAW_CONE_SOUND);
+    breakBraziersWhere(game, (bx, by, br) => slashOverlaps(s, d.x, d.y, bx, by, br));
+    game.sound(CLAW_SOUND);
   }
 }
 

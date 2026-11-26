@@ -1,7 +1,7 @@
 // World rendering (§5): background, tether ring, entities in draw order, effects.
 // Reads the game and never writes it.
 import { mulberry32 } from '../sim/rng.js';
-import { TETHER_LENGTH, WEAPONS, TICK_HZ, tierAnim, tierOf, CLAW_CONE_ANIMS } from '../sim/content.js';
+import { TETHER_LENGTH, WEAPONS, TICK_HZ, PICKUP_BLINK, tierAnim, tierOf, CLAW_CONE_ANIMS } from '../sim/content.js';
 import { VIEW_W, VIEW_H, cameraOffset } from '../viewport.js';
 
 export const SPRITE_SCALE = 2;
@@ -159,6 +159,23 @@ export function drawSlash(ctx, atlas, s, x, y) {
   ctx.restore();
 }
 
+// §14.2 a pickup blinks in the last PICKUP_BLINK seconds of its life: hidden on every other
+// BLINK_TICKS-tick step of its remaining life.
+export const BLINK_TICKS = 8;
+export function pickupVisible(p) {
+  return p.life > PICKUP_BLINK * TICK_HZ || Math.floor(p.life / BLINK_TICKS) % 2 === 0;
+}
+
+// §14.2 the bomb's screen flash: white over the world, FLASH.alpha on the first frame after
+// the bomb, fading to nothing over FLASH.ticks ticks. Derived from `game.lastBomb`.
+export const FLASH = { alpha: 0.6, ticks: 24, color: '#ffffff' };
+export function bombFlashAlpha(game) {
+  if (typeof game.lastBomb !== 'number') return 0;
+  const age = game.tickCount - game.lastBomb; // 1 on the frame after the bomb's tick
+  if (age < 1 || age > FLASH.ticks) return 0;
+  return FLASH.alpha * (1 - (age - 1) / FLASH.ticks);
+}
+
 // Enemies in draw order (by y, then id), as a new array: the game's list is never reordered.
 export function enemyDrawOrder(enemies, out = []) {
   out.length = 0;
@@ -200,9 +217,9 @@ export function createRenderer({ atlas, makeCanvas }) {
     }
   }
 
-  // Draw order (§5): background, gems, tower, mini towers, enemies by y, ring fireballs,
-  // projectiles, enemy shots (mage orbs), dragon, claw slashes, effects. The HUD and screens
-  // draw on top.
+  // Draw order (§5): background, gems, tower, mini towers, braziers, pickups, enemies by y,
+  // ring fireballs, projectiles, enemy shots (mage orbs), dragon, claw slashes, effects, the
+  // bomb flash. The HUD and screens draw on top.
   function drawWorld(ctx, game) {
     ctx.imageSmoothingEnabled = false;
     const o = cameraOffset(game.dragon);
@@ -239,6 +256,11 @@ export function createRenderer({ atlas, makeCanvas }) {
       drawAnim(ctx, atlas, m.anim || 'castle', m.frame || 0, p.x + o.x, p.y + o.y, { scale: WEAPONS.miniTower.scale });
     }
 
+    for (const b of game.braziers || []) drawAnim(ctx, atlas, b.anim, b.frame, b.x + o.x, b.y + o.y);
+    for (const p of game.pickups || []) {
+      if (pickupVisible(p)) drawAnim(ctx, atlas, p.anim, p.frame, p.x + o.x, p.y + o.y);
+    }
+
     for (const e of enemyDrawOrder(game.enemies, sorted)) {
       const s = tierSprite(atlas, e);
       drawAnim(ctx, atlas, s.anim, e.frame, e.x + o.x, e.y + o.y, { flip: e.flip, alpha: e.alpha, scale: s.scale });
@@ -269,6 +291,15 @@ export function createRenderer({ atlas, makeCanvas }) {
     for (const fx of game.effects) {
       const s = tierSprite(atlas, fx);
       drawAnim(ctx, atlas, s.anim, fx.frame, fx.x + o.x, fx.y + o.y, { flip: fx.flip, alpha: fx.alpha, scale: (fx.scale ?? 1) * s.scale });
+    }
+
+    const flash = bombFlashAlpha(game);
+    if (flash > 0) {
+      ctx.save();
+      ctx.globalAlpha = flash;
+      ctx.fillStyle = FLASH.color;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      ctx.restore();
     }
   }
 

@@ -1,13 +1,13 @@
 // Debug overlay (§19, only with ?debug=1): collision circles over the world, and loop and
 // entity stats at the top right. Reads the game and the loop stats; never writes them.
-import { TOWER_RADIUS, DRAGON_PICKUP_RADIUS, DRAGON_RADIUS, WEAPONS } from '../sim/content.js';
+import { TOWER_RADIUS, DRAGON_PICKUP_RADIUS, DRAGON_RADIUS, WEAPONS, BRAZIER_RADIUS } from '../sim/content.js';
 import { VIEW_W, cameraOffset } from '../viewport.js';
 import { shadowText } from './hud.js';
 import { slashRect } from '../sim/claws.js';
 
 export const DEBUG_FONT = '12px monospace';
 export const DEBUG_COLORS = {
-  enemy: '#ff4040', tower: '#ffa020', projectile: '#ffff40', ring: '#ffff40', pickup: '#40e0ff', mini: '#c080ff', orb: '#60ff60', dragon: '#ffffff',
+  enemy: '#ff4040', tower: '#ffa020', projectile: '#ffff40', ring: '#ffff40', pickup: '#40e0ff', mini: '#c080ff', orb: '#60ff60', dragon: '#ffffff', brazier: '#ff8000',
   slash: '#ff80ff',
 };
 
@@ -16,7 +16,7 @@ export function debugLines(game, stats, speed) {
   return [
     `tick ${stats.tickMs.toFixed(2)} ms  ${stats.ticks}/frame  speed ${speed}x`,
     `enemies ${game.enemies.length}  proj ${game.projectiles.length}  orbs ${(game.enemyShots || []).length}`,
-    `gems ${game.gems.length}  effects ${game.effects.length}`,
+    `gems ${game.gems.length}  effects ${game.effects.length}  braziers ${(game.braziers || []).length}  pickups ${(game.pickups || []).length}`,
     `t ${game.t.toFixed(1)}  seed ${game.seed}`,
   ];
 }
@@ -46,7 +46,8 @@ function slashOutline(ctx, s, o) {
 }
 
 // Collision circles: enemies, the tower, projectiles, enemy shots, ring fireballs, mini
-// towers' target radius, claw slash hitboxes, the dragon's hit circle and its gem pickup radius.
+// towers' target radius, braziers, claw slash hitboxes, the dragon's hit circle and its gem
+// pickup radius.
 export function drawDebugWorld(ctx, game) {
   const o = cameraOffset(game.dragon);
   ctx.save();
@@ -63,6 +64,7 @@ export function drawDebugWorld(ctx, game) {
     if (!(m.lobTicks > 0)) circle(ctx, m.x + o.x, m.y + o.y, WEAPONS.miniTower.targetRadius, DEBUG_COLORS.mini);
   }
   for (const s of game.slashes || []) if (s.struck) slashOutline(ctx, s, o);
+  for (const b of game.braziers || []) circle(ctx, b.x + o.x, b.y + o.y, BRAZIER_RADIUS, DEBUG_COLORS.brazier);
   circle(ctx, game.dragon.x + o.x, game.dragon.y + o.y, DRAGON_RADIUS, DEBUG_COLORS.dragon);
   circle(ctx, game.dragon.x + o.x, game.dragon.y + o.y, DRAGON_PICKUP_RADIUS, DEBUG_COLORS.pickup);
   ctx.restore();

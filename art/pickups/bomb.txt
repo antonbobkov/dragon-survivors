@@ -1,0 +1,32 @@
+# pickup.bomb: blasts every enemy on screen. A round iron bomb under a steel cap, lit
+# from the top left (a wide grey and silver side so the dark body reads on grass), with a
+# burning fuse whose spark flickers.
+key
+  y yellow
+  c cream
+  r red
+  o gold.dark
+  w white
+  s silver
+  g grey
+  k charcoal
+frame 8
+......y..
+......r..
+.....o...
+...sso...
+..sgggk..
+.sgwgkkk.
+.sggkkkk.
+.gkkkkkk.
+..kkkkk..
+frame 8
+.......c.
+.....yry.
+.....o.y.
+...sso...
+..sgggk..
+.sgwgkkk.
+.sggkkkk.
+.gkkkkkk.
+..kkkkk..

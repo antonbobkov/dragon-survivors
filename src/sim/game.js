@@ -14,6 +14,7 @@ import { stepEffects, spawnEffect } from './effects.js';
 import { stepGems } from './gems.js';
 import { applyCard, openOffers, evolutionOf, evolve } from './levelup.js';
 import { normalizeMeta } from './damage.js';
+import { stepBraziers, collideBraziers, collidePickups, BRAZIER_INTERVAL_TICKS } from './braziers.js';
 
 const DYING_TICKS = Math.round(DYING_TIME / DT);
 
@@ -65,6 +66,10 @@ export class Game {
     this.gems = [];
     this.miniTowers = [];
     this.slashes = []; // claw slashes, pending and playing (§10.5–10.7)
+    this.braziers = []; // §14.2
+    this.pickups = [];
+    this.brazierTimer = BRAZIER_INTERVAL_TICKS; // spawner steps until the next brazier attempt
+    this.lastBomb = null; // tickCount of the last bomb pickup (read by the renderer's flash)
     this.spawner = createSpawner();
     this.grid = new Grid();
     this.kills = 0;
@@ -149,8 +154,11 @@ export class Game {
   stepDragon() { moveDragon(this); }
   // 3. §7.1
   stepTether() { stepTether(this); }
-  // 4. §9
-  stepSpawner() { stepSpawner(this); }
+  // 4. §9 enemies, then §14.2 braziers.
+  stepSpawner() {
+    stepSpawner(this);
+    stepBraziers(this);
+  }
   // 5. Special timers (mage cast, summon anim), AI, move, separation, despawn (§8).
   stepEnemies() { stepEnemies(this); }
   // 6. §10: cooldowns, firing, ring positions, mini towers.
@@ -160,15 +168,17 @@ export class Game {
     stepProjectiles(this);
     stepEnemyShots(this);
   }
-  // 8. Projectile vs enemy (with procs), ring vs enemy, claw slashes vs enemy, enemy vs tower,
-  // enemy shot vs dragon.
+  // 8. Player hits vs braziers, projectile vs enemy (with procs), ring vs enemy, claw slashes
+  // vs enemy (and braziers), enemy vs tower, enemy shot vs dragon, dragon vs pickups (§14.2).
   stepCollisions() {
     this.grid.build(this.enemies);
+    collideBraziers(this);
     collideProjectiles(this);
     collideRing(this);
     collideSlashes(this);
     collideTower(this);
     collideEnemyShots(this);
+    collidePickups(this);
   }
   // 9. Deaths, gems, slime split, ghost knight burn (§8.4).
   stepDeaths() { stepDeaths(this); }
@@ -202,6 +212,7 @@ export class Game {
       pendingLevelUps: this.pendingLevelUps, offers: this.offers, spawner: this.spawner,
       dragon: this.dragon, tower: this.tower, enemies: this.enemies,
       projectiles: this.projectiles, enemyShots: this.enemyShots, effects: this.effects, gems: this.gems, miniTowers: this.miniTowers, slashes: this.slashes,
+      braziers: this.braziers, pickups: this.pickups, brazierTimer: this.brazierTimer, lastBomb: this.lastBomb,
       weapons: this.weapons, buffs: this.buffs,
     };
   }
