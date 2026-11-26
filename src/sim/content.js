@@ -214,6 +214,33 @@ export const REPAIR_OFFER_BELOW = 0.5;
 export const CARD_COUNT = 3;
 export const CARD_WEIGHTS = { newWeapon: 3, upgradeWeapon: 4, newBuff: 3, upgradeBuff: 3, repair: 1 };
 
+// §14.2 Braziers and pickups. Distances in px, times in s.
+export const VIEW_HALF_W = 480; // §5: half the 960×600 view around the dragon (the camera centre)
+export const VIEW_HALF_H = 300;
+export const BRAZIER_INTERVAL = 25; // one spawn attempt this often
+export const BRAZIER_MIN_DIST = 250; // from the tower
+export const BRAZIER_MAX_DIST = 450;
+export const BRAZIER_SPACING = 120; // never closer than this to another brazier
+export const MAX_BRAZIERS = 4;
+export const BRAZIER_TRIES = 12; // candidate points per spawn
+export const BRAZIER_RADIUS = 12; // hit circle
+export const BRAZIER_SPRITE = { w: 12, h: 16 }; // source px; drawn at 2×
+export const BRAZIER_ANIM = 'brazier.burn';
+export const BRAZIER_BREAK_ANIM = 'brazier.break';
+export const BRAZIER_SOUND = 'dropping';
+export const PICKUP_LIFE = 30;
+export const PICKUP_BLINK = 5; // blinks for the last seconds of its life (drawn only)
+export const PICKUP_KINDS = ['heart', 'magnet', 'bomb'];
+export const PICKUPS = {
+  heart:  { name: 'Heart',  weight: 60, anim: 'pickup.heart',  sound: 'powerup02' },
+  magnet: { name: 'Magnet', weight: 25, anim: 'pickup.magnet', sound: 'powerup03' },
+  bomb:   { name: 'Bomb',   weight: 15, anim: 'pickup.bomb',   sound: 'explosion02' },
+};
+export const HEART_HP = 20;
+export const BOMB_DAMAGE = 60;
+export const BOMB_TYPE = 'fire';
+export const BOMB_EFFECT_SCALE = 2; // explosion.big at 2 × the standard 2×
+
 // §15 Grid
 export const GRID_CELL = 64;
 
@@ -233,6 +260,7 @@ export const ATLAS_NAMES = [
   'burn',
   'icon.laser', 'icon.explode', 'icon.split', 'icon.ring', 'icon.speed', 'icon.big', 'icon.multi', 'icon.nuke',
   'icon.might', 'icon.haste', 'icon.duration', 'icon.force', 'icon.amount',
+  'brazier.burn', 'brazier.break', 'pickup.heart', 'pickup.magnet', 'pickup.bomb',
 ];
 // §8.6 the generated tier variants of every tiered enemy anim (tiers 2–4).
 ATLAS_NAMES.push(...TIERED_ANIMS.flatMap((a) => TIER_IDS.filter((t) => t > 1).map((t) => tierAnim(a, t))));
@@ -241,4 +269,5 @@ ATLAS_NAMES.push(...TIERED_ANIMS.flatMap((a) => TIER_IDS.filter((t) => t > 1).ma
 export const SOUND_NAMES = [
   'shoot01', 'laser01', 'explosion01', 'explosion02', 'death01', 'death02', 'pickup', 'powerup',
   'hit_golem', 'megaslime_hit', 'slime_poke', 'destroy_castle_sound', 'start_game', 'ohno', 'win_level_2',
+  'dropping', 'powerup02', 'powerup03',
 ];
