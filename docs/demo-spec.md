@@ -68,7 +68,7 @@ dragon-survivors/
     manifest.json         which dragongame sequences and art files to import, under which names
     palette.mjs           samples the pack's colours into art/palette.txt
     bmp-to-art.mjs        prints pack BMPs or atlas anims as art files (to study or start from)
-    art-preview.html/.mjs every atlas anim, animated, at 2× and 4× on grass and black (not loaded by the game)
+    art-preview.html/.mjs every atlas anim, animated, at 2×, 3× and 4× on grass and black (not loaded by the game)
     copy-sounds.mjs
     measure.mjs           balance instrument: headless bot runs over a seed pool, Markdown tables
   test/
@@ -164,7 +164,7 @@ Sprites the pack lacks are drawn for this game as text under `art/`, in the pack
 - `art/palette.txt` lists the pack's colours with names: `tools/palette.mjs` counts the opaque colours of every BMP frame the manifest imports (variants excluded) and keeps the 32 most common with at least 5 pixels (26 colours), keeping existing names by colour. Art uses palette colours; a `#rrggbb` outside the palette is a build warning, not an error.
 - The style: side view facing right (sprites are mirrored in game), flat colours with no anti-aliasing and no semi-transparency, light from the top left, a dark outline only where the pack's sprites have one (most have none), 16 px standard enemies, 2-frame walks, 9×9 icons on the pack's gold bonus tray.
 
-`tools/art-preview.html`, served with the rest of the repo, shows every atlas anim animating at 2× and 4×, on grass and on black, with a name filter and a frame strip; the game never loads it.
+`tools/art-preview.html`, served with the rest of the repo, shows every atlas anim animating at 2×, 3× and 4× (2× is the game scale, 3× that of the silver and gold tiers, §8.6), on grass and on black, with a name filter and a frame strip; the game never loads it.
 
 ### 3.5 Variants
 

@@ -1,8 +1,8 @@
-// Art preview page (tools/art-preview.html): every atlas anim at 2× and 4×, on grass and on black,
+// Art preview page (tools/art-preview.html): every atlas anim at 2×, 3× and 4×, on grass and on black,
 // animating at its own tick durations. Not part of the game; served next to it as a static page.
 import { BG_COLORS, TILE_SIZE, grassSpeckles } from '../src/render/draw.js';
 
-export const SCALES = [2, 4];
+export const SCALES = [2, 3, 4]; // 2× the game scale, 3× the silver and gold tiers (§8.6)
 export const TICK_HZ = 60;
 
 /** Frame index of an anim with per-frame `ticks` after `tick` ticks, looping. */
