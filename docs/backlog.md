@@ -7,7 +7,7 @@ Every open task, one table. Only the orchestrator edits this file. Work files li
 | T-020 | Damage calculator (`tools/dps.mjs`, `--check`) | reports/designs/2026-11-26-strategy-depth-design.md §11 | T-018, T-019 | Opus | planned |
 | T-022 | Claws: left, right, dual claw evolution | reports/designs/2026-11-26-strategy-depth-design.md §4 | T-017, T-019 | Opus | in progress |
 | T-023 | Bite and saw blade | reports/designs/2026-11-26-strategy-depth-design.md §4 | T-017, T-019 | Opus | planned |
-| T-024 | Horses, mounted knights, stages and banners | reports/designs/2026-11-26-strategy-depth-design.md §5, §7 | T-017, T-021 | Opus | planned |
+| T-024 | Horses, mounted knights, stages and banners | reports/designs/2026-11-26-strategy-depth-design.md §5, §7 | T-017, T-021 | Opus | in progress |
 | T-025 | Slime rework: two splits, sizes, megaslime fusion | reports/designs/2026-11-26-strategy-depth-design.md §5 | T-017, T-018 | Opus | planned |
 | T-026 | Golem: poise and stagger, tower shove, screen shake | reports/designs/2026-11-26-strategy-depth-design.md §5 | T-019 | Opus | planned |
 | T-029 | Rebalance with the damage calculator and bots | reports/designs/2026-11-26-strategy-depth-design.md §11 | T-017–T-028 | Opus | planned |
