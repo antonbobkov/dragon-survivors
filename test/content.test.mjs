@@ -93,6 +93,26 @@ test('content: timeline matches §9', () => {
     assert.equal(Boolean(row.golem), rate.includes('golem'));
     assert.deepEqual(Object.keys(row.weights), cols);
     cols.forEach((c, j) => assert.equal(row.weights[c], num(w[j]), `${time} ${c}`));
+    // Tier weights (§8.6): Plain, Bronze, Silver, Gold; `–` when the row has none.
+    const tw = w.slice(cols.length);
+    assert.equal(tw.length, C.TIER_IDS.length, `${time} tier columns`);
+    if (tw.every((c) => c === '–')) assert.equal(row.tiers, undefined, `${time} has no tier weights`);
+    else C.TIER_IDS.forEach((t, j) => assert.equal(row.tiers[t], num(tw[j]), `${time} tier ${t}`));
+  });
+});
+
+test('content: tier table matches §8.6', () => {
+  const rows = tableAfter('### 8.6');
+  assert.equal(rows.length, C.TIER_IDS.length);
+  rows.forEach(([tier, name, , , scale, hp, dps, xp, speed, radius], i) => {
+    const t = C.TIERS[C.TIER_IDS[i]];
+    assert.equal(num(tier), C.TIER_IDS[i]);
+    assert.equal(name.toLowerCase(), t.name.toLowerCase());
+    assert.equal(num(scale), t.scale, `${name} scale`);
+    for (const [k, v] of [['hp', hp], ['dps', dps], ['xp', xp], ['speed', speed], ['r', radius]]) {
+      assert.equal(num(v.replace('×', '')), t[k], `${name} ${k}`);
+    }
+    assert.ok(Number.isInteger(t.scale), 'integer screen scales only');
   });
 });
 
@@ -135,7 +155,10 @@ test('content: ATLAS_NAMES lists every §3.3 atlas name and every anim content r
   // Art drawn ahead of its feature (manifest `art` / `from` entries) may wait to be listed until used.
   const entries = JSON.parse(readFileSync(new URL('../tools/manifest.json', import.meta.url), 'utf8')).entries;
   const ahead = new Set(entries.filter((e) => e.art || e.from).map((e) => e.name));
-  for (const n of C.ATLAS_NAMES) assert.ok(manifest.has(n), `${n} is not in spec §3.3`);
+  // Tier variants (§3.3's tier row, §8.6) are named `<anim>@t<tier>` after a tiered anim.
+  const tierName = (n) => { const m = /^(.+)@t(\d)$/.exec(n); return m && C.TIERED_ANIMS.includes(m[1]) && C.TIER_IDS.includes(Number(m[2])) && m[2] !== '1'; };
+  for (const n of C.ATLAS_NAMES) assert.ok(manifest.has(n) || tierName(n), `${n} is not in spec §3.3`);
+  assert.equal(C.ATLAS_NAMES.filter(tierName).length, C.TIERED_ANIMS.length * (C.TIER_IDS.length - 1), 'every tiered anim at every tier above 1');
   for (const n of manifest) assert.ok(C.ATLAS_NAMES.includes(n) || ahead.has(n), `${n} is missing from ATLAS_NAMES`);
   assert.equal(new Set(C.ATLAS_NAMES).size, C.ATLAS_NAMES.length, 'no duplicates');
   const used = [];

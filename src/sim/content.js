@@ -38,6 +38,27 @@ export const ENEMIES = {
   golem:       { name: 'Mega golem',   hp: Infinity, speed: 75,   r: 56, dps: 40, xp: 0, walk: 'golem.walk',   die: 'golem.die',   alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0 }, immovable: true, procImmune: true, unkillable: true },
 };
 
+// §8.6 Tiers: one sprite in four tiers. Multipliers on the type's HP (rounded up), contact DPS,
+// XP and speed; `r` multiplies the radius; `scale` is the screen scale (the standard is 2×).
+// Resistances never change with the tier. The golem is always tier 1.
+export const TIER_IDS = [1, 2, 3, 4];
+export const TIERS = {
+  1: { name: 'Plain',  scale: 2, hp: 1,   dps: 1,    xp: 1, speed: 1,   r: 1 },
+  2: { name: 'Bronze', scale: 2, hp: 2.5, dps: 1.25, xp: 2, speed: 1,   r: 1 },
+  3: { name: 'Silver', scale: 3, hp: 6,   dps: 1.5,  xp: 4, speed: 0.9, r: 1.5 },
+  4: { name: 'Gold',   scale: 3, hp: 15,  dps: 2,    xp: 8, speed: 0.8, r: 1.5 },
+};
+// The tier row of an enemy or effect; anything without a tier is tier 1.
+export const tierOf = (ent) => TIERS[ent.tier] || TIERS[1];
+// HP of a type (or a slime child) at a tier: rounded up, which kills on the same hits as the
+// exact product since every hit deals whole damage (§12.1).
+export const tierHp = (hp, tier) => Math.ceil(hp * TIERS[tier].hp - 1e-9);
+// Atlas name of an anim at a tier: tier 1 is the plain anim, others `<anim>@t<tier>` (§3.3).
+export const tierAnim = (anim, tier) => (tier > 1 ? `${anim}@t${tier}` : anim);
+// Every anim with tier variants: all anims of every enemy type except the golem's.
+export const TIERED_ANIMS = ENEMY_TYPES.filter((t) => !ENEMIES[t].unkillable)
+  .flatMap((t) => { const d = ENEMIES[t]; return [d.walk, d.die, d.summon, d.split, d.spell].filter(Boolean); });
+
 // §8 specials (implemented by the roster task)
 export const SLIME_CHILDREN = 2;
 export const SLIME_CHILD_HP = 1;
@@ -67,16 +88,20 @@ export const MAX_ENEMIES = 400;
 export const DESPAWN_DIST = 1400;
 
 // §9 Spawning and the timeline. t in seconds; weights switch at row boundaries, rate is interpolated.
+// `tiers` (optional) are the tier weights (§8.6); a row without them spawns tier 1 and draws no
+// tier. The 2:30 and 3:30 rows only start tiers: their rates are the interpolated ones.
 export const SPAWN_RING_RADIUS = 560;
 export const GOLEM_TIME = 300;
 export const TIMELINE = [
-  { t: 0,   rate: 0.3, weights: { knight: 100, skeleton: 0,  slime: 0,  mage: 0,  ghostKnight: 0 } },
-  { t: 30,  rate: 0.5, weights: { knight: 70,  skeleton: 30, slime: 0,  mage: 0,  ghostKnight: 0 } },
-  { t: 60,  rate: 0.6, weights: { knight: 50,  skeleton: 30, slime: 20, mage: 0,  ghostKnight: 0 } },
-  { t: 120, rate: 2.5, weights: { knight: 40,  skeleton: 25, slime: 25, mage: 10, ghostKnight: 0 } },
-  { t: 180, rate: 10,  weights: { knight: 30,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 15 } },
-  { t: 240, rate: 16,  weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 } },
-  { t: 300, rate: 18,  weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 }, golem: true },
+  { t: 0,   rate: 0.3,  weights: { knight: 100, skeleton: 0,  slime: 0,  mage: 0,  ghostKnight: 0 } },
+  { t: 30,  rate: 0.5,  weights: { knight: 70,  skeleton: 30, slime: 0,  mage: 0,  ghostKnight: 0 } },
+  { t: 60,  rate: 0.6,  weights: { knight: 50,  skeleton: 30, slime: 20, mage: 0,  ghostKnight: 0 } },
+  { t: 120, rate: 2.5,  weights: { knight: 40,  skeleton: 25, slime: 25, mage: 10, ghostKnight: 0 } },
+  { t: 150, rate: 6.25, weights: { knight: 40,  skeleton: 25, slime: 25, mage: 10, ghostKnight: 0 },  tiers: { 1: 90, 2: 10, 3: 0,  4: 0 } },
+  { t: 180, rate: 10,   weights: { knight: 30,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 15 }, tiers: { 1: 85, 2: 15, 3: 0,  4: 0 } },
+  { t: 210, rate: 13,   weights: { knight: 30,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 15 }, tiers: { 1: 80, 2: 15, 3: 5,  4: 0 } },
+  { t: 240, rate: 16,   weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 }, tiers: { 1: 75, 2: 17, 3: 8,  4: 0 } },
+  { t: 300, rate: 18,   weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 }, tiers: { 1: 65, 2: 20, 3: 10, 4: 5 }, golem: true },
 ];
 
 // §12.1 Damage types. Every hit on an enemy has one; resistances r in [RESIST_MIN, 1] per enemy
@@ -198,6 +223,8 @@ export const ATLAS_NAMES = [
   'burn',
   'icon.laser', 'icon.explode', 'icon.split', 'icon.ring', 'icon.speed', 'icon.big', 'icon.multi', 'icon.nuke',
 ];
+// §8.6 the generated tier variants of every tiered enemy anim (tiers 2–4).
+ATLAS_NAMES.push(...TIERED_ANIMS.flatMap((a) => TIER_IDS.filter((t) => t > 1).map((t) => tierAnim(a, t))));
 
 // §3.3 Sounds copied from the pack root.
 export const SOUND_NAMES = [

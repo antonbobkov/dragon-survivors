@@ -36,19 +36,27 @@ export function pickType(weights, roll) {
   return last;
 }
 
-// Step 4. Uses game.t at the start of the tick.
+// §8.6 a tier from a row's tier weights (keys 1–4); tier 1 when every weight is 0.
+export function pickTier(tiers, roll) {
+  const k = pickType(tiers, roll);
+  return k === null ? 1 : Number(k);
+}
+
+// Step 4. Uses game.t at the start of the tick. Each spawn draws its type, then its tier
+// (only when the row has tier weights, so a row without them draws nothing extra), then its angle.
 export function stepSpawner(game) {
   const sp = game.spawner;
   const tl = game.timeline;
   sp.budget += rateAt(tl, game.t) * DT;
-  const weights = tl[rowIndexAt(tl, game.t)].weights;
+  const row = tl[rowIndexAt(tl, game.t)];
   while (sp.budget >= 1 && game.enemies.length < MAX_ENEMIES) {
     sp.budget -= 1;
-    const type = pickType(weights, game.rng());
+    const type = pickType(row.weights, game.rng());
     if (!type) break;
+    const tier = row.tiers ? pickTier(row.tiers, game.rng()) : 1;
     const a = game.rng() * 2 * Math.PI;
     const c = game.dragon; // the camera centre is the dragon
-    createEnemy(game, type, c.x + SPAWN_RING_RADIUS * Math.cos(a), c.y + SPAWN_RING_RADIUS * Math.sin(a));
+    createEnemy(game, type, c.x + SPAWN_RING_RADIUS * Math.cos(a), c.y + SPAWN_RING_RADIUS * Math.sin(a), tier);
     sp.spawned++;
   }
   // At the cap the budget does not bank up: at most one spawn is waiting.

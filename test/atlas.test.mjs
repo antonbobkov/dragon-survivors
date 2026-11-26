@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { inflateSync } from 'node:zlib';
 import { decodeBmp } from '../tools/lib/bmp.mjs';
 import { crc32, encodePng, pngSize } from '../tools/lib/png.mjs';
-import { packShelves, parseSequence, formatAnimsJs, parseSwap, swapChannels, resolveEntries, buildAtlas } from '../tools/build-atlas.mjs';
+import { packShelves, parseSequence, formatAnimsJs, parseSwap, swapChannels, resolveEntries, buildAtlas, expandTiers } from '../tools/build-atlas.mjs';
 import { ANIMS } from '../src/sim/anims.js';
 
 const ROOT = new URL('..', import.meta.url);
@@ -259,8 +259,9 @@ test('atlas.png: orb.green is fireball.anim with red and green swapped, frame fo
 });
 
 test('atlas.json: every manifest name is an anim, every anim frame is a frame, ticks line up', () => {
-  for (const e of manifest.entries) assert.ok(atlas.anims[e.name], `anim ${e.name} missing from atlas.json`);
-  assert.equal(Object.keys(atlas.anims).length, manifest.entries.length);
+  const entries = expandTiers(manifest); // the hand-written entries and the generated tier variants
+  for (const e of entries) assert.ok(atlas.anims[e.name], `anim ${e.name} missing from atlas.json`);
+  assert.equal(Object.keys(atlas.anims).length, entries.length);
   for (const [name, a] of Object.entries(atlas.anims)) {
     assert.ok(a.frames.length > 0, `${name} has no frames`);
     assert.equal(a.ticks.length, a.frames.length, `${name}: ticks.length !== frames.length`);

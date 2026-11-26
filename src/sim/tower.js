@@ -1,6 +1,6 @@
 // Tower: following the dragon on the tether (§7.1) and continuous contact damage (§7.2).
 import {
-  TOWER_HP, TOWER_START, TETHER_LENGTH, TOWER_FOLLOW_SPEED, TOWER_REST_DIST, TOWER_RADIUS, TOWER_QUERY_MARGIN, DT, ENEMIES,
+  TOWER_HP, TOWER_START, TETHER_LENGTH, TOWER_FOLLOW_SPEED, TOWER_REST_DIST, TOWER_RADIUS, TOWER_QUERY_MARGIN, DT, ENEMIES, tierOf,
 } from './content.js';
 
 // Distances within this of the rest distance count as at rest, so rounding never makes
@@ -43,7 +43,8 @@ export function stepTether(game) {
 
 const scratch = [];
 
-// Step 8 (last part): every enemy overlapping the tower deals contactDps × DT.
+// Step 8 (last part): every enemy overlapping the tower deals contactDps × DT, the type's DPS
+// times its tier's (§8.6).
 export function collideTower(game) {
   const t = game.tower;
   const cands = game.grid.nearby(t.x, t.y, TOWER_RADIUS + TOWER_QUERY_MARGIN, scratch);
@@ -52,7 +53,7 @@ export function collideTower(game) {
     if (e.hp <= 0) continue;
     const rr = e.r + TOWER_RADIUS;
     const dx = e.x - t.x, dy = e.y - t.y;
-    if (dx * dx + dy * dy < rr * rr) dmg += ENEMIES[e.type].dps * DT;
+    if (dx * dx + dy * dy < rr * rr) dmg += ENEMIES[e.type].dps * tierOf(e).dps * DT;
   }
   if (dmg > 0) t.hp = Math.max(0, t.hp - dmg);
 }

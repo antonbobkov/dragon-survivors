@@ -47,7 +47,7 @@
 // --meta plays every run with armoury ranks (§13.1), mapped to the sim's `meta` as the
 // browser does: `fire:3/1` is Power rank 3 and Shred rank 1 for fire; types left out are 0/0.
 import { Game } from '../src/sim/game.js';
-import { DT, TIMELINE, ENEMIES, ENEMY_TYPES, DAMAGE_TYPES, DRAGON_START, DRAGON_RADIUS, TOWER_RADIUS } from '../src/sim/content.js';
+import { DT, TIMELINE, ENEMIES, ENEMY_TYPES, DAMAGE_TYPES, DRAGON_START, DRAGON_RADIUS, TOWER_RADIUS, tierOf } from '../src/sim/content.js';
 import { emptyRanks, metaFromRanks, MAX_RANK } from '../src/armoury.js';
 import { pathToFileURL } from 'node:url';
 
@@ -212,7 +212,7 @@ function trackDamage(game) {
     for (const e of game.enemies) {
       if (e.hp <= 0) continue;
       const rr = e.r + TOWER_RADIUS, dx = e.x - t.x, dy = e.y - t.y;
-      if (dx * dx + dy * dy < rr * rr) { const v = ENEMIES[e.type].dps * DT; by[e.type] = (by[e.type] || 0) + v; total += v; }
+      if (dx * dx + dy * dy < rr * rr) { const v = ENEMIES[e.type].dps * tierOf(e).dps * DT; by[e.type] = (by[e.type] || 0) + v; total += v; }
     }
     const s = Math.floor(game.t + 1e-9);
     const b = lost[s] || (lost[s] = {});

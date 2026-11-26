@@ -39,10 +39,11 @@ export function animLength(name) {
 
 // Spawn a non-colliding one-shot effect. `hold` keeps it on its last frame instead of removing it.
 // `life` (ticks, default 0) makes it last at least that long, holding its last frame until then.
+// `tier` (default 1) is the dying enemy's tier: the renderer draws the tier's anim and scale (§8.6).
 export function spawnEffect(game, anim, x, y, opts = {}) {
   const fx = {
     id: game.nextId++, anim, frame: 0, frameTicks: 0, x, y,
-    scale: opts.scale ?? 1, alpha: opts.alpha ?? 1, flip: opts.flip ?? false,
+    scale: opts.scale ?? 1, alpha: opts.alpha ?? 1, flip: opts.flip ?? false, tier: opts.tier ?? 1,
     hold: opts.hold ?? false, life: opts.life ?? 0, done: false,
   };
   game.effects.push(fx);
