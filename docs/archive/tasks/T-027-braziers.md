@@ -1,6 +1,6 @@
 # T-027: Braziers and pickups (the candlestick)
 
-**Source:** [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §8; owner notes 2 "candlestick equivalent from VS (for heals)" · **Model:** Opus · **Depends on:** T-017 (art pipeline, merged)
+**Source:** [strategy-depth design](../../../reports/designs/2026-11-26-strategy-depth-design.md) §8; owner notes 2 "candlestick equivalent from VS (for heals)" · **Model:** Opus · **Depends on:** T-017 (art pipeline, merged)
 
 ## Why
 
