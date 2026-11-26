@@ -65,4 +65,4 @@ Terrain, controller rumble, mobile. Each is a natural next step once the loop fe
 
 - **Engine.** Not chosen. Assumption until the owner says otherwise: browser, HTML canvas, TypeScript, no framework. BMPs get converted to a PNG sprite sheet at build time. Fastest to iterate and to share a demo link.
 - **Tether distance and tower HP.** Judgement numbers, marked *unmeasured* until play-tested.
-- **Why fireball over laser** (Peter's open question). Demo answer: the fireball can explode and split; the laser is faster and longer-ranged but never explodes. Neither pierces without the Pierce buff. The buff cards decide which carries the build.
+- **Why fireball over laser** (Peter's open question). Demo answer: the fireball can explode and split; the laser is faster and longer-ranged and pierces with the Pierce buff, but explodes only at Explode L3 (fireballs pierce only at Pierce L3). The buff cards decide which carries the build.

@@ -73,7 +73,7 @@ export function applyCard(game, card) {
 
 export const CARD_NAMES = {
   fireball: 'Fireball', laser: 'Laser', miniTower: 'Mini Tower', ring: 'Ring',
-  damage: 'Damage', cooldown: 'Cooldown', area: 'Area', speed: 'Projectile Speed',
+  might: 'Might', haste: 'Haste', area: 'Area', velocity: 'Velocity', duration: 'Duration', force: 'Force', amount: 'Amount',
   explode: 'Explode', split: 'Split', pierce: 'Pierce', repair: 'Repair',
 };
 
@@ -105,13 +105,17 @@ const pct = (v) => `${Math.round(Math.abs(v) * 100)}%`;
 function buffText(id, level) {
   const v = BUFFS[id].levels[level - 1];
   switch (id) {
-    case 'damage': return `+${pct(v)} damage`;
-    case 'cooldown': return `-${pct(v)} cooldowns`;
+    case 'might': return `+${pct(v)} damage`;
+    case 'haste': return `-${pct(v)} cooldowns`;
     case 'area': return `+${pct(v)} area and orbit`;
-    case 'speed': return `+${pct(v)} shot speed and range`;
-    case 'explode': return `${pct(v)} chance to explode`;
-    case 'split': return `${pct(v)} chance to split in two`;
-    case 'pierce': return `${pct(v)} chance to pierce`;
+    case 'velocity': return `+${pct(v)} shot speed and range`;
+    case 'duration': return `+${pct(v)} mini tower life`;
+    case 'force': return `+${pct(v)} knockback`;
+    case 'amount': return `+${v} shots, ring balls, max mini towers`;
+    // Explode and Pierce cross over at their max level (§12): the card says so.
+    case 'explode': return level < BUFF_MAX_LEVEL ? `${pct(v)} fireballs explode; L3: lasers too` : `${pct(v)} chance to explode; lasers explode too`;
+    case 'split': return `${pct(v)} chance fireballs split in two`;
+    case 'pierce': return level < BUFF_MAX_LEVEL ? `${pct(v)} lasers pierce; L3: fireballs too` : `${pct(v)} chance to pierce; fireballs pierce too`;
     default: return '';
   }
 }

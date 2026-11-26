@@ -261,8 +261,8 @@ test('HUD: m:ss timer, icons for every weapon and buff, weapons before buffs', (
   assert.equal(WEAPON_ICONS.laser.frame, 12);
   assert.equal(WEAPON_ICONS.miniTower.scale, 0.5);
   for (const id of BUFF_IDS) assert.ok(atlas.anims[buffIcon(id).anim], id);
-  const slots = iconSlots([{ id: 'fireball', level: 2 }, { id: 'ring', level: 1 }], [{ id: 'damage', level: 3 }]);
-  assert.deepEqual(slots.map((s) => s.id), ['fireball', 'ring', 'damage']);
+  const slots = iconSlots([{ id: 'fireball', level: 2 }, { id: 'ring', level: 1 }], [{ id: 'might', level: 3 }]);
+  assert.deepEqual(slots.map((s) => s.id), ['fireball', 'ring', 'might']);
   assert.ok(slots[0].x < slots[1].x && slots[1].x < slots[2].x);
   assert.equal(slots[0].max, 5); assert.equal(slots[2].max, 3);
 });

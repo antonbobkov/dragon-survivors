@@ -3,11 +3,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   POLICIES, PICKS, botIntent, gemTarget, GEM_RANGE, HOME, KITE_RADIUS, orbThreat, dodgeMove, runOne, summarize, summaryTable,
-  timelineTable, causesTable, causeText, median, applySets,
+  timelineTable, causesTable, causeText, median, applySets, BUFF_PRIORITY,
 } from '../tools/measure.mjs';
 import { Game } from '../src/sim/game.js';
 import { spawnOrb } from '../src/sim/enemyShots.js';
-import { TIMELINE, TETHER_LENGTH, TOWER_REST_DIST } from '../src/sim/content.js';
+import { TIMELINE, TETHER_LENGTH, TOWER_REST_DIST, BUFF_IDS } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }]; // no enemies, so no gems and no orbs
 
@@ -129,7 +129,7 @@ test('measure: tower damage is split by source; fall causes and the causes table
   assert.match(summaryTable([summarize([r], 120)]), /knight 1 \| 0% \|$/);
 });
 
-test('measure: pick rules (naive card 0; greedy repair < 40%, new weapon, top weapon, buff)', () => {
+test('measure: pick rules (naive card 0; greedy repair < 40%, new weapon, top weapon, buff by priority)', () => {
   const g = new Game({ seed: 1 });
   const W = (id, level) => ({ kind: 'weapon', id, level });
   const B = (id, level) => ({ kind: 'buff', id, level });
@@ -141,6 +141,11 @@ test('measure: pick rules (naive card 0; greedy repair < 40%, new weapon, top we
   assert.equal(pick([B('area', 1), B('split', 2), R]), 1);
   assert.equal(pick([B('area', 1), R]), 0);
   assert.equal(pick([R]), 0);
+  // among buffs: upgrades first, then BUFF_PRIORITY
+  assert.equal(pick([B('area', 1), B('might', 1), B('force', 1)]), 1);
+  assert.equal(pick([B('duration', 1), B('amount', 1), B('haste', 1)]), 2);
+  assert.equal(pick([B('might', 1), B('velocity', 2), B('explode', 3)]), 2, 'an upgrade beats a new buff');
+  assert.deepEqual([...BUFF_PRIORITY].sort(), [...BUFF_IDS].sort(), 'every buff ranked once');
   g.offers = [B('area', 1), W('laser', 1), R];
   assert.equal(PICKS.naive(g), 0);
   assert.equal(botIntent(g, 'idle', 'greedy').pick, 1);

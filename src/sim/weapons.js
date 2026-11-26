@@ -1,4 +1,5 @@
-// Weapon slots, cooldowns and firing (§10), stat buffs (§11), the ring and mini towers.
+// Weapon slots, cooldowns and firing (§10), buffs (§11) and proc affinity (§12), the ring
+// and mini towers.
 import { WEAPONS, BUFFS, DT } from './content.js';
 import { spawnProjectile } from './projectiles.js';
 import { advanceAnim } from './effects.js';
@@ -22,19 +23,38 @@ export function weaponLevel(w) {
   return WEAPONS[w.id].levels[w.level - 1];
 }
 
-// Multipliers from stat buffs and probabilities from chance buffs (§11).
-// damage: multiply then round up (buffDamage); cooldown: multiplies every cooldown and
-// fireRate; area: projectile radius, explosion radius, ring orbit; speed: projectile
-// speed and range.
+// The multiplier each stat buff sets (§11).
+const STAT_MOD = { might: 'damage', haste: 'cooldown', area: 'area', velocity: 'speed', duration: 'duration', force: 'force' };
+
+// Multipliers from stat buffs, Amount's extra projectiles, and chance buffs' probabilities
+// and levels (§11). damage (Might): multiply then round up (buffDamage); cooldown (Haste):
+// every cooldown and fireRate; area: projectile radius, explosion radius, ring orbit; speed
+// (Velocity): projectile speed and range; duration: mini-tower life; force: every knock;
+// amount: extra fireballs and lasers per volley, ring balls, mini towers' maxActive.
+// procLevel holds the chance buffs' levels for their affinity (procChance).
 export function buffMods(game) {
-  const m = { damage: 1, cooldown: 1, area: 1, speed: 1, explode: 0, split: 0, pierce: 0 };
+  const m = {
+    damage: 1, cooldown: 1, area: 1, speed: 1, duration: 1, force: 1, amount: 0,
+    explode: 0, split: 0, pierce: 0, procLevel: { explode: 0, split: 0, pierce: 0 },
+  };
   for (const b of game.buffs) {
     const def = BUFFS[b.id];
     const v = def.levels[b.level - 1];
-    if (def.kind === 'stat') m[b.id] = 1 + v;
-    else m[b.id] = v;
+    if (def.kind === 'stat') m[STAT_MOD[b.id]] = 1 + v;
+    else if (def.kind === 'count') m.amount = v;
+    else { m[b.id] = v; m.procLevel[b.id] = b.level; }
   }
   return m;
+}
+
+// §12 affinity: the chance of proc `proc` (explode, split, pierce) for a projectile of damage
+// type `type`: the buff's chance once its level reaches the type's affinity level, else 0
+// (no roll). Explode: fire from L1, arcane from L3; Split: fire only; Pierce: arcane from L1,
+// fire from L3.
+export function procChance(mods, proc, type) {
+  const level = mods.procLevel[proc];
+  const need = BUFFS[proc].affinity[type];
+  return level > 0 && need !== undefined && level >= need ? mods[proc] : 0;
 }
 
 // ceil(base × damage multiplier); the epsilon keeps 2 × 1.0 at 2 despite float error.
@@ -60,7 +80,7 @@ export function fireballShot(level, mods) {
     kind: 'fireball', type: def.type,
     speed: L.speed * mods.speed, range: L.range * mods.speed,
     r: (big ? def.bigR : def.r) * mods.area,
-    damage: buffDamage(L.damage, mods),
+    damage: buffDamage(L.damage, mods), knock: def.knock * mods.force,
     anim: big ? def.bigAnim : def.anim,
   };
 }
@@ -73,22 +93,27 @@ export function fireballLevel(game) {
 }
 
 // §10.1. `count` fireballs in the aim direction, evenly across a fan `spread` degrees wide.
+// Amount adds shots and widens the fan by one step per shot: the level's own step
+// (spread / (count − 1)), or spreadStep when the level fires one.
 export function fireFireball(game, w, mods) {
   const L = weaponLevel(w);
   if (!ready(w, L.cooldown * mods.cooldown)) return;
   const d = game.dragon;
   const base = Math.atan2(d.aimY, d.aimX);
-  const spreadRad = L.spread * DEG;
+  const n = L.count + mods.amount;
+  const step = L.count > 1 ? L.spread / (L.count - 1) : WEAPONS.fireball.spreadStep;
+  const spreadRad = (mods.amount > 0 ? step * (n - 1) : L.spread) * DEG;
   const stats = fireballShot(w.level, mods);
-  for (let i = 0; i < L.count; i++) {
-    const a = L.count === 1 ? base : base - spreadRad / 2 + (spreadRad * i) / (L.count - 1);
+  for (let i = 0; i < n; i++) {
+    const a = n === 1 ? base : base - spreadRad / 2 + (spreadRad * i) / (n - 1);
     spawnProjectile(game, { ...stats, x: d.x, y: d.y, dx: Math.cos(a), dy: Math.sin(a) });
   }
   game.sound(WEAPONS.fireball.sound);
 }
 
-// §10.2. No fan: with count 2 the lasers are parallel, ±offset px perpendicular to the aim.
-// A laser is used up by its first hit unless it wins a pierce roll (§12).
+// §10.2. No fan: the count + Amount lasers fly parallel, offset × 2 px apart perpendicular
+// to the aim and centred on the dragon (with 2: ±offset px). A laser is used up by its first
+// hit unless it wins a pierce roll (§12).
 export function fireLaser(game, w, mods) {
   const L = weaponLevel(w);
   if (!ready(w, L.cooldown * mods.cooldown)) return;
@@ -96,13 +121,14 @@ export function fireLaser(game, w, mods) {
   const d = game.dragon;
   const big = w.level >= def.bigFrom;
   const px = -d.aimY * def.offset, py = d.aimX * def.offset;
-  for (let i = 0; i < L.count; i++) {
-    const s = L.count === 1 ? 0 : (i === 0 ? 1 : -1);
+  const n = L.count + mods.amount;
+  for (let i = 0; i < n; i++) {
+    const s = n - 1 - 2 * i; // first at +offset × (n − 1), then 2 × offset apart
     spawnProjectile(game, {
       kind: 'laser', type: def.type, x: d.x + px * s, y: d.y + py * s, dx: d.aimX, dy: d.aimY,
       speed: L.speed * mods.speed, range: L.range * mods.speed,
       r: (big ? def.bigR : def.r) * mods.area,
-      damage: buffDamage(L.damage, mods),
+      damage: buffDamage(L.damage, mods), knock: def.knock * mods.force,
       anim: big ? def.bigAnim : def.anim,
     });
   }
@@ -113,13 +139,14 @@ export function fireLaser(game, w, mods) {
 // random direction if there is none). Then every mini tower takes its step.
 export function fireMiniTower(game, w, mods) {
   const L = weaponLevel(w);
-  if (ready(w, L.cooldown * mods.cooldown)) lobMiniTower(game, L);
+  if (ready(w, L.cooldown * mods.cooldown)) lobMiniTower(game, L, mods);
   stepMiniTowers(game, L, mods);
 }
 
 const LOB_TICKS = Math.round(WEAPONS.miniTower.lobTime / DT);
 
-function lobMiniTower(game, L) {
+// maxActive + Amount stand at once; each lives duration × Duration after landing.
+function lobMiniTower(game, L, mods) {
   const def = WEAPONS.miniTower;
   const t = game.tower;
   let best = null, bestD2 = Infinity;
@@ -138,10 +165,11 @@ function lobMiniTower(game, L) {
     ux = Math.cos(a); uy = Math.sin(a);
   }
   const list = game.miniTowers;
-  while (list.length >= L.maxActive) list.shift(); // the oldest goes when the cap is exceeded
+  const maxActive = L.maxActive + mods.amount;
+  while (list.length >= maxActive) list.shift(); // the oldest goes when the cap is exceeded
   list.push({
     id: game.nextId++, x: t.x + ux * def.lobDist, y: t.y + uy * def.lobDist, fromX: t.x, fromY: t.y,
-    lobTicks: LOB_TICKS, life: Math.round(L.duration / DT), timer: 0,
+    lobTicks: LOB_TICKS, life: Math.round((L.duration * mods.duration) / DT), timer: 0,
     anim: def.anim, frame: 0, frameTicks: 0,
   });
 }
@@ -174,7 +202,7 @@ function stepMiniTowers(game, L, mods) {
         const d = Math.sqrt(bestD2);
         const dx = d > 0 ? (best.x - m.x) / d : 0, dy = d > 0 ? (best.y - m.y) / d : 1;
         // A copy of the dragon's fireball at its current level: one shot, no fan, no sound.
-        spawnProjectile(game, { ...fireballShot(fireballLevel(game), mods), x: m.x, y: m.y, dx, dy });
+        spawnProjectile(game, { ...fireballShot(fireballLevel(game), mods), knock: def.knock * mods.force, x: m.x, y: m.y, dx, dy });
         m.timer += L.fireRate * mods.cooldown - DT;
       }
     }
@@ -183,25 +211,26 @@ function stepMiniTowers(game, L, mods) {
   list.length = n;
 }
 
-// §10.4, step 6: turn the ring and place its fireballs around the dragon. Expired rehit
-// entries are dropped, so ids of dead enemies do not pile up.
+// §10.4, step 6: turn the ring and place its count + Amount fireballs around the dragon.
+// Expired rehit entries are dropped, so ids of dead enemies do not pile up.
 export function spinRing(game, w, mods) {
   const L = weaponLevel(w);
   w.angle = (w.angle + L.spin * DEG * DT) % TAU;
   advanceAnim(w, true);
   const d = game.dragon;
   const orbit = L.orbit * mods.area;
-  w.balls.length = L.count;
-  for (let i = 0; i < L.count; i++) {
-    const a = w.angle + (i * TAU) / L.count;
+  const n = L.count + mods.amount;
+  w.balls.length = n;
+  for (let i = 0; i < n; i++) {
+    const a = w.angle + (i * TAU) / n;
     w.balls[i] = { x: d.x + Math.cos(a) * orbit, y: d.y + Math.sin(a) * orbit };
   }
   for (const k in w.rehit) if (w.rehit[k] <= game.tickCount) delete w.rehit[k];
 }
 
 // Step 8: every ring fireball hits every live enemy it overlaps that is off its rehit
-// timer, with fire damage (§12.1). No procs and no hit effect; the golem is knocked back
-// from the fireball.
+// timer, with fire damage (§12.1) and the ring's knock × Force away from the ball (§8.6).
+// No procs and no hit effect; the golem is knocked back by its own rule.
 export function collideRing(game) {
   let mods = null;
   for (const w of game.weapons) {
@@ -210,6 +239,7 @@ export function collideRing(game) {
     const L = weaponLevel(w);
     const r = WEAPONS.ring.r;
     const damage = buffDamage(L.damage, mods);
+    const knock = WEAPONS.ring.knock * mods.force;
     const rehitTicks = Math.round(L.rehit / DT);
     for (const b of w.balls) {
       for (const e of game.grid.nearby(b.x, b.y, r + game.grid.maxR, scratch)) {
@@ -219,7 +249,7 @@ export function collideRing(game) {
         const dx = e.x - b.x, dy = e.y - b.y;
         const rr = e.r + r;
         if (dx * dx + dy * dy >= rr * rr) continue;
-        dealDamage(game, e, damage, WEAPONS.ring.type, b);
+        dealDamage(game, e, damage, WEAPONS.ring.type, b, knock);
         w.rehit[e.id] = game.tickCount + rehitTicks;
       }
     }
