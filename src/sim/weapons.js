@@ -2,7 +2,7 @@
 import { WEAPONS, BUFFS, DT } from './content.js';
 import { spawnProjectile } from './projectiles.js';
 import { advanceAnim } from './effects.js';
-import { onEnemyHit } from './enemies.js';
+import { dealDamage } from './damage.js';
 
 const EPS = 1e-9;
 const DEG = Math.PI / 180;
@@ -57,7 +57,7 @@ export function fireballShot(level, mods) {
   const L = def.levels[level - 1];
   const big = level >= def.bigFrom;
   return {
-    kind: 'fireball',
+    kind: 'fireball', type: def.type,
     speed: L.speed * mods.speed, range: L.range * mods.speed,
     r: (big ? def.bigR : def.r) * mods.area,
     damage: buffDamage(L.damage, mods),
@@ -99,7 +99,7 @@ export function fireLaser(game, w, mods) {
   for (let i = 0; i < L.count; i++) {
     const s = L.count === 1 ? 0 : (i === 0 ? 1 : -1);
     spawnProjectile(game, {
-      kind: 'laser', x: d.x + px * s, y: d.y + py * s, dx: d.aimX, dy: d.aimY,
+      kind: 'laser', type: def.type, x: d.x + px * s, y: d.y + py * s, dx: d.aimX, dy: d.aimY,
       speed: L.speed * mods.speed, range: L.range * mods.speed,
       r: (big ? def.bigR : def.r) * mods.area,
       damage: buffDamage(L.damage, mods),
@@ -200,7 +200,8 @@ export function spinRing(game, w, mods) {
 }
 
 // Step 8: every ring fireball hits every live enemy it overlaps that is off its rehit
-// timer. No procs and no hit effect; the golem is knocked back from the fireball.
+// timer, with fire damage (§12.1). No procs and no hit effect; the golem is knocked back
+// from the fireball.
 export function collideRing(game) {
   let mods = null;
   for (const w of game.weapons) {
@@ -218,8 +219,7 @@ export function collideRing(game) {
         const dx = e.x - b.x, dy = e.y - b.y;
         const rr = e.r + r;
         if (dx * dx + dy * dy >= rr * rr) continue;
-        e.hp -= damage;
-        onEnemyHit(game, e, b);
+        dealDamage(game, e, damage, WEAPONS.ring.type, b);
         w.rehit[e.id] = game.tickCount + rehitTicks;
       }
     }

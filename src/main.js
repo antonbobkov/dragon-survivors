@@ -9,6 +9,7 @@ import { VIEW_W, VIEW_H, fitScale, dragonScreen } from './viewport.js';
 import { createRenderer } from './render/draw.js';
 import { drawHud, shadowText } from './render/hud.js';
 import { drawTitle, drawPause, drawGameOver, drawLevelUp } from './render/screens.js';
+import { drawBestiary } from './render/bestiary.js';
 import { drawDebugWorld, drawDebugStats } from './render/debug.js';
 
 const canvas = document.getElementById('game');
@@ -42,10 +43,8 @@ async function boot() {
   const actx = AC ? new AC() : null;
   const { atlas, sounds } = await loadAssets(actx);
   const audio = createAudio(actx, sounds);
-  const renderer = createRenderer({
-    atlas,
-    makeCanvas: (w, h) => Object.assign(document.createElement('canvas'), { width: w, height: h }),
-  });
+  const makeCanvas = (w, h) => Object.assign(document.createElement('canvas'), { width: w, height: h });
+  const renderer = createRenderer({ atlas, makeCanvas });
 
   // §19: ?debug=1 turns on the debug tools and exposes the App as `app` in the console
   // (read it; do not write it).
@@ -75,7 +74,8 @@ async function boot() {
     if (app.screen === 'title') { drawTitle(ctx); return; }
     drawHud(ctx, game, atlas);
     if (debug) drawDebugStats(ctx, game, app.stats, app.speed);
-    if (app.screen === 'paused') drawPause(ctx);
+    if (app.screen === 'bestiary') drawBestiary(ctx, game, atlas, now, { makeCanvas });
+    else if (app.screen === 'paused') drawPause(ctx);
     else if (game.phase === 'over') drawGameOver(ctx, game);
     else if (app.levelUpOpen()) drawLevelUp(ctx, game, atlas, app.cardSel);
   });

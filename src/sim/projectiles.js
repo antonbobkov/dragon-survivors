@@ -5,15 +5,16 @@ import {
 } from './content.js';
 import { dirFrame } from './dragon.js';
 import { advanceAnim, spawnEffect } from './effects.js';
-import { onEnemyHit } from './enemies.js';
+import { dealDamage } from './damage.js';
 import { buffMods } from './weapons.js';
 
 const SPRITE_SCALE = 2; // §5: every sprite is drawn at 2× source size
 
-// p: { kind, x, y, dx, dy (unit), speed, range, r, damage, anim, gen?, hits? }
+// p: { kind, x, y, dx, dy (unit), speed, range, r, damage, anim, type?, gen?, hits? }
+// `type` (§12.1) defaults to the kind's damage type.
 export function spawnProjectile(game, p) {
   const proj = {
-    id: game.nextId++, kind: p.kind, x: p.x, y: p.y, dx: p.dx, dy: p.dy,
+    id: game.nextId++, kind: p.kind, type: p.type || PROJECTILE_KINDS[p.kind].type, x: p.x, y: p.y, dx: p.dx, dy: p.dy,
     speed: p.speed, r: p.r, damage: p.damage, range: p.range, travelled: 0,
     hits: p.hits ? p.hits.slice() : [], gen: p.gen ?? 0, dirFrame: dirFrame(p.dx, p.dy),
     anim: p.anim, frame: 0, frameTicks: 0,
@@ -54,8 +55,9 @@ export function rollProcs(game, p, e) {
   return survives;
 }
 
-// Radius EXPLODE_RADIUS × area at the hit point; the projectile's damage to every live enemy
-// overlapping the circle except the one just hit. Proc-immune enemies are not touched at all.
+// Radius EXPLODE_RADIUS × area at the hit point; the projectile's damage, of the projectile's
+// type, to every live enemy overlapping the circle except the one just hit. Proc-immune
+// enemies are not touched at all.
 // The sprite is scaled so its diameter matches the circle.
 export function explode(game, p, hit, mods) {
   const R = EXPLODE_RADIUS * mods.area;
@@ -66,8 +68,7 @@ export function explode(game, p, hit, mods) {
     const dx = e.x - cx, dy = e.y - cy;
     const rr = R + e.r;
     if (dx * dx + dy * dy >= rr * rr) continue;
-    e.hp -= p.damage;
-    onEnemyHit(game, e, src);
+    dealDamage(game, e, p.damage, p.type, src);
   }
   const scale = (2 * R) / (EXPLOSION_SPRITE_PX * SPRITE_SCALE);
   spawnEffect(game, EXPLOSION_ANIM, cx, cy, { scale });
@@ -84,15 +85,15 @@ export function split(game, p, hit) {
     spawnProjectile(game, {
       kind: 'fireball', x: p.x, y: p.y, dx: Math.cos(a), dy: Math.sin(a),
       speed: p.speed, range: Math.max(0, p.range - p.travelled), r: p.r, damage: p.damage,
-      anim: p.anim, gen: p.gen + 1, hits: [hit.id],
+      anim: p.anim, type: p.type, gen: p.gen + 1, hits: [hit.id],
     });
   }
 }
 
-// Damage, memory of the hit, procs; no hit effect. Returns true if the projectile survives.
+// Damage (§12.1), memory of the hit, procs; no hit effect. Returns true if the projectile
+// survives.
 export function resolveHit(game, p, e) {
-  e.hp -= p.damage;
-  onEnemyHit(game, e, p);
+  dealDamage(game, e, p.damage, p.type, p);
   if (p.hits.length >= MAX_HITS_MEMORY) p.hits.shift();
   p.hits.push(e.id);
   return rollProcs(game, p, e);

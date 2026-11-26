@@ -29,13 +29,13 @@ export const DYING_TIME = 2; // s of 'dying' phase before 'over' (§13)
 // §8 Enemies. hp Infinity = cannot die. xp 0 = no gem.
 export const ENEMY_TYPES = ['knight', 'skeleton', 'slime', 'mage', 'ghostKnight', 'ghost', 'golem'];
 export const ENEMIES = {
-  knight:      { name: 'Knight',       hp: 3,        speed: 27.5, r: 12, dps: 2,  xp: 1, walk: 'knight.walk',  die: 'knight.die',  alpha: 1 },
-  skeleton:    { name: 'Skeleton',     hp: 1,        speed: 45,   r: 10, dps: 6,  xp: 1, walk: 'skelly.walk',  die: 'skelly.die',  alpha: 1, summon: 'skelly.summon' },
-  slime:       { name: 'Slime',        hp: 2,        speed: 35,   r: 12, dps: 8,  xp: 1, walk: 'slime.walk',   die: 'slime.die',   alpha: 1, split: 'slime.split' },
-  mage:        { name: 'Mage',         hp: 4,        speed: 20,   r: 12, dps: 5,  xp: 5, walk: 'mage.walk',    die: 'mage.die',    alpha: 1, spell: 'mage.spell' },
-  ghostKnight: { name: 'Ghost knight', hp: 10,       speed: 27.5, r: 12, dps: 10, xp: 2, walk: 'ghost.knight', die: 'ghost.burn',  alpha: 1 },
-  ghost:       { name: 'Ghost',        hp: 2,        speed: 36,   r: 10, dps: 8,  xp: 1, walk: 'ghost.ghost',  die: 'ghost.die',   alpha: 0.6 },
-  golem:       { name: 'Mega golem',   hp: Infinity, speed: 75,   r: 56, dps: 40, xp: 0, walk: 'golem.walk',   die: 'golem.die',   alpha: 1, immovable: true, procImmune: true, unkillable: true },
+  knight:      { name: 'Knight',       hp: 3,        speed: 27.5, r: 12, dps: 2,  xp: 1, walk: 'knight.walk',  die: 'knight.die',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.25 } },
+  skeleton:    { name: 'Skeleton',     hp: 1,        speed: 45,   r: 10, dps: 6,  xp: 1, walk: 'skelly.walk',  die: 'skelly.die',  alpha: 1, resist: { fire: 0,    arcane: 0.25, physical: -0.5 }, summon: 'skelly.summon' },
+  slime:       { name: 'Slime',        hp: 2,        speed: 35,   r: 12, dps: 8,  xp: 1, walk: 'slime.walk',   die: 'slime.die',   alpha: 1, resist: { fire: -0.5, arcane: 0,    physical: 0.5 }, split: 'slime.split' },
+  mage:        { name: 'Mage',         hp: 4,        speed: 20,   r: 12, dps: 5,  xp: 5, walk: 'mage.walk',    die: 'mage.die',    alpha: 1, resist: { fire: 0,    arcane: 0.5,  physical: -0.25 }, spell: 'mage.spell' },
+  ghostKnight: { name: 'Ghost knight', hp: 10,       speed: 27.5, r: 12, dps: 10, xp: 2, walk: 'ghost.knight', die: 'ghost.burn',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.25 } },
+  ghost:       { name: 'Ghost',        hp: 2,        speed: 36,   r: 10, dps: 8,  xp: 1, walk: 'ghost.ghost',  die: 'ghost.die',   alpha: 0.6, resist: { fire: 0.25, arcane: -0.5, physical: 0.75 } },
+  golem:       { name: 'Mega golem',   hp: Infinity, speed: 75,   r: 56, dps: 40, xp: 0, walk: 'golem.walk',   die: 'golem.die',   alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0 }, immovable: true, procImmune: true, unkillable: true },
 };
 
 // §8 specials (implemented by the roster task)
@@ -79,13 +79,19 @@ export const TIMELINE = [
   { t: 300, rate: 18,  weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 }, golem: true },
 ];
 
-// §10 Weapons. levels[0] is level 1.
+// §12.1 Damage types. Every hit on an enemy has one; resistances r in [RESIST_MIN, 1] per enemy
+// type (ENEMIES[type].resist): damage taken = ceil(damage × power × (1 − r)), r = 1 immune.
+export const DAMAGE_TYPES = ['fire', 'arcane', 'physical'];
+export const DAMAGE_TYPE_NAMES = { fire: 'Fire', arcane: 'Arcane', physical: 'Physical' };
+export const RESIST_MIN = -0.5; // the floor of a resistance, after the armoury's shred
+
+// §10 Weapons. levels[0] is level 1. `type` is the damage type of every hit (§12.1).
 export const WEAPON_SLOTS = 4;
 export const WEAPON_MAX_LEVEL = 5;
 export const WEAPON_IDS = ['fireball', 'laser', 'miniTower', 'ring'];
 export const WEAPONS = {
   fireball: {
-    name: 'Fireball', aimed: true,
+    name: 'Fireball', aimed: true, type: 'fire',
     anim: 'fireball.anim', bigAnim: 'fireball.big', bigFrom: 4, r: 6, bigR: 8,
     sound: 'shoot01',
     levels: [
@@ -97,7 +103,7 @@ export const WEAPONS = {
     ],
   },
   laser: {
-    name: 'Laser', aimed: true,
+    name: 'Laser', aimed: true, type: 'arcane',
     anim: 'laser.dir', bigAnim: 'laser.bigdir', bigFrom: 4, r: 6, bigR: 8,
     offset: 6, // with count 2: two parallel lasers, ±offset px perpendicular to the aim
     sound: 'laser01',
@@ -110,7 +116,7 @@ export const WEAPONS = {
     ],
   },
   miniTower: {
-    name: 'Mini tower', aimed: false,
+    name: 'Mini tower', aimed: false, type: 'fire', // its shots are fireballs
     anim: 'castle', scale: 0.5,
     lobDist: 80, lobTime: 0.5, lobHeight: 30,
     targetRadius: 300, // each shot is a copy of the dragon's fireball (§10.3)
@@ -123,7 +129,7 @@ export const WEAPONS = {
     ],
   },
   ring: {
-    name: 'Ring', aimed: false,
+    name: 'Ring', aimed: false, type: 'fire',
     anim: 'fireball.anim', r: 6,
     levels: [
       { count: 2, orbit: 60, spin: 180, damage: 2, rehit: 0.5 },
@@ -150,10 +156,11 @@ export const BUFFS = {
 };
 
 // §12 Procs. Which procs each projectile kind can roll; mini-tower shots are fireballs.
+// `type` is the damage type a projectile of that kind carries unless it is given one (§12.1).
 // No hit spawns an effect: explosions come only from the Explode proc.
 export const PROJECTILE_KINDS = {
-  fireball: { explode: true, split: true, pierce: true },
-  laser:    { explode: false, split: false, pierce: true },
+  fireball: { type: 'fire',   explode: true, split: true, pierce: true },
+  laser:    { type: 'arcane', explode: false, split: false, pierce: true },
 };
 export const EXPLOSION_ANIM = 'explosion.big';
 export const EXPLOSION_SPRITE_PX = 57; // source frame width of EXPLOSION_ANIM

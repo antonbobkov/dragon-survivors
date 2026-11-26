@@ -12,6 +12,7 @@ export const CONTROLS = [
   'Move   WASD / arrows   left stick',
   'Aim    mouse           right stick',
   'Pause  Esc / P         Start',
+  'Foes   Tab             Back',
 ];
 
 // Game-over lines: time survived, level reached, kills, score.
