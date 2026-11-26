@@ -1,4 +1,5 @@
-// Builds assets/atlas.png, assets/atlas.json and src/sim/anims.js from the dragongame BMP pack.
+// Builds assets/atlas.png, assets/atlas.json and src/sim/anims.js from the dragongame BMP pack
+// and this repo's text pixel art (art/, format in art/README.md).
 // Usage: node tools/build-atlas.mjs [--source <dir>] [--out <repo-root>]
 //   source: --source, else DRAGONGAME_ASSETS, else manifest.sourceRoot
 //   out:    root that receives assets/ and src/sim/ (default: this repo)
@@ -8,6 +9,8 @@ import { posix } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { decodeBmp } from './lib/bmp.mjs';
 import { encodePng } from './lib/png.mjs';
+import { parseArt, parseHex, parsePalette, toHex } from './lib/art.mjs';
+import { outlineFrame, swapFrame, tintFrame } from './lib/variants.mjs';
 import { REPO_ROOT, argValue, loadManifest, resolveSourceRoot } from './lib/source.mjs';
 
 export const ATLAS_WIDTH = 512;
@@ -15,6 +18,10 @@ export const PADDING = 1;
 /** Plain lists: 6 sim ticks (60 Hz) per frame. FANCY durations are in 30 Hz ticks, so they are doubled. */
 export const DEFAULT_TICKS = 6;
 export const FANCY_TICK_SCALE = 2;
+/** Text pixel art lives here; its frame keys start with ART_PREFIX so they never meet a BMP path. */
+export const ART_ROOT = join(REPO_ROOT, 'art');
+export const ART_PREFIX = 'art/';
+export const PALETTE_FILE = 'palette.txt';
 
 /**
  * Parse a sequence .txt. Tokens are whitespace separated (CRLF, blank lines, trailing spaces and a
@@ -62,13 +69,18 @@ export function packShelves(rects, width = ATLAS_WIDTH, padding = PADDING) {
   return { width, height: Math.max(usedH, 1), placed };
 }
 
+/** One-line JSON with a space after every `:` and `,` that is not inside a string. */
+export function spacedJson(value) {
+  return JSON.stringify(value).replace(/("(?:[^"\\]|\\.)*")|([:,])/g, (m, str, sep) => str || `${sep} `);
+}
+
 function formatJson(frames, anims) {
   const lines = ['{', '  "frames": {'];
   const fk = Object.keys(frames);
-  fk.forEach((k, i) => lines.push(`    ${JSON.stringify(k)}: ${JSON.stringify(frames[k]).replace(/([:,])/g, '$1 ')}${i < fk.length - 1 ? ',' : ''}`));
+  fk.forEach((k, i) => lines.push(`    ${JSON.stringify(k)}: ${spacedJson(frames[k])}${i < fk.length - 1 ? ',' : ''}`));
   lines.push('  },', '  "anims": {');
   const ak = Object.keys(anims);
-  ak.forEach((k, i) => lines.push(`    ${JSON.stringify(k)}: ${JSON.stringify(anims[k]).replace(/([:,])/g, '$1 ')}${i < ak.length - 1 ? ',' : ''}`));
+  ak.forEach((k, i) => lines.push(`    ${JSON.stringify(k)}: ${spacedJson(anims[k])}${i < ak.length - 1 ? ',' : ''}`));
   lines.push('  }', '}');
   return lines.join('\n') + '\n';
 }
@@ -105,53 +117,138 @@ export function swapChannels(rgba, [i, j]) {
   return rgba;
 }
 
+const SOURCES = ['list', 'files', 'file', 'art', 'from'];
+const FIELDS = new Set(['name', ...SOURCES, 'swap', 'tint', 'tintStrength', 'outline']);
+
 /**
- * Resolve the manifest into anims: name -> [{ key, file, swap, ticks }]. `file` is the BMP path
- * relative to the source root; `key` is the frame key, the same path, plus `#<swap>` for an
- * entry with a channel swap so recoloured frames do not collide with the originals.
+ * The colour transforms of a manifest entry, always in the order swap, tint, outline. Each op
+ * has a frame-key `suffix`: `#rg`, `#tint=rrggbb@s`, `#outline=rrggbb`.
  */
-export function resolveEntries(manifest, sourceRoot) {
-  const anims = new Map();
-  const add = (e, frames) => {
-    if (anims.has(e.name)) throw new Error(`duplicate manifest name "${e.name}"`);
-    if (!frames.length) throw new Error(`manifest entry "${e.name}" has no frames`);
-    parseSwap(e.swap);
-    const suffix = e.swap ? `#${e.swap}` : '';
-    anims.set(e.name, frames.map((f) => ({ key: f.file + suffix, file: f.file, swap: e.swap, ticks: f.ticks })));
-  };
-  for (const e of manifest.entries) {
-    if (e.list) {
-      const dir = posix.dirname(e.list);
-      const text = readFileSync(join(sourceRoot, e.list), 'utf8');
-      add(e, parseSequence(text).map((f) => ({ file: posix.normalize(posix.join(dir, f.file)), ticks: f.ticks })));
-    } else if (e.files) {
-      add(e, e.files.map((f) => ({ file: posix.normalize(f), ticks: DEFAULT_TICKS })));
-    } else if (e.file) {
-      add(e, [{ file: posix.normalize(e.file), ticks: DEFAULT_TICKS }]);
-    } else {
-      throw new Error(`manifest entry "${e.name}" needs list, files or file`);
-    }
+export function parseOps(e) {
+  const where = `manifest entry "${e.name}"`;
+  const ops = [];
+  const swap = parseSwap(e.swap);
+  if (swap) ops.push({ op: 'swap', channels: swap, suffix: `#${e.swap}` });
+  if (e.tint !== undefined) {
+    const rgb = parseHex(e.tint);
+    if (!rgb) throw new Error(`${where}: bad tint "${e.tint}" (#rrggbb)`);
+    const s = e.tintStrength ?? 1;
+    if (typeof s !== 'number' || !(s > 0 && s <= 1)) throw new Error(`${where}: tintStrength ${s} is not in (0, 1]`);
+    ops.push({ op: 'tint', color: rgb, strength: s, suffix: `#tint=${toHex(rgb).slice(1)}@${s}` });
+  } else if (e.tintStrength !== undefined) {
+    throw new Error(`${where}: tintStrength without tint`);
   }
-  return anims;
+  if (e.outline !== undefined) {
+    const rgb = parseHex(e.outline);
+    if (!rgb) throw new Error(`${where}: bad outline "${e.outline}" (#rrggbb)`);
+    if (!rgb[0] && !rgb[1] && !rgb[2]) throw new Error(`${where}: outline cannot be pure black (the transparency key)`);
+    ops.push({ op: 'outline', color: rgb, suffix: `#outline=${toHex(rgb).slice(1)}` });
+  }
+  return ops;
 }
 
-/** Pure build: returns { png, atlasJson, animsJs, width, height, frameCount }. */
-export function buildAtlas(manifest, sourceRoot) {
-  const entries = resolveEntries(manifest, sourceRoot);
-  const decoded = new Map();
-  for (const frames of entries.values()) {
-    for (const { key, file, swap } of frames) {
-      if (decoded.has(key)) continue;
+/** Apply ops (from parseOps) in order to a decoded frame; returns a new frame. */
+export function applyOps(d, ops) {
+  let out = d;
+  for (const o of ops) {
+    if (o.op === 'swap') out = swapFrame(out, o.channels);
+    else if (o.op === 'tint') out = tintFrame(out, o.color, o.strength);
+    else if (o.op === 'outline') out = outlineFrame(out, o.color);
+  }
+  return out;
+}
+
+/**
+ * Resolve the manifest. Returns { anims: Map name -> [frame], art: Map art path -> parsed art,
+ * warnings: [string] }. A frame is { key, ticks, ops, swap } plus its source: `file` (a BMP path
+ * relative to the source root) or `art` + `index` (an art file relative to the art root).
+ * Keys: the BMP path, or `art/<path>:<index>`; then the suffix of every op (parseOps), so a
+ * recoloured frame never collides with its original.
+ * `from: "<earlier entry>"` reuses that entry's frames (its ops included) and adds its own ops.
+ */
+export function resolveManifest(manifest, sourceRoot, { artRoot = ART_ROOT } = {}) {
+  const anims = new Map();
+  const art = new Map();
+  const warnings = [];
+  let palette;
+  const loadPalette = () => {
+    if (palette === undefined) {
+      const p = join(artRoot, PALETTE_FILE);
+      palette = existsSync(p) ? parsePalette(readFileSync(p, 'utf8'), `art/${PALETTE_FILE}`) : null;
+    }
+    return palette;
+  };
+  for (const e of manifest.entries) {
+    const where = `manifest entry "${e.name}"`;
+    if (typeof e.name !== 'string' || !e.name) throw new Error(`manifest entry without a name: ${JSON.stringify(e)}`);
+    if (anims.has(e.name)) throw new Error(`duplicate manifest name "${e.name}"`);
+    for (const k of Object.keys(e)) if (!FIELDS.has(k)) throw new Error(`${where}: unknown field "${k}"`);
+    const sources = SOURCES.filter((s) => e[s] !== undefined);
+    if (sources.length !== 1) throw new Error(`manifest entry "${e.name}" needs list, files or file (or art or from), exactly one`);
+    const ops = parseOps(e);
+    const suffix = ops.map((o) => o.suffix).join('');
+    let frames;
+    if (e.from !== undefined) {
+      const base = anims.get(e.from);
+      if (!base) throw new Error(`${where}: from "${e.from}" is not an earlier entry`);
+      frames = base.map((f) => ({ ...f, key: f.key + suffix, ops: [...f.ops, ...ops], swap: e.swap }));
+    } else if (e.art !== undefined) {
+      const rel = posix.normalize(e.art);
+      if (!art.has(rel)) {
+        const p = join(artRoot, rel);
+        if (!existsSync(p)) throw new Error(`${where}: missing art file art/${rel}`);
+        const parsed = parseArt(readFileSync(p, 'utf8'), loadPalette(), `art/${rel}`);
+        warnings.push(...parsed.warnings);
+        art.set(rel, parsed);
+      }
+      frames = art.get(rel).frames.map((f, index) => ({ key: `${ART_PREFIX}${rel}:${index}${suffix}`, art: rel, index, ticks: f.ticks, ops, swap: e.swap }));
+    } else {
+      let list;
+      if (e.list) {
+        const dir = posix.dirname(e.list);
+        const text = readFileSync(join(sourceRoot, e.list), 'utf8');
+        list = parseSequence(text).map((f) => ({ file: posix.normalize(posix.join(dir, f.file)), ticks: f.ticks }));
+      } else if (e.files) {
+        list = e.files.map((f) => ({ file: posix.normalize(f), ticks: DEFAULT_TICKS }));
+      } else {
+        list = [{ file: posix.normalize(e.file), ticks: DEFAULT_TICKS }];
+      }
+      for (const f of list) if (f.file.startsWith(ART_PREFIX)) throw new Error(`${where}: BMP paths under ${ART_PREFIX} would collide with art keys`);
+      frames = list.map((f) => ({ key: f.file + suffix, file: f.file, ticks: f.ticks, ops, swap: e.swap }));
+    }
+    if (!frames.length) throw new Error(`manifest entry "${e.name}" has no frames`);
+    anims.set(e.name, frames);
+  }
+  return { anims, art, warnings };
+}
+
+/** resolveManifest's anims only: name -> [{ key, file | art, swap, ticks, ops }]. */
+export function resolveEntries(manifest, sourceRoot, opts) {
+  return resolveManifest(manifest, sourceRoot, opts).anims;
+}
+
+/** Pure build: returns { png, atlasJson, animsJs, width, height, frameCount, warnings }. */
+export function buildAtlas(manifest, sourceRoot, opts = {}) {
+  const { anims: entries, art, warnings } = resolveManifest(manifest, sourceRoot, opts);
+  const bmps = new Map();
+  const loadBmp = (file) => {
+    if (!bmps.has(file)) {
       const path = join(sourceRoot, file);
       if (!existsSync(path)) throw new Error(`missing frame ${file} (looked in ${sourceRoot})`);
-      let d;
       try {
-        d = decodeBmp(readFileSync(path));
+        bmps.set(file, decodeBmp(readFileSync(path)));
       } catch (e) {
         throw new Error(`${file}: ${e.message}`);
       }
-      if (swap) swapChannels(d.rgba, parseSwap(swap));
-      decoded.set(key, d);
+    }
+    return bmps.get(file);
+  };
+  const decoded = new Map();
+  for (const frames of entries.values()) {
+    for (const f of frames) {
+      if (decoded.has(f.key)) continue;
+      const base = f.art !== undefined ? art.get(f.art).frames[f.index] : loadBmp(f.file);
+      decoded.set(f.key, applyOps(base, f.ops));
     }
   }
   const { width, height, placed } = packShelves([...decoded].map(([key, d]) => ({ key, w: d.width, h: d.height })));
@@ -176,6 +273,7 @@ export function buildAtlas(manifest, sourceRoot) {
     width,
     height,
     frameCount: decoded.size,
+    warnings,
   };
 }
 
@@ -188,6 +286,7 @@ function main(argv) {
   }
   const outRoot = resolve(argValue(argv, '--out') || REPO_ROOT);
   const out = buildAtlas(manifest, sourceRoot);
+  for (const w of out.warnings) console.warn(`warning: ${w}`);
   const targets = [
     ['assets/atlas.png', out.png],
     ['assets/atlas.json', out.atlasJson],

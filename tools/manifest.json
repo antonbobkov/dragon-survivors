@@ -40,7 +40,12 @@
     { "name": "icon.speed", "file": "bonus/bonusspeed1.bmp" },
     { "name": "icon.big", "file": "bonus/bonusbig1.bmp" },
     { "name": "icon.multi", "file": "bonus/bonusmulti1.bmp" },
-    { "name": "icon.nuke", "file": "bonus/bonusnuke1.bmp" }
+    { "name": "icon.nuke", "file": "bonus/bonusnuke1.bmp" },
+    { "name": "icon.might", "art": "icons/might.txt" },
+    { "name": "icon.haste", "art": "icons/haste.txt" },
+    { "name": "icon.duration", "art": "icons/duration.txt" },
+    { "name": "icon.force", "art": "icons/force.txt" },
+    { "name": "icon.amount", "art": "icons/amount.txt" }
   ],
   "sounds": ["shoot01", "laser01", "explosion01", "explosion02", "death01", "death02", "pickup", "powerup", "hit_golem", "megaslime_hit", "slime_poke", "destroy_castle_sound", "start_game", "ohno", "win_level_2"]
 }

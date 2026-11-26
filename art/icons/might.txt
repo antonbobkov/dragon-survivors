@@ -1,0 +1,18 @@
+# icon.might (Might: +damage). A sword over the bonus tray, point up and to the right.
+key
+  w white
+  s silver
+  g grey
+  D gold.dark
+  b brown
+  Y gold
+frame
+.......ws
+......wsg
+.....wsg.
+..D.wsg..
+...Dsg...
+...bD....
+..Y..D...
+YY.....YY
+.YYYYYYY.

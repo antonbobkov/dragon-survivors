@@ -1,0 +1,15 @@
+# icon.haste (Haste: -cooldown). A lightning bolt over the bonus tray.
+key
+  y yellow
+  Y gold
+  D gold.dark
+frame
+.....yy..
+....yyD..
+...yyD...
+..yyyyyD.
+....yyD..
+...yD....
+..yD.....
+YY.....YY
+.YYYYYYY.

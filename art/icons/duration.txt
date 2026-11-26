@@ -1,0 +1,16 @@
+# icon.duration (Duration: effects last longer). An hourglass in the bonus tray.
+key
+  b brown
+  s silver
+  y yellow
+  Y gold
+frame
+.bbbbbbb.
+..s...s..
+...sys...
+....y....
+...sys...
+..syyys..
+.bbbbbbb.
+YY.....YY
+.YYYYYYY.
