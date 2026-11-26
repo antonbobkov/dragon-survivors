@@ -6,13 +6,14 @@ import { cssToInternal } from './viewport.js';
 export const STICK_DEADZONE = 0.25;
 
 // Standard gamepad mapping.
-export const PAD = { A: 0, START: 9, LEFT: 14, RIGHT: 15 };
+export const PAD = { A: 0, BACK: 8, START: 9, LEFT: 14, RIGHT: 15 };
 
 const MOVE_KEYS = {
   left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
   up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'],
 };
 const PAUSE_KEYS = ['Escape', 'KeyP'];
+const BESTIARY_KEYS = ['Tab']; // §17.1; gamepad Back/Select
 const CONFIRM_KEYS = ['Enter', 'NumpadEnter'];
 const PICK_KEYS = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 };
 
@@ -25,7 +26,7 @@ export const DEBUG_KEYS = new Set([...Object.keys(DEBUG_GRANT_KEYS), DEBUG_JUMP_
 
 // Keys whose browser default (scrolling) is suppressed.
 export const CAPTURED_KEYS = new Set([
-  ...Object.values(MOVE_KEYS).flat(), ...PAUSE_KEYS, ...CONFIRM_KEYS, 'Space', ...Object.keys(PICK_KEYS),
+  ...Object.values(MOVE_KEYS).flat(), ...PAUSE_KEYS, ...BESTIARY_KEYS, ...CONFIRM_KEYS, 'Space', ...Object.keys(PICK_KEYS),
 ]);
 
 export function createInputState() {
@@ -57,8 +58,8 @@ const anyHeld = (held, codes) => codes.some((c) => held.has(c));
 //   dragon: { x, y } dragon position on screen (internal px),
 // }
 // state: from createInputState(); updated in place (device, previous pad buttons).
-// Returns { intent, device, pause, confirm, pick, nav, click, debug }; pause/confirm/pick/nav
-// are edges, and so is debug: { grants: weapon ids in press order, jump: bool, speed: -1 | 0 | 1 }.
+// Returns { intent, device, pause, bestiary, confirm, pick, nav, click, debug };
+// pause/bestiary/confirm/pick/nav are edges, and so is debug: { grants: weapon ids in press order, jump: bool, speed: -1 | 0 | 1 }.
 export function readFrame(raw, state) {
   const held = raw.held || new Set();
   const pressed = raw.pressed || [];
@@ -96,6 +97,7 @@ export function readFrame(raw, state) {
   }
 
   const pause = pressed.some((c) => PAUSE_KEYS.includes(c)) || padEdge(PAD.START);
+  const bestiary = pressed.some((c) => BESTIARY_KEYS.includes(c)) || padEdge(PAD.BACK);
   const confirm = pressed.some((c) => CONFIRM_KEYS.includes(c)) || padEdge(PAD.A);
   let pick = -1;
   for (const c of pressed) if (c in PICK_KEYS) pick = PICK_KEYS[c];
@@ -110,7 +112,7 @@ export function readFrame(raw, state) {
 
   return {
     intent: { moveX, moveY, aimX, aimY, hasAim, confirm, pick },
-    device: state.device, pause, confirm, pick, nav, click, debug,
+    device: state.device, pause, bestiary, confirm, pick, nav, click, debug,
   };
 }
 

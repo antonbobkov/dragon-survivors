@@ -35,6 +35,7 @@ dragon-survivors/
       draw.js             world rendering (background, entities, effects)
       hud.js              timer, tower HP bar, XP bar, weapon/buff icons
       screens.js          title, pause, level-up cards, game over
+      bestiary.js         enemy stats panel (§17.1)
       debug.js            debug overlay: collision circles, loop and entity stats (§19)
     sim/                  no DOM, no canvas, no Date. Pure state + tick.
       game.js             Game state, tick order, run timeline
@@ -48,6 +49,7 @@ dragon-survivors/
       spawner.js
       weapons.js          cooldowns, firing, ring, mini tower
       projectiles.js      movement, hits, procs
+      damage.js           damage types, resistances, the damage function (§12.1)
       effects.js          one-shot animations (explosions, deaths)
       gems.js             XP gems, attraction, pickup
       levelup.js          card pool, offers, applying picks
@@ -78,7 +80,7 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 5. Enemies: special timers (mage cast, mage orb, summon anim), AI target, move, separation, despawn.
 6. Weapons: advance cooldowns, fire, spin the ring, run mini towers.
 7. Projectiles, then enemy shots (mage orbs): move, expire by range.
-8. Collisions: projectile vs enemy (with procs), ring vs enemy, enemy vs tower, enemy shot vs dragon.
+8. Collisions: projectile vs enemy (with procs), ring vs enemy, enemy vs tower, enemy shot vs dragon. Every hit on an enemy goes through the damage function (§12.1).
 9. Deaths: play death animations, drop gems, split slimes, start ghost knight burns.
 10. Gems: attract and collect, add XP, queue level-ups and roll the offers.
 11. Effects: advance one-shot animations, remove finished ones; a finished ghost burn becomes a ghost.
@@ -158,7 +160,7 @@ Sounds copied as-is from the pack root: `shoot01`, `laser01`, `explosion01`, `ex
 
 The sim's state is plain data on the `Game` object. The loop and the renderer read it and never write it (the loop only calls `tick`).
 
-- **Construction:** `new Game({ seed, timeline, debug })`. `timeline` defaults to the §9 table in `content.js`; tests may pass their own rows. `debug` (default false) makes the sim honour `intent.debug` (§19).
+- **Construction:** `new Game({ seed, timeline, debug, meta })`. `timeline` defaults to the §9 table in `content.js`; tests may pass their own rows. `debug` (default false) makes the sim honour `intent.debug` (§19). `meta` is the out-of-game armoury's effect on the run, per damage type: `{ power: { fire, arcane, physical }, shred: { fire, arcane, physical } }`, where `power` multiplies the damage of that type and `shred` is taken off every enemy's resistance to it (§12.1). Any part may be left out; a missing, non-finite or negative power reads 1 and a missing or non-finite shred reads 0, so a run without `meta` is a run with neutral `meta`. It is stored normalised as `game.meta` (all six numbers present), never changes during a run, and is part of the snapshot.
 - **RNG:** `game.rng` is a plain function returning a float in `[0, 1)`. Every random draw calls `game.rng()` at the point of use, never a reference cached at construction, so a test can replace it (`game.rng = () => 0`).
 - **Units and clock:** positions in world px, speeds in px/s, `DT = 1/60`. `game.tickCount` is an integer and `game.t = tickCount × DT` seconds, so time never drifts.
 - **Intent:** exactly the shape in §4. A missing, partial or non-finite field reads as 0, `false` or `-1` (`pick`). A move vector longer than 1 is normalised; a non-zero aim is normalised; `hasAim` is false when the aim is zero. The sim ignores `confirm`; `pick` is read only while level-up offers are open (§14). The loop turns a gamepad A press on the level-up screen into the `pick` of the highlighted card.
@@ -166,7 +168,7 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 - **Events:** `game.events` is cleared at the start of every tick. Systems push `{ type: 'sound', name }`, at most one per sound name per tick; the browser plays them. Events are output, not state.
 - **Ids:** every enemy, projectile, enemy shot, effect, gem and mini tower gets its `id` from one counter, `game.nextId`.
 - **Start:** the dragon at (0, 0), the tower at (0, `TOWER_REST_DIST`) = (0, 40), below the dragon and at rest (§7.1), so nothing moves before the first input.
-- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.offers` (`[]`, the level-up cards on show, §14), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`, entries `{ id, level }` in the order gained), `game.gems` (`[]`), `game.miniTowers` (`[]`), `game.enemyShots` (`[]`, mage orbs, §8.5), `game.spawner` (`{ budget, spawned, golem }`, `golem` true once the golem has spawned). `game.score()` = `floor(t) + kills`.
+- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.offers` (`[]`, the level-up cards on show, §14), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`, entries `{ id, level }` in the order gained), `game.gems` (`[]`), `game.miniTowers` (`[]`), `game.enemyShots` (`[]`, mage orbs, §8.5), `game.spawner` (`{ budget, spawned, golem }`, `golem` true once the golem has spawned), `game.seen` (`[]`, the enemy types met this run in the order first met: a type is added when the first enemy of that type is created, by the spawner, a summon, a slime split, a rising ghost or the golem; read by the bestiary, §17.1). `game.score()` = `floor(t) + kills`.
 
 | Entity | Fields |
 |---|---|
@@ -174,7 +176,7 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 | `game.dragon` | `aimX, aimY` (unit fire direction), `moveX, moveY`, `aimed` (an aim has ever been given), `flip` (facing left, §6.3); `anim` is `dragon.walk` |
 | `game.tower` | `hp, maxHp`, `moved` (the tower moved this tick, §7.1); `anim` is `castle` |
 | `game.enemies[]` | `id, type, r, hp, gen, flip, alpha`. `type` is a key of `ENEMIES` in `content.js`: `knight`, `skeleton`, `slime`, `mage`, `ghostKnight`, `ghost`, `golem`. Mages also have `castTimer` (§8.4) and `orbTimer` (§8.5); the golem has `unkillable` and `procImmune` set to true and `hp = GOLEM_HP = 1e9`, a finite stand-in for ∞ |
-| `game.projectiles[]` | `id, kind, dx, dy` (unit), `speed, r, damage, range, travelled, hits` (ids of enemies hit, at most 8), `gen, dirFrame` (for 16-direction sprites). `kind` is `fireball` (mini-tower shots included, §10.3) or `laser` |
+| `game.projectiles[]` | `id, kind, type, dx, dy` (unit), `speed, r, damage, range, travelled, hits` (ids of enemies hit, at most 8), `gen, dirFrame` (for 16-direction sprites). `kind` is `fireball` (mini-tower shots included, §10.3) or `laser`; `type` is its damage type (§12.1) |
 | `game.enemyShots[]` | `id, kind, dx, dy` (unit), `speed, r, damage, range, travelled`. `kind` is `orb` (§8.5). Kept apart from `game.projectiles`: no player weapon touches them |
 | `game.effects[]` | `id, scale, alpha, flip, hold, life, done`. `scale` multiplies the standard 2× sprite scale; `life` (ticks, usually 0) is a minimum length: the effect holds its last frame until `life` ticks have passed |
 | `game.gems[]` | `id, x, y, value, homing` (§14) |
@@ -265,17 +267,17 @@ An enemy whose HP drops to 0 or below stops being hit at once and is removed in 
 
 `flip` is true while the enemy's x-velocity toward the tower is negative and keeps its last value when the enemy stands still.
 
-| Type | HP | Speed px/s | Radius | Contact DPS | XP | Sprite | Special |
-|---|---|---|---|---|---|---|---|
-| Knight | 3 | 27.5 | 12 | 2 | 1 | `knight` | none |
-| Skeleton | 1 | 45 | 10 | 6 | 1 | `skelly` | none (a summoned one first plays `skelly.summon`, §8.4) |
-| Slime | 2 | 35 | 12 | 8 | 1 | `slime` | on death, if `gen == 0`, spawns 2 slimes with `gen = 1`, HP 1, radius 8, at ±20 px (§8.4). Parent plays `slime.split` instead of `die`. |
-| Mage | 4 | 20 | 12 | 5 | 5 | `mage` | every `MAGE_CAST_INTERVAL = 8 s` since spawn it stops for 1 s (`spell` anim) and spawns 4 skeletons in a 40 px ring around itself, each playing `skelly.summon` once before walking. Will not cast within 80 px of the tower (§8.4). Fires a green orb at the dragon every 3 s while within 320 px of it (§8.5). |
-| Ghost knight | 10 | 27.5 | 12 | 10 | 2 | `ghost.knight` | on death plays `ghost.burn` once (0.5 s, not collidable), then becomes a **Ghost** (§8.4). |
-| Ghost | 2 | 36 | 10 | 8 | 1 | `ghost.ghost` | drawn at 60% alpha. Dies normally. |
-| Mega golem | ∞ | 75 | 56 | 40 | none | `golem` | §13. Every hit pushes it `GOLEM_KNOCKBACK = 1` px away from the hitter. Immune to procs. |
+| Type | HP | Speed px/s | Radius | Contact DPS | XP | Fire | Arcane | Physical | Sprite | Special |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Knight | 3 | 27.5 | 12 | 2 | 1 | 0 | 0 | 0.25 | `knight` | none |
+| Skeleton | 1 | 45 | 10 | 6 | 1 | 0 | 0.25 | −0.5 | `skelly` | none (a summoned one first plays `skelly.summon`, §8.4) |
+| Slime | 2 | 35 | 12 | 8 | 1 | −0.5 | 0 | 0.5 | `slime` | on death, if `gen == 0`, spawns 2 slimes with `gen = 1`, HP 1, radius 8, at ±20 px (§8.4). Parent plays `slime.split` instead of `die`. |
+| Mage | 4 | 20 | 12 | 5 | 5 | 0 | 0.5 | −0.25 | `mage` | every `MAGE_CAST_INTERVAL = 8 s` since spawn it stops for 1 s (`spell` anim) and spawns 4 skeletons in a 40 px ring around itself, each playing `skelly.summon` once before walking. Will not cast within 80 px of the tower (§8.4). Fires a green orb at the dragon every 3 s while within 320 px of it (§8.5). |
+| Ghost knight | 10 | 27.5 | 12 | 10 | 2 | 0 | 0 | 0.25 | `ghost.knight` | on death plays `ghost.burn` once (0.5 s, not collidable), then becomes a **Ghost** (§8.4). |
+| Ghost | 2 | 36 | 10 | 8 | 1 | 0.25 | −0.5 | 0.75 | `ghost.ghost` | drawn at 60% alpha. Dies normally. |
+| Mega golem | ∞ | 75 | 56 | 40 | none | 0 | 0 | 0 | `golem` | §13. Takes no damage. Every hit pushes it `GOLEM_KNOCKBACK = 1` px away from the hitter. Immune to procs. |
 
-All numbers *unmeasured*.
+All numbers *unmeasured*. Fire, Arcane and Physical are the type's resistances to those damage types (§12.1): below 0 a weakness (−0.5 takes ×1.5), above 0 a resistance (0.5 takes half), 1 immune. A slime's row holds for both generations. The golem has no resistances; it takes no damage from any type.
 
 ### 8.1 Separation
 Enemies push apart so they do not stack. For each enemy, query the grid for neighbours within `r1 + r2` and move away by half the overlap along the separating axis. Cap at 6 neighbours per enemy per tick. The golem is immovable in separation; others move around it.
@@ -296,7 +298,7 @@ Specials run in the enemies step before the enemy walks; a busy enemy (a casting
 - **Mage cast.** A mage's `castTimer` counts enemies steps since it spawned, or since its last cast started. When it reaches `MAGE_CAST_INTERVAL` (480 ticks) the timer restarts at 0 and a cast starts, unless the mage's centre is less than 80 px from the tower's centre at that moment: then the cast is skipped and the mage walks on. A cast lasts 60 ticks (1 s) counting the tick it starts; the mage stands still and loops `mage.spell`. At the end of its last cast tick it returns to `mage.walk` and summons 4 skeletons 40 px from its centre, at 45°, 135°, 225° and 315° from its direction toward the tower, so it walks on between the front two. Casts therefore start every 8 s; the 1 s cast is part of the 8 s. The summon has no sound (`death02` is not used).
 - **Summoned skeletons** start on `skelly.summon` frame 0. They join the enemy list at once (separation, collisions, the cap) but first act on the next tick. While `skelly.summon` plays they do not walk; they can be hit and damaged and they do touch the tower. On the tick the anim ends they switch to `skelly.walk` and walk from the next tick on.
 - **Ghost knight burn.** A dying ghost knight counts as a kill, plays `death01` and drops its gem; its effect is `ghost.burn` with its `flip` and `alpha` and `life` 30 ticks (0.5 s): the anim is 22 ticks long and holds its last frame for the rest. The burn is an effect, so it is not hit and does not touch the tower. In the effects step of the tick it finishes, the burn is removed and a ghost appears at its position with its `flip`. The ghost is added even when the cap is full. No ghost rises once the phase is no longer `'play'`.
-- **Golem.** It spawns with `hp = GOLEM_HP` and `unkillable`; it never dies and never despawns. On every damaging hit, after the damage, its HP is restored to `GOLEM_HP` and it moves `GOLEM_KNOCKBACK` (1 px) along the unit direction from the hitting projectile's position (for the ring, the ring fireball; for an explosion, its centre) to the golem's centre, `(0, 1)` if they coincide, and sound `hit_golem` plays. The knockback is applied at once, before the next separation. `procImmune` marks it as immune to procs (§12). It is immovable in separation (§8.1) and deals 40 DPS on contact (§7.2).
+- **Golem.** It spawns with `hp = GOLEM_HP` and `unkillable`; it never dies and never despawns. A hit takes nothing off its HP (the damage function deals it 0, §12.1), which stays `GOLEM_HP`; on every hit it moves `GOLEM_KNOCKBACK` (1 px) along the unit direction from the hitting projectile's position (for the ring, the ring fireball; for an explosion, its centre) to the golem's centre, `(0, 1)` if they coincide, and sound `hit_golem` plays. The knockback is applied at once, before the next separation. `procImmune` marks it as immune to procs (§12). It is immovable in separation (§8.1) and deals 40 DPS on contact (§7.2).
 
 ### 8.5 Mage orbs
 
@@ -343,7 +345,7 @@ The spawner uses `t` at the start of the tick. The weights are those of the last
 
 The player has up to **4 weapon slots**. Each weapon has levels 1–5. Weapons fire automatically on cooldown; there is no fire button. Stat buffs (§11) multiply the base values below.
 
-`cooldown` is in seconds, `damage` is per hit. Projectiles live until they hit (unless they win a pierce roll, §12) or have travelled `range` px.
+`cooldown` is in seconds, `damage` is per hit, before resistances. Every weapon has a damage type (`type` in its `content.js` entry, §12.1): Fireball, Mini tower and Ring are fire, Laser is arcane. Projectiles live until they hit (unless they win a pierce roll, §12) or have travelled `range` px.
 
 A weapon fires on the first weapons step after it is gained, then every `cooldown` (0.9 s = 54 ticks). Aimed weapons fire on cooldown whether or not there are enemies. Projectiles start at the dragon's position. In the collisions step a projectile hits the nearest live enemy it overlaps and has not hit before (ties to the lower id), at most one enemy per tick. No hit spawns an effect, from any weapon: explosions appear only from the Explode proc (§12).
 
@@ -410,7 +412,7 @@ Precisely, in the weapons step:
 
 Sprite `fireball.anim`, radius 6 px.
 
-Precisely: in the weapons step the ring turns by `spin × DT` degrees (its `angle` starts at 0 and wraps at 2π) and places its `count` fireballs at `dragon + orbit × area × (cos, sin)(angle + i × 2π / count)`, after the dragon has moved, in `balls`. In the collisions step, after the projectiles, every ball hits every live enemy whose circle overlaps its own (radius 6, not scaled by area) and whose `rehit` entry is absent or not after the current `tickCount`; a hit deals `damage` (× the damage buff, rounded up), runs the golem's knockback from the ball (§8.4), and sets the entry to `tickCount + rehit` in ticks; it spawns no effect. Balls are checked in order and enemies in grid order, so two balls over one enemy hit it once. Expired entries are dropped in the weapons step, so ids of dead enemies do not pile up. The ring takes the damage and area buffs only: cooldown and projectile speed do not change `rehit` or `spin`. It rolls no procs and draws no random numbers.
+Precisely: in the weapons step the ring turns by `spin × DT` degrees (its `angle` starts at 0 and wraps at 2π) and places its `count` fireballs at `dragon + orbit × area × (cos, sin)(angle + i × 2π / count)`, after the dragon has moved, in `balls`. In the collisions step, after the projectiles, every ball hits every live enemy whose circle overlaps its own (radius 6, not scaled by area) and whose `rehit` entry is absent or not after the current `tickCount`; a hit deals `damage` (× the damage buff, rounded up) as fire damage through the damage function (§12.1), which runs the golem's knockback from the ball (§8.4), and sets the entry to `tickCount + rehit` in ticks; it spawns no effect. Balls are checked in order and enemies in grid order, so two balls over one enemy hit it once. Expired entries are dropped in the weapons step, so ids of dead enemies do not pile up. The ring takes the damage and area buffs only: cooldown and projectile speed do not change `rehit` or `spin`. It rolls no procs and draws no random numbers.
 
 ---
 
@@ -453,9 +455,31 @@ Resolved in `projectiles.js` when a projectile hits an enemy, in this order: dam
 Precisely:
 
 - **Rolls.** Each roll is `game.rng() < chance`, in the order explode, split, pierce, after the damage and the hit memory. A roll happens only when the projectile's kind can have that proc and its chance buff is owned, so a game without chance buffs draws no extra numbers. Fireballs (mini-tower shots are fireballs) can have all three; lasers only pierce. A projectile with `gen >= 2` does not roll split. Against a proc-immune enemy (the golem) nothing is rolled at all, and any projectile that hits it is used up.
-- **Explode.** The circle has radius `60 × area` around the projectile's position at the hit. Every live enemy whose circle overlaps it, except the one just hit, takes the projectile's damage once; proc-immune enemies are not affected at all (no damage, no knockback). The effect is `explosion.big` with `scale = 2 × radius / (2 × 57 px)`, its source width, so the sprite's diameter matches the circle. Explosion kills are ordinary kills in the deaths step.
-- **Split.** The two children are `fireball` projectiles leaving the hit point at −45° then +45° from the parent's direction, with the parent's damage, radius, speed and sprite, range = the parent's range minus the distance it has travelled, `gen + 1`, and the enemy just hit already in their `hits`. They join the projectile list at once but first move and collide on the next tick. The parent is removed unless it also pierces.
+- **Explode.** The circle has radius `60 × area` around the projectile's position at the hit. Every live enemy whose circle overlaps it, except the one just hit, takes the projectile's damage, of the projectile's type, once (§12.1); proc-immune enemies are not affected at all (no damage, no knockback). The effect is `explosion.big` with `scale = 2 × radius / (2 × 57 px)`, its source width, so the sprite's diameter matches the circle. Explosion kills are ordinary kills in the deaths step.
+- **Split.** The two children are `fireball` projectiles leaving the hit point at −45° then +45° from the parent's direction, with the parent's damage, damage type, radius, speed and sprite, range = the parent's range minus the distance it has travelled, `gen + 1`, and the enemy just hit already in their `hits`. They join the projectile list at once but first move and collide on the next tick. The parent is removed unless it also pierces.
 - **Pierce.** A fireball or laser that wins the roll stays in the list and hits its next enemy on a later tick; one that loses it is removed. The roll is made again on every hit.
+
+### 12.1 Damage types and resistances
+
+Every hit on an enemy has a damage type: **fire**, **arcane** or **physical** (`DAMAGE_TYPES` in `content.js`). The type is data: each weapon has a `type`, each projectile carries one (`type`, given when it is fired; by default its kind's, `fireball` fire and `laser` arcane), and an explosion or a split child has its projectile's type.
+
+| Source | Type |
+|---|---|
+| Fireball, mini-tower shots, ring, and their explosions | fire |
+| Laser (and its explosions, should a laser ever explode) | arcane |
+| Nothing yet (claws, bite and saw blade will be) | physical |
+
+Each enemy type has a resistance `r` per damage type, in `[−0.5, 1]` (§8 table): `r < 0` is a weakness, `r > 0` a resistance, `r = 1` immunity.
+
+**The damage function.** Every hit on an enemy, from every weapon, goes through one function, `dealDamage(game, enemy, amount, type, source)` in `damage.js`: projectile hits (§10, §12), explosions (§12) and the ring (§10.4) today, and every later weapon. `amount` is the hit's damage after the damage buff (§11), `type` its damage type, `source` the hitter's position (the projectile, the ring fireball or the explosion centre). It:
+
+1. against an unkillable enemy (the golem) deals nothing: its HP stays `GOLEM_HP`, it is knocked back from `source` and `hit_golem` plays (§8.4); returns 0. Damage types do not affect the golem.
+2. otherwise takes the effective resistance `r' = max(−0.5, r − shred[type])` and deals `0` when `r' ≥ 1`, else `max(1, ceil(amount × power[type] × (1 − r')))`, with `power` and `shred` from `game.meta` (§4.1; 1 and 0 without an armoury). Rounding up comes after every multiplier, so any hit that is not immune does at least 1.
+3. takes that off the enemy's HP and returns it (not capped at the HP the enemy had left). The enemy dies in the deaths step as before (§8), when its HP is 0 or below.
+
+The damage buff is rounded up when a projectile is fired or the ring hits (§11), then the damage function rounds again: a level-1 fireball (2) deals 3 to a slime (fire −0.5) and 2 to a ghost (fire 0.25: `ceil(1.5)`); a level-1 laser (1) deals 1 to a mage (arcane 0.5: `ceil(0.5)`) and 2 to a ghost (arcane −0.5). The damage function draws no random numbers. Mage orbs hit the dragon and the tower, not an enemy, and do not use it.
+
+**Armoury.** `game.meta` (§4.1) holds the out-of-game upgrades per damage type: `power[type]` multiplies all damage of that type, `shred[type]` lowers every enemy's resistance to it, never below −0.5. Both are neutral (1 and 0) unless the `Game` is built with `meta`; the screen that sets them is not part of the demo yet.
 
 ---
 
@@ -469,6 +493,7 @@ Precisely:
 
 - **Title:** shown at page load over a fresh, unticked game: the name, one line of goal, the controls and a Start button. A click anywhere on the canvas, Enter or gamepad A starts the run. Start resumes the audio context and plays `start_game`.
 - **Pause:** Esc, P or gamepad Start toggles it during a run (`'play'` or `'dying'`). It shows "Paused" and the controls; ticks stop. Window blur and a hidden tab also pause. Pause is ignored on the title and game-over screens.
+- **Bestiary:** Tab or gamepad Back opens the enemy stats panel during a run, from play or from pause; ticks stop (§17.1).
 - **Game over:** shown while the phase is `'over'`: time survived (`m:ss`), level reached, kills, score, and a Retry button. A click anywhere on the canvas, Enter or gamepad A retries. Retry builds a new `Game` with a new random seed, or the same seed when the page has `?seed=N`, skips the title and plays `start_game`.
 - Without `?seed`, the seed is a random 32-bit integer from the browser (`Math.random` is allowed outside `src/sim/`).
 
@@ -552,15 +577,16 @@ Checks per tick:
 | Aim | mouse position relative to the dragon on screen | right stick, deadzone 0.25 |
 | Pick card | 1/2/3 or click | d-pad left/right + A |
 | Pause | Esc or P | Start |
+| Bestiary (§17.1) | Tab | Back / Select |
 | Retry | Enter or click | A |
 
 Mouse aim always sets `hasAim = true`. Gamepad aim sets `hasAim` only when the stick is outside the deadzone. The last device that produced input wins, so plugging in a controller just works.
 
 Details:
 
-- **Keyboard:** keys are read by `KeyboardEvent.code`, so the layout does not matter. The move vector is (right − left, down − up) normalised; opposite keys cancel. Enter (and keypad Enter) is `confirm`; Digit1–3 and Numpad1–3 are `pick` 0–2. Pause, confirm and pick are edges: one per press, never from auto-repeat.
+- **Keyboard:** keys are read by `KeyboardEvent.code`, so the layout does not matter. The move vector is (right − left, down − up) normalised; opposite keys cancel. Enter (and keypad Enter) is `confirm`; Digit1–3 and Numpad1–3 are `pick` 0–2; Tab is `bestiary` (its browser default, moving focus, is suppressed). Pause, bestiary, confirm and pick are edges: one per press, never from auto-repeat.
 - **Mouse:** the position is tracked over the whole window and converted from CSS pixels to internal pixels with the canvas's bounding rect (`x = (clientX − left) × 960 / width`, likewise y). The aim is the unit vector from the dragon's screen position (its centre) to the mouse; before the mouse has moved there is no mouse aim, and a mouse exactly on the dragon gives none. Only the left button counts as a click.
-- **Gamepad:** the first connected pad in the browser's standard mapping. Both sticks use a radial deadzone of 0.25: inside it the stick reads zero, outside it the raw vector clamped to length 1 (the left stick is analog movement). Buttons: A (0) is `confirm`, Start (9) pauses, d-pad left/right (14/15) navigate the level-up cards; all are edges against the previous frame.
+- **Gamepad:** the first connected pad in the browser's standard mapping. Both sticks use a radial deadzone of 0.25: inside it the stick reads zero, outside it the raw vector clamped to length 1 (the left stick is analog movement). Buttons: A (0) is `confirm`, Start (9) pauses, Back / Select (8) is `bestiary`, d-pad left/right (14/15) navigate the level-up cards; all are edges against the previous frame.
 - **Last device:** a frame counts as keyboard-and-mouse activity when a key is held or pressed, or the mouse moved or clicked; as gamepad activity when a stick is outside its deadzone or a button was newly pressed. Move and aim come only from the current device. When both are active in the same frame the keyboard and mouse win.
 
 ---
@@ -580,6 +606,18 @@ Top centre: run timer `m:ss`. Top left: tower HP bar in red with the number. Bot
 Text is 16 px monospace (32 px for screen titles) with a 2 px black drop shadow. All HUD numbers *unmeasured*.
 
 Weapon icons: fireball → frame 0 of `fireball.anim`; laser → frame 12 (facing right) of `laser.dir`; mini tower → `castle` at 1× (30 px); ring → `icon.ring`. Buff icons are the §11 icons. Icons draw at the standard 2× sprite scale unless stated.
+
+The title and pause screens list the controls: move, aim, pause and the bestiary (`Foes  Tab  Back`).
+
+### 17.1 Bestiary
+
+An enemy stats panel, so a player can read the matchups (§12.1) at any time.
+
+- **Open and close** (`app.js`): Tab or gamepad Back / Select opens it during a run, from play (the level-up screen included) or from pause, in `'play'` or `'dying'`; it is ignored on the title and game-over screens. While it is open the loop runs no ticks, as with pause. Tab, Back, Esc, P or Start closes it, back to the screen it was opened from (the run or pause). Window blur leaves it open.
+- **Layout** (`render/bestiary.js`, 960×600 over a 60% black overlay): the title `BESTIARY` (32 px) centred at y 24; one card per enemy type, in the order of the §8 table, in two columns of 452 px cards with a 16 px gap, centred, filled row by row from y 72; each card is `min(110, floor((476 − 8 × (rows − 1)) / rows))` px high with 8 px between rows, so up to 10 types fit above y 548; the hint `Tab or Esc to close` centred at y 568.
+- **A card of a type met this run** (`game.seen`, §4.1): its walk anim, animated in real time at the sim's 60 Hz frame durations while the panel is open, centred in an 80 px box at the card's left, at the standard 2× (1× when 2× does not fit the box, as for the golem), with the type's alpha; its name (16 px); `HP n  XP n` and `SPD n  DPS n` below (14 px; the golem's HP is `∞`); and three resistance rows, Fire, Arcane and Physical: the name, a 52×10 px bar filled to `|r|` of its width (full at 100%), and a label in the bar's colour: `weak N%` in red for `r < 0`, `0%` in grey (a thin grey line instead of a fill) for `r = 0`, `resist N%` in blue for `0 < r < 1`, `immune` in gold for `r ≥ 1`, with `N = round(|r| × 100)`. The resistance shown is the effective one, after `game.meta`'s shred (§12.1). The golem shows `takes no damage` instead of the three rows.
+- **A type not met yet:** frame 0 of its walk as a flat dark silhouette, the name `???`, no stats and no resistances.
+- The panel reads the game and never writes it. All layout numbers *unmeasured*.
 
 ---
 
@@ -614,6 +652,7 @@ Precisely:
 - **Dragon:** facing follows the horizontal move, then the aim, then the last facing; the walk frame holds at 0 while still and advances while moving.
 - **Procs:** with `rng` stubbed to return 0, a fireball with explode chance L1 spawns an explosion that damages a second enemy in range.
 - **Level-up:** the world is frozen while offers are open (the digest does not change on ticks without a pick); the same seed and the same intents, picks included, give the same digest.
+- **Damage types:** every weapon's hits (projectile, explosion, split child, mini-tower shot, ring) carry their type; resistance maths with weakness, resistance, immunity and rounding; `meta` power and shred (floored at −0.5); the golem takes nothing from any type and is still knocked back; `game.seen` records types as they are first created; the bestiary's layout, bar styles and silhouettes, drawn under node without writing the game.
 - **Slime split:** killing a gen-0 slime yields two gen-1 slimes; killing those yields none.
 - **Ghost:** killing a ghost knight yields a ghost after the burn effect finishes.
 - **Mage:** a mage starts casting 8 s after it spawns and has spawned 4 skeletons 1 s later, unless within 80 px of the tower.
@@ -639,7 +678,7 @@ Each milestone is playable on its own.
 
 ## 22. Out of scope
 
-Unchanged from the design: meta progression, multiple stages, evolutions, elements, terrain, mobile, music, controller rumble, merchants, royals, fireball lob, claw.
+Unchanged from the design: meta progression (beyond the `meta` construction hook, §4.1), multiple stages, evolutions, terrain, mobile, music, controller rumble, merchants, royals, fireball lob, claw.
 
 ## 23. Open decisions
 

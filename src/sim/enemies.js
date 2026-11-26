@@ -29,6 +29,7 @@ export function createEnemy(game, type, x, y) {
   if (def.unkillable) { e.hp = GOLEM_HP; e.unkillable = true; }
   if (def.procImmune) e.procImmune = true;
   game.enemies.push(e);
+  if (!game.seen.includes(type)) game.seen.push(type); // §17.1 bestiary
   return e;
 }
 

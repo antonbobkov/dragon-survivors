@@ -22,7 +22,8 @@ export class App {
     this.audio = audio;
     this.acc = new Accumulator();
     this.game = makeGame(this.nextSeed());
-    this.screen = 'title'; // 'title' | 'play' | 'paused'
+    this.screen = 'title'; // 'title' | 'play' | 'paused' | 'bestiary'
+    this.bestiaryFrom = 'play'; // the screen the bestiary returns to when closed (§17.1)
     this.pending = { confirm: false, pick: -1, debug: [] };
     this.cardSel = 0; // highlighted level-up card (d-pad + A), reset for every new set of offers
     this.seenOffers = null;
@@ -32,8 +33,8 @@ export class App {
     return this.fixedSeed ?? this.randomSeed();
   }
 
-  // Ticks run only while playing (title and pause stop them). The sim itself freezes in
-  // 'dying' and 'over', and while level-up offers are open.
+  // Ticks run only while playing (title, pause and the bestiary stop them). The sim itself
+  // freezes in 'dying' and 'over', and while level-up offers are open.
   ticking() {
     return this.screen === 'play';
   }
@@ -82,6 +83,17 @@ export class App {
     if (this.debug && input.debug && input.debug.speed) this.changeSpeed(input.debug.speed);
     if (this.screen === 'title') {
       if (input.confirm || input.click) this.start();
+      return;
+    }
+    // §17.1: Tab / Back opens the bestiary during a run (from play or pause; ticks stop);
+    // Tab, Back, Esc, P or Start closes it, back to where it was opened.
+    if (this.screen === 'bestiary') {
+      if (input.bestiary || input.pause) this.screen = this.bestiaryFrom;
+      return;
+    }
+    if (input.bestiary && this.game.phase !== 'over') {
+      this.bestiaryFrom = this.screen;
+      this.screen = 'bestiary';
       return;
     }
     if (this.screen === 'paused') {

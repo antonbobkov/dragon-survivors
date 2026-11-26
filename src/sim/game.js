@@ -12,6 +12,7 @@ import { stepEnemyShots, collideEnemyShots } from './enemyShots.js';
 import { stepEffects, spawnEffect } from './effects.js';
 import { stepGems } from './gems.js';
 import { applyCard, openOffers } from './levelup.js';
+import { normalizeMeta } from './damage.js';
 
 const DYING_TICKS = Math.round(DYING_TIME / DT);
 
@@ -40,9 +41,10 @@ export function normalizeDebug(intent) {
 }
 
 export class Game {
-  constructor({ seed = 1, timeline = TIMELINE, debug = false } = {}) {
+  constructor({ seed = 1, timeline = TIMELINE, debug = false, meta } = {}) {
     this.seed = seed;
     this.debug = debug === true; // §19: debug commands in the intent are honoured only then
+    this.meta = normalizeMeta(meta); // §4.1, §12.1: the armoury's per-type power and shred
     this.rng = mulberry32(seed);
     this.timeline = timeline;
     this.tickCount = 0;
@@ -54,6 +56,7 @@ export class Game {
     this.dragon = createDragon();
     this.tower = createTower();
     this.enemies = [];
+    this.seen = []; // enemy types met this run, in the order first spawned (§17.1)
     this.projectiles = [];
     this.enemyShots = []; // mage orbs (§8.5), apart from the player's projectiles
     this.effects = [];
@@ -183,7 +186,7 @@ export class Game {
   // Plain-data view of the state (no rng, grid or events).
   snapshot() {
     return {
-      seed: this.seed, tickCount: this.tickCount, phase: this.phase, dyingTicks: this.dyingTicks,
+      seed: this.seed, meta: this.meta, seen: this.seen, tickCount: this.tickCount, phase: this.phase, dyingTicks: this.dyingTicks,
       nextId: this.nextId, kills: this.kills, level: this.level, xp: this.xp,
       pendingLevelUps: this.pendingLevelUps, offers: this.offers, spawner: this.spawner,
       dragon: this.dragon, tower: this.tower, enemies: this.enemies,

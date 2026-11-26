@@ -64,9 +64,11 @@ test('content: enemy table matches §8', () => {
   const names = { Knight: 'knight', Skeleton: 'skeleton', Slime: 'slime', Mage: 'mage', 'Ghost knight': 'ghostKnight', Ghost: 'ghost', 'Mega golem': 'golem' };
   const rows = tableAfter('## 8. Enemies');
   assert.equal(rows.length, C.ENEMY_TYPES.length);
-  for (const [type, hp, speed, r, dps, xp, sprite] of rows) {
+  for (const [type, hp, speed, r, dps, xp, fire, arcane, physical, sprite] of rows) {
     const e = C.ENEMIES[names[type]];
     assert.ok(e, type);
+    assert.deepEqual(e.resist, { fire: num(fire), arcane: num(arcane), physical: num(physical) }, `${type} resistances (§8, §12.1)`);
+    for (const t of C.DAMAGE_TYPES) assert.ok(e.resist[t] >= C.RESIST_MIN && e.resist[t] <= 1, `${type} ${t} in [-0.5, 1]`);
     assert.equal(e.hp, hp === '∞' ? Infinity : num(hp), `${type} hp`);
     assert.equal(e.speed, num(speed), `${type} speed`);
     assert.equal(e.r, num(r), `${type} r`);
@@ -122,7 +124,7 @@ test('content: buffs match §11', () => {
     [l1, l2, l3].forEach((v, i) => assert.ok(Math.abs(b.levels[i] - pct(v)) < 1e-12, `${name} L${i + 1}`));
   }
   assert.deepEqual(Object.keys(C.PROJECTILE_KINDS), ['fireball', 'laser'], 'mini-tower shots are fireballs (§10.3)');
-  assert.deepEqual(C.PROJECTILE_KINDS.laser, { explode: false, split: false, pierce: true }, '§12: lasers only pierce');
+  assert.deepEqual(C.PROJECTILE_KINDS.laser, { type: 'arcane', explode: false, split: false, pierce: true }, '§12: lasers only pierce');
 });
 
 test('content: ATLAS_NAMES lists every §3.3 atlas name and every anim content refers to', () => {
