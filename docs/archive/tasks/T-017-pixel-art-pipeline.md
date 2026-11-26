@@ -1,6 +1,6 @@
 # T-017: Pixel-art pipeline and the new buff icons
 
-**Source:** [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §6, §10; owner instruction "if art assets are missing, create new pixel art" · **Model:** Opus · **Depends on:** nothing open
+**Source:** [strategy-depth design](../../../reports/designs/2026-11-26-strategy-depth-design.md) §6, §10; owner instruction "if art assets are missing, create new pixel art" · **Model:** Opus · **Depends on:** nothing open
 
 ## Why
 
