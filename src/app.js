@@ -33,8 +33,8 @@ export class App {
     return this.fixedSeed ?? this.randomSeed();
   }
 
-  // Ticks run only while playing (title, pause and the bestiary stop them). The sim itself freezes in
-  // 'dying' and 'over', and while level-up offers are open.
+  // Ticks run only while playing (title, pause and the bestiary stop them). The sim itself
+  // freezes in 'dying' and 'over', and while level-up offers are open.
   ticking() {
     return this.screen === 'play';
   }
