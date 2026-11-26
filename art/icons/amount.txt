@@ -1,0 +1,15 @@
+# icon.amount (Amount: +1 projectile). Three fireballs piled in the bonus tray.
+key
+  y yellow
+  Y gold
+  r red
+frame
+...rYr...
+...YyY...
+...rYr...
+.rYr.rYr.
+.YyY.YyY.
+.rYr.rYr.
+.........
+YY.....YY
+.YYYYYYY.

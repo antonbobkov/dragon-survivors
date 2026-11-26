@@ -10,7 +10,7 @@ This document is the authority for the demo. If code and spec disagree, the code
 
 - A 5-minute run that feels like Vampire Survivors with the dragon-and-tower twist.
 - Runs in a desktop browser from static files. No bundler, no framework, no npm runtime dependencies. ES modules loaded by `index.html`.
-- Reuses the dragongame sprites and sounds unchanged, converted once by a build script.
+- Reuses the dragongame sprites and sounds unchanged, converted once by a build script. Sprites the pack lacks are drawn as new pixel art in its style (§3.4).
 - Keyboard + mouse and gamepad both work from day one.
 - Game logic is headless and deterministic so it can run under `node --test` without a DOM.
 
@@ -57,9 +57,16 @@ dragon-survivors/
   assets/
     atlas.png, atlas.json
     sounds/*.wav
+  art/                    new pixel art drawn for this game, as text (§3.4)
+    README.md             the art format and the style guide
+    palette.txt           the pack's colours, named
+    <group>/<name>.txt    one file per animation
   tools/
-    build-atlas.mjs       BMP -> atlas.png + atlas.json (Node, no deps)
-    manifest.json         which dragongame sequences to import, under which names
+    build-atlas.mjs       BMP + art -> atlas.png + atlas.json (Node, no deps)
+    manifest.json         which dragongame sequences and art files to import, under which names
+    palette.mjs           samples the pack's colours into art/palette.txt
+    bmp-to-art.mjs        prints pack BMPs or atlas anims as art files (to study or start from)
+    art-preview.html/.mjs every atlas anim, animated, at 2× and 4× on grass and black (not loaded by the game)
     copy-sounds.mjs
     measure.mjs           balance instrument: headless bot runs over a seed pool, Markdown tables
   test/
@@ -67,7 +74,7 @@ dragon-survivors/
   docs/
 ```
 
-Serve with any static server (`python -m http.server` or `npx serve`). The only build step is `node tools/build-atlas.mjs`, which reads `E:\code\dragongame\assets` (path set in `manifest.json`) and writes into `assets/`, plus `node tools/copy-sounds.mjs` for the WAVs. `npm run build:assets` runs both. The outputs are committed, so the game and the tests never need the pack.
+Serve with any static server (`python -m http.server` or `npx serve`). The only build step is `node tools/build-atlas.mjs`, which reads `E:\code\dragongame\assets` (path set in `manifest.json`) and this repo's `art/`, and writes into `assets/`, plus `node tools/copy-sounds.mjs` for the WAVs. `npm run build:assets` runs both. The outputs are committed, so the game and the tests never need the pack.
 
 ### 2.1 Tick order
 
@@ -100,8 +107,8 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 
 `tools/build-atlas.mjs`:
 
-1. Reads `manifest.json`: a list of entries like `{ "name": "knight.walk", "list": "knight/knight.txt" }` for sequences `{ "name": "castle", "file": "castle/castle0000.bmp" }` for single frames, and `{ "name": "explosion.big", "files": [...] }` for numbered BMP ranges that have no `.txt`. Frame keys are the source path relative to the source root, with forward slashes; a frame used by several anims is packed once. An entry may add `"swap": "rg"` (any two different channels of `r`, `g`, `b`) to swap those colour channels of every pixel after decoding; its frame keys get the swap value as a suffix (`#rg`), so a recoloured frame is packed apart from the original. The source root is `sourceRoot` in the manifest, overridden by `--source <dir>` or the `DRAGONGAME_ASSETS` environment variable. The manifest also lists the `sounds` to copy.
-2. Decodes each BMP with its own decoder (handles `biBitCount` 8 and 24, bottom-up rows, and top-down rows when the height is negative, 4-byte row padding) and sets the key colour to alpha 0.
+1. Reads `manifest.json`: a list of entries like `{ "name": "knight.walk", "list": "knight/knight.txt" }` for sequences `{ "name": "castle", "file": "castle/castle0000.bmp" }` for single frames, and `{ "name": "explosion.big", "files": [...] }` for numbered BMP ranges that have no `.txt`. Frame keys are the source path relative to the source root, with forward slashes; a frame used by several anims is packed once. Two more sources: `{ "name": "icon.might", "art": "icons/might.txt" }` reads a text pixel-art file under `art/` (§3.4), its frame keys `art/<path>:<index>` (`art/icons/might.txt:0`), which never meet a BMP path; and `{ "name": "knight.walk.gold", "from": "knight.walk", ... }` reuses the frames and ticks of an earlier entry so a variant can be derived from it. Each entry has exactly one source; an unknown field is an error. Any entry may add colour variants (§3.5): `"swap"`, `"tint"` with `"tintStrength"`, `"outline"`. An entry with `"swap": "rg"` (any two different channels of `r`, `g`, `b`) swaps those colour channels of every pixel after decoding. Every variant op appends a suffix to the frame keys (`#rg`, `#tint=rrggbb@s`, `#outline=rrggbb`), so a recoloured frame is packed apart from the original. The source root is `sourceRoot` in the manifest, overridden by `--source <dir>` or the `DRAGONGAME_ASSETS` environment variable. The manifest also lists the `sounds` to copy.
+2. Decodes each BMP with its own decoder (handles `biBitCount` 8 and 24, bottom-up rows, and top-down rows when the height is negative, 4-byte row padding) and sets the key colour to alpha 0. Parses each art file (§3.4). Then applies the entry's variant ops (§3.5), always in the order swap, tint, outline; a `from` entry applies its own ops after those of the entry it derives from. Art colours outside `art/palette.txt` print a warning; every other problem (unknown colour, ragged rows, bad durations, a bad variant field) fails the build with the file and line.
 3. Packs all unique frames into one PNG with a shelf packer (fixed width 512 px, height grows, tallest frames first) and 1px padding. Writes the PNG using Node's built-in `zlib` (no library).
 4. Writes `atlas.json`:
 
@@ -112,7 +119,7 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 }
 ```
 
-`ticks` are per-frame durations in **60 Hz ticks** (the sim rate, §4). Plain lists get a default of 6 ticks per frame (the original advanced most animations every 3 of its 30 Hz ticks). FANCY durations are doubled. Single-frame entries get `ticks: [6]`.
+`ticks` are per-frame durations in **60 Hz ticks** (the sim rate, §4). Plain lists get a default of 6 ticks per frame (the original advanced most animations every 3 of its 30 Hz ticks). FANCY durations are doubled. Single-frame entries get `ticks: [6]`. Art frames take the durations written in their file (default 6). `atlas.json` puts a space after each `:` and `,` outside strings only, so frame keys keep their exact spelling.
 
 5. Writes `src/sim/anims.js`, `export const ANIMS = { name: { ticks: [...] } }`, sorted by name: the same `ticks` as `atlas.json`, so the sim can advance and finish animations without reading files. It is generated and committed; never edit it by hand.
 
@@ -139,9 +146,32 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 | `explosion.laser`, `explosion.laserbig` | `explosion/laser_explosion0000..0005.bmp`, `explosion/laser_explosion_even_bigger_good_with_sparks0000..0005.bmp` | 45px, 64px. Unused in the demo (lasers never explode, §12) but imported for later |
 | `burn` | `burn/burn.txt` | 16px, reserved |
 | `icon.laser`, `icon.explode`, `icon.split`, `icon.ring`, `icon.speed`, `icon.big`, `icon.multi`, `icon.nuke` | `bonus/bonuslaser1.bmp`, `bonus/bonusexplosion1.bmp`, `bonus/bonussplit1.bmp`, `bonus/bonusring1.bmp`, `bonus/bonusspeed1.bmp`, `bonus/bonusbig1.bmp`, `bonus/bonusmulti1.bmp`, `bonus/bonusnuke1.bmp` | level-up card icons, roughly 9px |
+| `icon.might`, `icon.haste`, `icon.duration`, `icon.force`, `icon.amount` | `art/icons/might.txt`, `art/icons/haste.txt`, `art/icons/duration.txt`, `art/icons/force.txt`, `art/icons/amount.txt` | drawn for this game (§3.4), 9×9, the pack's bonus tray under a sword, a lightning bolt, an hourglass, a war hammer and three fireballs. Icons of the generic buffs Might, Haste, Duration, Force and Amount; not shown until those buffs exist |
 | `gem` | none, drawn procedurally | 6px diamond, two colours |
 
 Sounds copied as-is from the pack root: `shoot01`, `laser01`, `explosion01`, `explosion02`, `death01`, `death02`, `pickup`, `powerup`, `hit_golem`, `megaslime_hit`, `slime_poke`, `destroy_castle_sound`, `start_game`, `ohno`, `win_level_2`.
+
+### 3.4 Text pixel art
+
+Sprites the pack lacks are drawn for this game as text under `art/`, in the pack's style, and built into the same atlas. Existing sprites are never rescaled to fake a new size: a new size is new art. [`art/README.md`](../art/README.md) holds the format and the style guide; in short:
+
+- One file per animation, `art/<group>/<name>.txt`. Lines starting with `#` are comments; `key` and `frame` headers may carry a trailing `# comment`.
+- A `key` block maps single characters to colours: a name from `art/palette.txt` or `#rrggbb`. `.` is always transparent. Pure black `#000000` is refused (it is the pack's transparency key; the pack's own black is `black`, `#010000`).
+- Then one or more `frame [ticks]` blocks of pixel rows, every frame the same size, every row the same width. `ticks` is the frame's duration in 60 Hz ticks, default 6.
+- `art/palette.txt` lists the pack's colours with names: `tools/palette.mjs` counts the opaque colours of every BMP frame the manifest imports (variants excluded) and keeps the 32 most common with at least 5 pixels (26 colours), keeping existing names by colour. Art uses palette colours; a `#rrggbb` outside the palette is a build warning, not an error.
+- The style: side view facing right (sprites are mirrored in game), flat colours with no anti-aliasing and no semi-transparency, light from the top left, a dark outline only where the pack's sprites have one (most have none), 16 px standard enemies, 2-frame walks, 9×9 icons on the pack's gold bonus tray.
+
+`tools/art-preview.html`, served with the rest of the repo, shows every atlas anim animating at 2× and 4×, on grass and on black, with a name filter and a frame strip; the game never loads it.
+
+### 3.5 Variants
+
+Variants are generated at build time from existing frames, so changing a colour is one manifest edit. Ops run in this order:
+
+1. **Swap** (`"swap": "rg"`): swaps two colour channels of every pixel.
+2. **Tint** (`"tint": "#rrggbb"`, `"tintStrength"` in (0, 1], default 1): luminance-preserving. Each opaque pixel of luminance `l` (Rec. 601) has a target colour: the tint scaled to `l`, running from black through the tint (at the tint's own luminance) to white. The pixel moves `tintStrength` of the way from its colour to that target. Luminance is kept (up to rounding), so light and shade keep their order and the sprite stays readable.
+3. **Outline** (`"outline": "#rrggbb"`): the frame grows by 1 px on every side (2 px in each dimension, so nothing is clipped and the sprite stays centred) and every transparent pixel that touches an opaque pixel edge-on takes the outline colour. Diagonal neighbours are not outlined.
+
+No op turns a transparent pixel opaque except the outline, and no op produces an opaque pure black pixel (it becomes `#010000`).
 
 ---
 
@@ -660,6 +690,7 @@ Precisely:
 - **Timeline:** at t = 300 s the golem exists; at t = 0 only knights spawn.
 - **Soak:** run 5 minutes with a scripted dragon that circles the tower, on the default timeline with every rate from 3:00 on raised to at least 30/s. Assert no exceptions, the spawner never spawns above the cap (§8.2), and the tower eventually dies. The test holds the tower at full HP until the golem has spawned, so the run reaches 5:00 whatever the balance; the horde reaches the cap on the way (asserted), and the golem then ends the run. It stays in the default suite (a few seconds).
 - **Atlas:** `build-atlas.mjs` run on the manifest produces every name the game asks for. `content.js` lists its required atlas names and the test cross-checks them.
+- **Art:** the art parser (frames, key by name or hex, transparency, durations, every error with its file and line), the palette file and tool, the off-palette warning, the variants on synthetic frames (tint keeps luminance and its order, outline grows by 2 px and borders opaque pixels edge-on only, op order swap → tint → outline, frame-key suffixes), art and `from` entries built into an atlas, and the committed atlas holding every art file pixel for pixel. Every file under `art/` parses with no warning and is used by the manifest. None of these needs the pack.
 - **Balance instrument:** `node tools/measure.mjs` plays headless runs over a pool of seeds (16 by default, a 420 s cap) and prints, per bot, median, min and max survival time, how many runs reached 5:00 and the cap, kills, level, what ended the fallen runs and how often the tower moved, as Markdown. A bot is a movement policy plus a pick rule, named `<policy>+<pick>`. The tower follows the dragon, so every policy is anchored to a fixed world point, home (the dragon's start), never to the tower. Policies: `idle` gives no input (stands on home, fires right, collects nothing, dodges nothing); `aim` stands on home and lets the tower come to rest; `kite` walks a circle of 80 px around home, inside the tether, so the tower keeps following on a smaller circle. `aim` and `kite` aim at the enemy nearest the tower; whenever a gem that is not yet homing lies within 300 px of home (`--gem-range` changes it) they fly to the one nearest the dragon instead; and a mage orb within 100 px that will pass within its radius + `DRAGON_RADIUS` + 4 px of the dragon overrides both: they step straight away from its path, the most imminent orb first (`--no-dodge` turns it off). Pick rules, used while level-up offers are open: `naive` takes card 0; `greedy` takes Repair when tower HP is below 40%, else a new weapon, else the upgrade of the highest-level weapon, else a buff upgrade, else a new buff, else card 0. A fall's cause is the source (an enemy type's contact, or orbs) that took the most tower HP in the 30 s before it. `--timeline` adds tower HP, enemies alive, kills, spawned and level over time; `--causes` adds the tower HP lost by source per window and the HP repaired; `--set` runs a what-if (a timeline rate, the tower HP, an enemy field) without editing `content.js`. Tests run one short seed per bot and pin the anchoring, the dodge and the damage split.
 
 ---

@@ -332,7 +332,7 @@ test('tick defaults: plain lists 6, singles [6], FANCY doubled', () => {
 
 test('spec §3.3 names are all in the manifest (except gem), and the sounds match', () => {
   const spec = readFileSync(path('docs/demo-spec.md'), 'utf8');
-  const section = spec.slice(spec.indexOf('### 3.3'), spec.indexOf('## 4.'));
+  const section = spec.slice(spec.indexOf('### 3.3'), spec.indexOf('### 3.4'));
   const names = [];
   for (const row of section.split('\n').filter((l) => l.startsWith('| `'))) {
     for (const m of row.split('|')[1].matchAll(/`([^`]+)`/g)) names.push(m[1]);

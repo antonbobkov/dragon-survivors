@@ -1,0 +1,31 @@
+# The dragongame pack palette: the most common opaque colours of the imported BMP frames.
+# Sampled by tools/palette.mjs over 204 frames (top 32, at least 5 pixels).
+# Regenerating keeps the names (matched by colour); rename freely. Art keys use these names.
+#
+# name       hex       pixels  frames
+grey         #7f7f7f     7935      58
+silver       #bfbfbf     6032      49
+red          #ff0000     2715      87
+cyan         #00ffff     2430      50
+white        #ffffff     2200      10
+cream        #fffbf0     1735      75
+red.dark     #bf0000     1275      46
+maroon       #7f0000      917      33
+green        #00ff00      871      30
+maroon.dark  #3f0000      726      18
+charcoal     #3f3f3f      604      50
+black        #010000      396      45
+blue         #0000ff      250      11
+yellow       #ffff00      206      29
+brown        #7f3f00      205       8
+brown.dark   #3f1f00      204       8
+gold         #ffbf00      145      12
+green.dark   #00bf00      127       2
+navy         #00007f      122       7
+blue.dark    #0000bf       53       6
+navy.dark    #00003f       46       3
+olive        #7f7f00       35       7
+black.blue   #010203       34       2
+gold.dark    #bf7f00       24       6
+steel        #a0a0a4       12       2
+yellow.dark  #bfbf00        5       1

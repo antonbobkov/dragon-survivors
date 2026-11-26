@@ -132,7 +132,12 @@ test('content: ATLAS_NAMES lists every §3.3 atlas name and every anim content r
   for (const [names] of tableAfter('### 3.3')) {
     for (const m of names.matchAll(/`([^`]+)`/g)) if (m[1] !== 'gem') manifest.add(m[1]);
   }
-  assert.deepEqual([...C.ATLAS_NAMES].sort(), [...manifest].sort());
+  // Art drawn ahead of its feature (manifest `art` / `from` entries) may wait to be listed until used.
+  const entries = JSON.parse(readFileSync(new URL('../tools/manifest.json', import.meta.url), 'utf8')).entries;
+  const ahead = new Set(entries.filter((e) => e.art || e.from).map((e) => e.name));
+  for (const n of C.ATLAS_NAMES) assert.ok(manifest.has(n), `${n} is not in spec §3.3`);
+  for (const n of manifest) assert.ok(C.ATLAS_NAMES.includes(n) || ahead.has(n), `${n} is missing from ATLAS_NAMES`);
+  assert.equal(new Set(C.ATLAS_NAMES).size, C.ATLAS_NAMES.length, 'no duplicates');
   const used = [];
   for (const e of Object.values(C.ENEMIES)) used.push(e.walk, e.die, e.summon, e.split, e.spell);
   for (const w of Object.values(C.WEAPONS)) used.push(w.anim, w.bigAnim);
@@ -143,7 +148,11 @@ test('content: ATLAS_NAMES lists every §3.3 atlas name and every anim content r
 });
 
 test('content: every generated anim is a listed atlas name, and the sim core anims exist', () => {
-  for (const name of Object.keys(ANIMS)) assert.ok(C.ATLAS_NAMES.includes(name), name);
+  // Art drawn or generated ahead of its feature (manifest `art` / `from` entries) joins ATLAS_NAMES
+  // when the game starts using it; every pack import must already be listed.
+  const manifest = JSON.parse(readFileSync(new URL('../tools/manifest.json', import.meta.url), 'utf8'));
+  const ahead = new Set(manifest.entries.filter((e) => e.art || e.from).map((e) => e.name));
+  for (const name of Object.keys(ANIMS)) assert.ok(C.ATLAS_NAMES.includes(name) || ahead.has(name), name);
   // Anims the sim core advances today (the rest are checked against atlas.json by npm run check).
   for (const name of ['knight.walk', 'knight.die', 'fireball.anim', 'fireball.big', 'explosion.small', 'castle.destroy']) {
     assert.ok(ANIMS[name], name);

@@ -1,0 +1,20 @@
+# icon.force (Force: +knockback and poise damage). A war hammer standing in the bonus tray.
+key
+  w white
+  s silver
+  t steel
+  g grey
+  c charcoal
+  b brown
+  D gold.dark
+  Y gold
+frame
+.ttwwwtt.
+.gsssssg.
+.cgggggc.
+....b....
+....b....
+....D....
+....b....
+YY..b..YY
+.YYYYYYY.
