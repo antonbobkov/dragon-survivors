@@ -123,10 +123,13 @@ export function pickupVisible(p) {
 }
 
 // §14.2 the bomb's screen flash: white over the world, FLASH.alpha on the first frame after
-// the bomb, fading to nothing over FLASH.ticks ticks. Derived from `game.lastBomb`.
+// the bomb, fading to nothing over FLASH.ticks ticks. Derived from `game.lastBomb`. Shown only
+// while the world runs (phase 'play', no level-up offers): the tick count stops otherwise, and
+// the flash would freeze on screen.
 export const FLASH = { alpha: 0.6, ticks: 24, color: '#ffffff' };
 export function bombFlashAlpha(game) {
   if (typeof game.lastBomb !== 'number') return 0;
+  if (game.phase !== 'play' || (game.offers && game.offers.length > 0)) return 0;
   const age = game.tickCount - game.lastBomb; // 1 on the frame after the bomb's tick
   if (age < 1 || age > FLASH.ticks) return 0;
   return FLASH.alpha * (1 - (age - 1) / FLASH.ticks);
