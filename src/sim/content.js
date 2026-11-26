@@ -26,16 +26,17 @@ export const CONTACT_INSET = 1; // enemies stop advancing this far inside contac
 export const REPAIR_HP = 25;
 export const DYING_TIME = 2; // s of 'dying' phase before 'over' (§13)
 
-// §8 Enemies. hp Infinity = cannot die. xp 0 = no gem.
+// §8 Enemies. hp Infinity = cannot die. xp 0 = no gem. `mass` divides knockback (§8.7); the
+// golem has none: it keeps its own knockback rule (GOLEM_KNOCKBACK).
 export const ENEMY_TYPES = ['knight', 'skeleton', 'slime', 'mage', 'ghostKnight', 'ghost', 'golem'];
 export const ENEMIES = {
-  knight:      { name: 'Knight',       hp: 3,        speed: 27.5, r: 12, dps: 2,  xp: 1, walk: 'knight.walk',  die: 'knight.die',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.25 } },
-  skeleton:    { name: 'Skeleton',     hp: 1,        speed: 45,   r: 10, dps: 6,  xp: 1, walk: 'skelly.walk',  die: 'skelly.die',  alpha: 1, resist: { fire: 0,    arcane: 0.25, physical: -0.5 }, summon: 'skelly.summon' },
-  slime:       { name: 'Slime',        hp: 2,        speed: 35,   r: 12, dps: 8,  xp: 1, walk: 'slime.walk',   die: 'slime.die',   alpha: 1, resist: { fire: -0.5, arcane: 0,    physical: 0.5 }, split: 'slime.split' },
-  mage:        { name: 'Mage',         hp: 4,        speed: 20,   r: 12, dps: 5,  xp: 5, walk: 'mage.walk',    die: 'mage.die',    alpha: 1, resist: { fire: 0,    arcane: 0.5,  physical: -0.25 }, spell: 'mage.spell' },
-  ghostKnight: { name: 'Ghost knight', hp: 10,       speed: 27.5, r: 12, dps: 10, xp: 2, walk: 'ghost.knight', die: 'ghost.burn',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.25 } },
-  ghost:       { name: 'Ghost',        hp: 2,        speed: 36,   r: 10, dps: 8,  xp: 1, walk: 'ghost.ghost',  die: 'ghost.die',   alpha: 0.6, resist: { fire: 0.25, arcane: -0.5, physical: 0.75 } },
-  golem:       { name: 'Mega golem',   hp: Infinity, speed: 75,   r: 56, dps: 40, xp: 0, walk: 'golem.walk',   die: 'golem.die',   alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0 }, immovable: true, procImmune: true, unkillable: true },
+  knight:      { name: 'Knight',       hp: 3,        speed: 27.5, r: 12, dps: 2,  xp: 1, mass: 1,    walk: 'knight.walk',  die: 'knight.die',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.25 } },
+  skeleton:    { name: 'Skeleton',     hp: 1,        speed: 45,   r: 10, dps: 6,  xp: 1, mass: 0.7,  walk: 'skelly.walk',  die: 'skelly.die',  alpha: 1, resist: { fire: 0,    arcane: 0.25, physical: -0.5 }, summon: 'skelly.summon' },
+  slime:       { name: 'Slime',        hp: 2,        speed: 35,   r: 12, dps: 8,  xp: 1, mass: 0.8,  walk: 'slime.walk',   die: 'slime.die',   alpha: 1, resist: { fire: -0.5, arcane: 0,    physical: 0.5 }, split: 'slime.split' },
+  mage:        { name: 'Mage',         hp: 4,        speed: 20,   r: 12, dps: 5,  xp: 5, mass: 1,    walk: 'mage.walk',    die: 'mage.die',    alpha: 1, resist: { fire: 0,    arcane: 0.5,  physical: -0.25 }, spell: 'mage.spell' },
+  ghostKnight: { name: 'Ghost knight', hp: 10,       speed: 27.5, r: 12, dps: 10, xp: 2, mass: 1,    walk: 'ghost.knight', die: 'ghost.burn',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.25 } },
+  ghost:       { name: 'Ghost',        hp: 2,        speed: 36,   r: 10, dps: 8,  xp: 1, mass: 0.6,  walk: 'ghost.ghost',  die: 'ghost.die',   alpha: 0.6, resist: { fire: 0.25, arcane: -0.5, physical: 0.75 } },
+  golem:       { name: 'Mega golem',   hp: Infinity, speed: 75,   r: 56, dps: 40, xp: 0, mass: null, walk: 'golem.walk',   die: 'golem.die',   alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0 }, immovable: true, procImmune: true, unkillable: true },
 };
 
 // §8.6 Tiers: one sprite in four tiers. Multipliers on the type's HP (rounded up), contact DPS,
@@ -110,13 +111,15 @@ export const DAMAGE_TYPES = ['fire', 'arcane', 'physical'];
 export const DAMAGE_TYPE_NAMES = { fire: 'Fire', arcane: 'Arcane', physical: 'Physical' };
 export const RESIST_MIN = -0.5; // the floor of a resistance, after the armoury's shred
 
-// §10 Weapons. levels[0] is level 1. `type` is the damage type of every hit (§12.1).
+// §10 Weapons. levels[0] is level 1. `type` is the damage type of every hit (§12.1), `knock`
+// the px a hit pushes an enemy of mass 1 (§8.7).
 export const WEAPON_SLOTS = 4;
 export const WEAPON_MAX_LEVEL = 5;
 export const WEAPON_IDS = ['fireball', 'laser', 'miniTower', 'ring'];
 export const WEAPONS = {
   fireball: {
-    name: 'Fireball', aimed: true, type: 'fire',
+    name: 'Fireball', aimed: true, type: 'fire', knock: 4,
+    spreadStep: 10, // degrees between Amount's extra shots when the level fires one (§11)
     anim: 'fireball.anim', bigAnim: 'fireball.big', bigFrom: 4, r: 6, bigR: 8,
     sound: 'shoot01',
     levels: [
@@ -128,7 +131,7 @@ export const WEAPONS = {
     ],
   },
   laser: {
-    name: 'Laser', aimed: true, type: 'arcane',
+    name: 'Laser', aimed: true, type: 'arcane', knock: 2,
     anim: 'laser.dir', bigAnim: 'laser.bigdir', bigFrom: 4, r: 6, bigR: 8,
     offset: 6, // with count 2: two parallel lasers, ±offset px perpendicular to the aim
     sound: 'laser01',
@@ -141,7 +144,7 @@ export const WEAPONS = {
     ],
   },
   miniTower: {
-    name: 'Mini tower', aimed: false, type: 'fire', // its shots are fireballs
+    name: 'Mini tower', aimed: false, type: 'fire', knock: 4, // its shots are fireballs
     anim: 'castle', scale: 0.5,
     lobDist: 80, lobTime: 0.5, lobHeight: 30,
     targetRadius: 300, // each shot is a copy of the dragon's fireball (§10.3)
@@ -154,7 +157,7 @@ export const WEAPONS = {
     ],
   },
   ring: {
-    name: 'Ring', aimed: false, type: 'fire',
+    name: 'Ring', aimed: false, type: 'fire', knock: 8,
     anim: 'fireball.anim', r: 6,
     levels: [
       { count: 2, orbit: 60, spin: 180, damage: 2, rehit: 0.5 },
@@ -166,30 +169,37 @@ export const WEAPONS = {
   },
 };
 
-// §11 Buffs. levels[0] is level 1; stat values are fractions (+25% = 0.25), chances are probabilities.
+// §11 Buffs. levels[0] is level 1. Stat values are fractions (+20% = 0.2), Amount's are extra
+// projectiles, chances are probabilities. A chance buff's `affinity` maps a damage type to the
+// buff level from which it applies to projectiles of that type (§12).
 export const BUFF_SLOTS = 4;
 export const BUFF_MAX_LEVEL = 3;
-export const BUFF_IDS = ['damage', 'cooldown', 'area', 'speed', 'explode', 'split', 'pierce'];
+export const BUFF_IDS = ['might', 'haste', 'area', 'velocity', 'duration', 'force', 'amount', 'explode', 'split', 'pierce'];
 export const BUFFS = {
-  damage:   { name: 'Damage',           icon: 'icon.big',     kind: 'stat',   levels: [0.25, 0.5, 0.8] },
-  cooldown: { name: 'Cooldown',         icon: 'icon.multi',   kind: 'stat',   levels: [-0.1, -0.2, -0.3] },
-  area:     { name: 'Area',             icon: 'icon.nuke',    kind: 'stat',   levels: [0.2, 0.4, 0.6] },
-  speed:    { name: 'Projectile speed', icon: 'icon.speed',   kind: 'stat',   levels: [0.2, 0.4, 0.6] },
-  explode:  { name: 'Explode chance',   icon: 'icon.explode', kind: 'chance', levels: [0.2, 0.35, 0.5] },
-  split:    { name: 'Split chance',     icon: 'icon.split',   kind: 'chance', levels: [0.2, 0.35, 0.5] },
-  pierce:   { name: 'Pierce chance',    icon: 'icon.laser',   kind: 'chance', levels: [0.2, 0.35, 0.5] },
+  might:    { name: 'Might',    icon: 'icon.might',    kind: 'stat',   levels: [0.2, 0.4, 0.6] },
+  haste:    { name: 'Haste',    icon: 'icon.haste',    kind: 'stat',   levels: [-0.1, -0.2, -0.3] },
+  area:     { name: 'Area',     icon: 'icon.nuke',     kind: 'stat',   levels: [0.2, 0.4, 0.6] },
+  velocity: { name: 'Velocity', icon: 'icon.speed',    kind: 'stat',   levels: [0.2, 0.4, 0.6] },
+  duration: { name: 'Duration', icon: 'icon.duration', kind: 'stat',   levels: [0.25, 0.5, 0.75] },
+  force:    { name: 'Force',    icon: 'icon.force',    kind: 'stat',   levels: [0.5, 1, 1.5] },
+  amount:   { name: 'Amount',   icon: 'icon.amount',   kind: 'count',  levels: [1, 2, 3] },
+  explode:  { name: 'Explode',  icon: 'icon.explode',  kind: 'chance', levels: [0.2, 0.35, 0.5], affinity: { fire: 1, arcane: 3 } },
+  split:    { name: 'Split',    icon: 'icon.split',    kind: 'chance', levels: [0.2, 0.35, 0.5], affinity: { fire: 1 } },
+  pierce:   { name: 'Pierce',   icon: 'icon.laser',    kind: 'chance', levels: [0.2, 0.35, 0.5], affinity: { arcane: 1, fire: 3 } },
 };
 
-// §12 Procs. Which procs each projectile kind can roll; mini-tower shots are fireballs.
-// `type` is the damage type a projectile of that kind carries unless it is given one (§12.1).
-// No hit spawns an effect: explosions come only from the Explode proc.
+// §12 Procs. Which procs a projectile can roll follows its damage type (BUFFS[*].affinity);
+// mini-tower shots are fireballs. `type` is the damage type a projectile of that kind carries
+// unless it is given one (§12.1). No hit spawns an effect: explosions come only from Explode.
 export const PROJECTILE_KINDS = {
-  fireball: { type: 'fire',   explode: true, split: true, pierce: true },
-  laser:    { type: 'arcane', explode: false, split: false, pierce: true },
+  fireball: { type: 'fire' },
+  laser:    { type: 'arcane' },
 };
-export const EXPLOSION_ANIM = 'explosion.big';
-export const EXPLOSION_SPRITE_PX = 57; // source frame width of EXPLOSION_ANIM
+export const EXPLOSION_ANIM = 'explosion.big'; // fire (and physical) explosions
+export const EXPLOSION_ANIMS = { fire: 'explosion.big', arcane: 'explosion.laser', physical: 'explosion.big' };
+export const EXPLOSION_SPRITE_PX = { 'explosion.big': 57, 'explosion.laser': 45 }; // source frame widths
 export const EXPLODE_RADIUS = 60;
+export const EXPLODE_KNOCK = 10; // an explosion's knock (§8.7), like a weapon's
 export const SPLIT_ANGLE = 45; // degrees either side of the parent's direction
 export const SPLIT_MAX_GEN = 2; // projectiles with gen >= this cannot split
 export const MAX_HITS_MEMORY = 8;
@@ -249,6 +259,7 @@ export const ATLAS_NAMES = [
   'explosion.small', 'explosion.big', 'explosion.laser', 'explosion.laserbig',
   'burn',
   'icon.laser', 'icon.explode', 'icon.split', 'icon.ring', 'icon.speed', 'icon.big', 'icon.multi', 'icon.nuke',
+  'icon.might', 'icon.haste', 'icon.duration', 'icon.force', 'icon.amount',
   'brazier.burn', 'brazier.break', 'pickup.heart', 'pickup.magnet', 'pickup.bomb',
 ];
 // §8.6 the generated tier variants of every tiered enemy anim (tiers 2–4).

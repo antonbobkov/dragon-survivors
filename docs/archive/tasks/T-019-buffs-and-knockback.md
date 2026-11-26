@@ -1,6 +1,6 @@
 # T-019: Generic buff set, knockback and mass, Explode/Pierce affinity
 
-**Source:** [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §3; decision D-7 · **Model:** Opus · **Depends on:** T-017 (icons, merged), T-018 (`dealDamage`, damage types, merged)
+**Source:** [strategy-depth design](../../../reports/designs/2026-11-26-strategy-depth-design.md) §3; decision D-7 · **Model:** Opus · **Depends on:** T-017 (icons, merged), T-018 (`dealDamage`, damage types, merged)
 
 ## Why
 

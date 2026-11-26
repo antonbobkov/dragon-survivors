@@ -1,22 +1,22 @@
 // Projectiles: movement, range expiry (§2.1 step 7) and hits on enemies with procs (step 8, §12).
 import {
-  DT, MAX_HITS_MEMORY, PROJECTILE_KINDS, EXPLODE_RADIUS, EXPLOSION_ANIM, EXPLOSION_SPRITE_PX,
-  SPLIT_ANGLE, SPLIT_MAX_GEN,
+  DT, MAX_HITS_MEMORY, PROJECTILE_KINDS, EXPLODE_RADIUS, EXPLODE_KNOCK, EXPLOSION_ANIM, EXPLOSION_ANIMS,
+  EXPLOSION_SPRITE_PX, SPLIT_ANGLE, SPLIT_MAX_GEN,
 } from './content.js';
 import { dirFrame } from './dragon.js';
 import { advanceAnim, spawnEffect } from './effects.js';
 import { dealDamage } from './damage.js';
-import { buffMods } from './weapons.js';
+import { buffMods, procChance } from './weapons.js';
 import { hitBraziers } from './braziers.js';
 
 const SPRITE_SCALE = 2; // §5: every sprite is drawn at 2× source size
 
-// p: { kind, x, y, dx, dy (unit), speed, range, r, damage, anim, type?, gen?, hits? }
-// `type` (§12.1) defaults to the kind's damage type.
+// p: { kind, x, y, dx, dy (unit), speed, range, r, damage, anim, type?, knock?, gen?, hits? }
+// `type` (§12.1) defaults to the kind's damage type; `knock` (§8.7, after Force) to 0.
 export function spawnProjectile(game, p) {
   const proj = {
     id: game.nextId++, kind: p.kind, type: p.type || PROJECTILE_KINDS[p.kind].type, x: p.x, y: p.y, dx: p.dx, dy: p.dy,
-    speed: p.speed, r: p.r, damage: p.damage, range: p.range, travelled: 0,
+    speed: p.speed, r: p.r, damage: p.damage, knock: p.knock ?? 0, range: p.range, travelled: 0,
     hits: p.hits ? p.hits.slice() : [], gen: p.gen ?? 0, dirFrame: dirFrame(p.dx, p.dy),
     anim: p.anim, frame: 0, frameTicks: 0,
   };
@@ -42,43 +42,47 @@ export function stepProjectiles(game) {
 }
 
 // §12, after the damage: explode, split and pierce rolls, in that order. A roll draws from
-// game.rng only when the projectile's kind can have that proc and its chance buff is owned,
-// and never against a proc-immune enemy (the golem). Returns true when the projectile
-// survives the hit, which only a won pierce roll does.
+// game.rng only when its chance buff is owned at a level that reaches the projectile's damage
+// type (procChance: the affinity), and never against a proc-immune enemy (the golem).
+// Returns true when the projectile survives the hit, which only a won pierce roll does.
 export function rollProcs(game, p, e) {
-  const kind = PROJECTILE_KINDS[p.kind];
-  if (!kind || e.procImmune) return false;
+  if (!PROJECTILE_KINDS[p.kind] || e.procImmune) return false;
   const mods = buffMods(game);
   let survives = false;
-  if (kind.explode && mods.explode > 0 && game.rng() < mods.explode) explode(game, p, e, mods);
-  if (kind.split && p.gen < SPLIT_MAX_GEN && mods.split > 0 && game.rng() < mods.split) split(game, p, e);
-  if (kind.pierce && mods.pierce > 0 && game.rng() < mods.pierce) survives = true;
+  const ex = procChance(mods, 'explode', p.type);
+  if (ex > 0 && game.rng() < ex) explode(game, p, e, mods);
+  const sp = procChance(mods, 'split', p.type);
+  if (p.gen < SPLIT_MAX_GEN && sp > 0 && game.rng() < sp) split(game, p, e);
+  const pi = procChance(mods, 'pierce', p.type);
+  if (pi > 0 && game.rng() < pi) survives = true;
   return survives;
 }
 
 // Radius EXPLODE_RADIUS × area at the hit point; the projectile's damage, of the projectile's
-// type, to every live enemy overlapping the circle except the one just hit. Proc-immune
-// enemies are not touched at all.
-// The sprite is scaled so its diameter matches the circle.
+// type, and EXPLODE_KNOCK × Force away from the centre, to every live enemy overlapping the
+// circle except the one just hit. Proc-immune enemies are not touched at all.
+// The sprite (by damage type) is scaled so its diameter matches the circle.
 export function explode(game, p, hit, mods) {
   const R = EXPLODE_RADIUS * mods.area;
   const cx = p.x, cy = p.y;
   const src = { x: cx, y: cy };
+  const knock = EXPLODE_KNOCK * mods.force;
   for (const e of game.grid.nearby(cx, cy, R + game.grid.maxR, scratchExplode)) {
     if (e === hit || e.hp <= 0 || e.procImmune) continue;
     const dx = e.x - cx, dy = e.y - cy;
     const rr = R + e.r;
     if (dx * dx + dy * dy >= rr * rr) continue;
-    dealDamage(game, e, p.damage, p.type, src);
+    dealDamage(game, e, p.damage, p.type, src, knock);
   }
   hitBraziers(game, cx, cy, R); // §14.2: an explosion breaks the braziers it overlaps
-  const scale = (2 * R) / (EXPLOSION_SPRITE_PX * SPRITE_SCALE);
-  spawnEffect(game, EXPLOSION_ANIM, cx, cy, { scale });
+  const anim = EXPLOSION_ANIMS[p.type] || EXPLOSION_ANIM;
+  const scale = (2 * R) / (EXPLOSION_SPRITE_PX[anim] * SPRITE_SCALE);
+  spawnEffect(game, anim, cx, cy, { scale });
   game.sound('explosion01');
 }
 
 // Two fireballs at ±SPLIT_ANGLE from the parent's direction, from the hit point: same damage,
-// radius, speed and sprite, the parent's remaining range, gen + 1, and the enemy just hit
+// knock, radius, speed and sprite, the parent's remaining range, gen + 1, and the enemy just hit
 // already in their hits. They first move and collide on the next tick.
 export function split(game, p, hit) {
   const base = Math.atan2(p.dy, p.dx);
@@ -86,16 +90,16 @@ export function split(game, p, hit) {
     const a = base + s * SPLIT_ANGLE * Math.PI / 180;
     spawnProjectile(game, {
       kind: 'fireball', x: p.x, y: p.y, dx: Math.cos(a), dy: Math.sin(a),
-      speed: p.speed, range: Math.max(0, p.range - p.travelled), r: p.r, damage: p.damage,
+      speed: p.speed, range: Math.max(0, p.range - p.travelled), r: p.r, damage: p.damage, knock: p.knock,
       anim: p.anim, type: p.type, gen: p.gen + 1, hits: [hit.id],
     });
   }
 }
 
-// Damage (§12.1), memory of the hit, procs; no hit effect. Returns true if the projectile
-// survives.
+// Damage and knockback (§12.1, §8.7), memory of the hit, procs; no hit effect. Returns true
+// if the projectile survives.
 export function resolveHit(game, p, e) {
-  dealDamage(game, e, p.damage, p.type, p);
+  dealDamage(game, e, p.damage, p.type, p, p.knock);
   if (p.hits.length >= MAX_HITS_MEMORY) p.hits.shift();
   p.hits.push(e.id);
   return rollProcs(game, p, e);

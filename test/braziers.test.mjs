@@ -354,7 +354,20 @@ test('bomb: the armoury applies, and its kills die, drop gems and count in the s
   assert.equal(g.gems.length, 1);
 });
 
-test('pickups: last 30 s (× the Duration buff when it exists), counted in the collisions step', () => {
+test('pickups: Duration lengthens the life of a pickup when it drops', () => {
+  const g = still();
+  g.buffs.push({ id: 'duration', level: 1 });
+  assert.equal(pickupLifeTicks(g), 2250);
+  g.buffs[0].level = 3;
+  brazier(g, 300, 0);
+  hitBraziers(g, 300, 0, 1);
+  assert.equal(g.pickups[0].life, 3150);
+  g.buffs.length = 0;
+  g.tick({});
+  assert.equal(g.pickups[0].life, 3149, 'read when it drops, not after');
+});
+
+test('pickups: last 30 s, counted in the collisions step', () => {
   const g = still();
   assert.equal(pickupLifeTicks(g), 1800);
   const b = brazier(g, 500, 0);

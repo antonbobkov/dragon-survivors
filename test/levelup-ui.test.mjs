@@ -119,7 +119,7 @@ test('App: a pick key beyond the cards shown is ignored; pause works on the leve
   const { app, step } = appAtLevelUp();
   const g = app.game;
   g.weapons = ['fireball', 'laser', 'miniTower', 'ring'].map((id) => createWeapon(id, 5));
-  g.buffs = ['damage', 'cooldown', 'area', 'speed'].map((id) => ({ id, level: 3 }));
+  g.buffs = ['might', 'haste', 'area', 'velocity'].map((id) => ({ id, level: 3 }));
   g.offers = [{ kind: 'repair', id: 'repair', level: 1 }]; // test only: what a full build is offered
   step(press({ pick: 2 }));
   assert.ok(app.levelUpOpen());
