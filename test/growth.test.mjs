@@ -688,18 +688,16 @@ test('procs: no rng draws without chance buffs, and none for procs a kind cannot
   assert.deepEqual(g.effects, [], 'no hit effects');
 });
 
-// Which procs one hit rolls, with rng 0.99 (every roll lost), for a projectile kind and buffs.
+// Which procs a hit rolls for a projectile kind, given each chance buff alone with every roll
+// lost (rng 0.99), so each roll's draw is counted on its own.
 function rolled(kind, buffs) {
   const g = still();
-  g.buffs = buffs;
   const seen = [];
-  g.rng = () => 0.99;
   const e = dummy(g, 0, 0);
   g.grid.build(g.enemies);
   const p = kind === 'laser'
     ? spawnProjectile(g, { kind: 'laser', x: 0, y: 0, dx: 1, dy: 0, speed: 700, range: 600, r: 6, damage: 1, anim: 'laser.dir' })
     : shot(g);
-  // count the draws per proc by giving each chance buff alone
   for (const id of ['explode', 'split', 'pierce']) {
     const b = buffs.find((x) => x.id === id);
     if (!b) continue;
