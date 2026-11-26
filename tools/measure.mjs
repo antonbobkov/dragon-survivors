@@ -35,7 +35,7 @@
 //
 // Pick rules (only while `game.offers` is non-empty; the pick tick does not advance time):
 //   naive   card 0.
-//   greedy  Repair when tower HP < 40%; else a new weapon while a slot is free; else the
+//   greedy  Repair when tower HP < 40%; else an evolution (§10.7); else a new weapon while a slot is free; else the
 //           upgrade of the highest-level weapon below 5; else a buff (upgrade an owned one
 //           first, then a new one; ties by BUFF_PRIORITY); else card 0.
 //
@@ -180,6 +180,7 @@ export const PICKS = {
     const tw = game.tower;
     let i;
     if (tw.hp < REPAIR_BELOW * tw.maxHp && (i = indexWhere(o, (c) => c.kind === 'repair')) >= 0) return i;
+    if ((i = indexWhere(o, (c) => c.kind === 'evolve')) >= 0) return i;
     if ((i = indexWhere(o, (c) => c.kind === 'weapon' && c.level === 1)) >= 0) return i;
     let best = -1, bestLevel = -1;
     o.forEach((c, k) => { if (c.kind === 'weapon' && c.level > bestLevel) { best = k; bestLevel = c.level; } });

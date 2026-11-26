@@ -7,13 +7,13 @@ import { Game } from '../src/sim/game.js';
 import { createWeapon } from '../src/sim/weapons.js';
 import { cardPool } from '../src/sim/levelup.js';
 import {
-  WEAPON_IDS, BUFF_IDS, BUFF_SLOTS, REPAIR_HP, REPAIR_OFFER_BELOW, xpToNext,
+  WEAPON_IDS, WEAPON_SLOTS, BUFF_IDS, BUFF_SLOTS, REPAIR_HP, REPAIR_OFFER_BELOW, xpToNext,
 } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }];
 const full = () => {
   const g = new Game({ seed: 1, timeline: QUIET });
-  g.weapons = WEAPON_IDS.map((id) => createWeapon(id, 5));
+  g.weapons = WEAPON_IDS.slice(0, WEAPON_SLOTS).map((id) => createWeapon(id, 5));
   g.buffs = BUFF_IDS.slice(0, BUFF_SLOTS).map((id) => ({ id, level: 3 }));
   return g;
 };
