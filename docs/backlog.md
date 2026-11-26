@@ -5,7 +5,7 @@ Every open task, one table. Only the orchestrator edits this file. Work files li
 | Id | Task | Source | Depends on | Model | Status |
 |---|---|---|---|---|---|
 | T-020 | Damage calculator (`tools/dps.mjs`, `--check`) | reports/designs/2026-11-26-strategy-depth-design.md §11 | T-018, T-019 | Opus | planned |
-| T-022 | Claws: left, right, dual claw evolution | reports/designs/2026-11-26-strategy-depth-design.md §4 | T-017, T-019 | Opus | planned |
+| T-022 | Claws: left, right, dual claw evolution | reports/designs/2026-11-26-strategy-depth-design.md §4 | T-017, T-019 | Opus | in progress |
 | T-023 | Bite and saw blade | reports/designs/2026-11-26-strategy-depth-design.md §4 | T-017, T-019 | Opus | planned |
 | T-024 | Horses, mounted knights, stages and banners | reports/designs/2026-11-26-strategy-depth-design.md §5, §7 | T-017, T-021 | Opus | planned |
 | T-025 | Slime rework: two splits, sizes, megaslime fusion | reports/designs/2026-11-26-strategy-depth-design.md §5 | T-017, T-018 | Opus | planned |
