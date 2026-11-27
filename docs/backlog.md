@@ -4,8 +4,7 @@ Every open task, one table. Only the orchestrator edits this file. Work files li
 
 | Id | Task | Source | Depends on | Model | Status |
 |---|---|---|---|---|---|
-| T-020 | Damage calculator (`tools/dps.mjs`, `--check`) | reports/designs/2026-11-26-strategy-depth-design.md §11 | T-018, T-019 | Opus | planned |
-| T-026 | Golem: poise and stagger, tower shove, screen shake | reports/designs/2026-11-26-strategy-depth-design.md §5 | T-019 | Opus | in progress |
+| T-020 | Damage calculator (`tools/dps.mjs`, `--check`) | reports/designs/2026-11-26-strategy-depth-design.md §11 | T-018, T-019 | Opus | in progress |
 | T-029 | Rebalance with the damage calculator and bots | reports/designs/2026-11-26-strategy-depth-design.md §11 | T-017–T-028 | Opus | planned |
 | T-030 | Merchant | D-8 (accepted) | T-029 | Opus | planned |
 | T-031 | Princess | D-9 (accepted) | T-029 | Opus | planned |
@@ -14,3 +13,4 @@ Every open task, one table. Only the orchestrator edits this file. Work files li
 | T-034 | Close claw test gaps from the T-022 review | reports/reviews/2026-11-26-T-022-review.md | — | Sonnet | in progress |
 | T-035 | Close horse and stage test gaps from the T-024 review | reports/reviews/2026-11-26-T-024-review.md | T-025 | Sonnet | in progress |
 | T-036 | Close bite and saw test gaps from the T-023 review | reports/reviews/2026-11-26-T-023-review.md | — | Sonnet | in progress |
+| T-037 | Close slime test gaps from the T-025 review | reports/reviews/2026-11-26-T-025-review.md | — | Sonnet | in progress |

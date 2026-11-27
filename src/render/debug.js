@@ -1,7 +1,9 @@
 // Debug overlay (§19, only with ?debug=1): collision circles over the world, and loop and
 // entity stats at the top right. Reads the game and the loop stats; never writes them.
-import { TOWER_RADIUS, DRAGON_PICKUP_RADIUS, DRAGON_RADIUS, WEAPONS, BRAZIER_RADIUS } from '../sim/content.js';
-import { VIEW_W, cameraOffset } from '../viewport.js';
+import { golemPoiseNeeded } from '../sim/golem.js';
+import { TOWER_RADIUS, DRAGON_PICKUP_RADIUS, DRAGON_RADIUS, WEAPONS, BRAZIER_RADIUS, GOLEM_POISE } from '../sim/content.js';
+import { VIEW_W } from '../viewport.js';
+import { worldOffset } from './draw.js';
 import { shadowText } from './hud.js';
 import { slashRect } from '../sim/claws.js';
 import { buffMods, weaponLevel } from '../sim/weapons.js';
@@ -11,6 +13,19 @@ export const DEBUG_COLORS = {
   enemy: '#ff4040', tower: '#ffa020', projectile: '#ffff40', ring: '#ffff40', pickup: '#40e0ff', mini: '#c080ff', orb: '#60ff60', dragon: '#ffffff', brazier: '#ff8000',
   slash: '#ff80ff', bite: '#ff4040', blade: '#e0e0e0',
 };
+// §19 the golem's poise bar: POISE_BAR.w × h px, centred POISE_BAR.gap px above its circle;
+// filled to poise / the poise its next stagger needs, full in the stagger colour while it staggers.
+export const POISE_BAR = { w: 60, h: 5, gap: 6, back: '#202020', fill: '#ffd040', stagger: '#ff4040' };
+
+// The poise bar of a golem `e` drawn at screen point (x, y): { x, y, w, h, frac, color }.
+export function poiseBar(e, x, y) {
+  const staggering = e.stagger > 0;
+  const frac = staggering ? 1 : Math.max(0, Math.min(1, (e.poise || 0) / golemPoiseNeeded(e)));
+  return {
+    x: Math.round(x - POISE_BAR.w / 2), y: Math.round(y - e.r - POISE_BAR.gap - POISE_BAR.h),
+    w: POISE_BAR.w, h: POISE_BAR.h, frac, color: staggering ? POISE_BAR.stagger : POISE_BAR.fill,
+  };
+}
 
 // Text lines of the stats overlay. stats: { ticks, tickMs } from the App; speed: game speed.
 export function debugLines(game, stats, speed) {
@@ -48,9 +63,9 @@ function slashOutline(ctx, s, o) {
 
 // Collision circles: enemies, the tower, projectiles, enemy shots, ring fireballs, saw blades,
 // mini towers' target radius, braziers, claw slash hitboxes, the bite's reach around the
-// dragon, the dragon's hit circle and its gem pickup radius.
-export function drawDebugWorld(ctx, game) {
-  const o = cameraOffset(game.dragon);
+// dragon, the dragon's hit circle and its gem pickup radius; the golem's poise bar.
+export function drawDebugWorld(ctx, game, shake) {
+  const o = worldOffset(game, shake); // shaken with the world (§5)
   ctx.save();
   ctx.lineWidth = 1;
   for (const e of game.enemies) circle(ctx, e.x + o.x, e.y + o.y, e.r, DEBUG_COLORS.enemy);
@@ -74,6 +89,14 @@ export function drawDebugWorld(ctx, game) {
   }
   circle(ctx, game.dragon.x + o.x, game.dragon.y + o.y, DRAGON_RADIUS, DEBUG_COLORS.dragon);
   circle(ctx, game.dragon.x + o.x, game.dragon.y + o.y, DRAGON_PICKUP_RADIUS, DEBUG_COLORS.pickup);
+  for (const e of game.enemies) {
+    if (!e.unkillable) continue;
+    const b = poiseBar(e, e.x + o.x, e.y + o.y);
+    ctx.fillStyle = POISE_BAR.back;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+    ctx.fillStyle = b.color;
+    ctx.fillRect(b.x, b.y, Math.round(b.w * b.frac), b.h);
+  }
   ctx.restore();
 }
 

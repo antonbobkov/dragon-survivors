@@ -188,6 +188,14 @@ export function enemyDrawOrder(enemies, out = []) {
   return out;
 }
 
+// §5 the world's screen offset: the camera on the dragon plus the screen shake (whole px, from
+// the App's Shake; none when left out). The HUD is drawn without it.
+export function worldOffset(game, shake) {
+  const o = cameraOffset(game.dragon);
+  if (!shake) return o;
+  return { x: o.x + Math.round(shake.x || 0), y: o.y + Math.round(shake.y || 0) };
+}
+
 // makeCanvas(w, h) -> a canvas with getContext('2d'); used for the grass tile and the gem sprite.
 export function createRenderer({ atlas, makeCanvas }) {
   const tile = makeCanvas(TILE_SIZE, TILE_SIZE);
@@ -224,9 +232,10 @@ export function createRenderer({ atlas, makeCanvas }) {
   // Draw order (§5): background, gems, tower, mini towers, braziers, pickups, enemies by y,
   // ring fireballs, saw blades, projectiles, enemy shots (mage orbs), dragon, claw slashes,
   // effects (the bite's jaws among them), the bomb flash. The HUD and screens draw on top.
-  function drawWorld(ctx, game) {
+  // `shake` ({ x, y } px, optional) offsets the whole world (§5).
+  function drawWorld(ctx, game, shake) {
     ctx.imageSmoothingEnabled = false;
-    const o = cameraOffset(game.dragon);
+    const o = worldOffset(game, shake);
     drawBackground(ctx, o);
 
     const tw = game.tower;

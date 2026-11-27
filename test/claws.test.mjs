@@ -192,7 +192,7 @@ test('claws: physical damage through resistances; knockback straight away from t
   const kn = dummy(m, 'knight', 50, 0);
   tick(m);
   assert.equal(lost(kn), Math.ceil(4 * 1.5 * (1 - (0.25 - 0.5))));
-  // the golem takes nothing and moves its fixed knockback; no procs or rng draws
+  // the golem takes nothing and gains the knock as poise (§8.10); no procs or rng draws
   const z = armed('leftClaw', 1, [{ id: 'explode', level: 3 }, { id: 'split', level: 3 }, { id: 'pierce', level: 3 }]);
   let draws = 0;
   z.rng = () => { draws++; return 0; };
@@ -200,7 +200,7 @@ test('claws: physical damage through resistances; knockback straight away from t
   const kz = dummy(z, 'knight', 30, 0);
   tick(z);
   assert.equal(draws, 0, 'no procs, no random numbers');
-  assert.ok(near(golem.x, 61, 1e-9) && sounded(z, 'hit_golem'));
+  assert.ok(golem.x === 60 && golem.poise === WEAPONS.leftClaw.knock && sounded(z, 'hit_golem'));
   assert.ok(lost(kz) > 0);
   assert.equal(z.effects.length, 0, 'no explosion');
 });

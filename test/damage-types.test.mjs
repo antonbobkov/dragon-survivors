@@ -7,7 +7,7 @@ import { createEnemy } from '../src/sim/enemies.js';
 import { createWeapon, collideRing } from '../src/sim/weapons.js';
 import { spawnProjectile, resolveHit, explode, split } from '../src/sim/projectiles.js';
 import { dealDamage, damageTaken, effectiveResist, normalizeMeta } from '../src/sim/damage.js';
-import { ENEMIES, ENEMY_TYPES, WEAPONS, WEAPON_IDS, PROJECTILE_KINDS, DAMAGE_TYPES, RESIST_MIN, GOLEM_HP, GOLEM_KNOCKBACK } from '../src/sim/content.js';
+import { ENEMIES, ENEMY_TYPES, WEAPONS, WEAPON_IDS, PROJECTILE_KINDS, DAMAGE_TYPES, RESIST_MIN, GOLEM_HP } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }];
 const still = (opts = {}) => {
@@ -78,15 +78,17 @@ test('dealDamage: applies resistance and the armoury, takes it off HP, returns i
   assert.equal(g2.kills, 1, 'the deaths step kills it as before');
 });
 
-test('dealDamage: the golem takes nothing from any type, even with meta, and is still knocked back', () => {
+test('dealDamage: the golem takes nothing from any type, even with meta; the knock builds poise, never a push', () => {
   const g = still({ meta: { power: { fire: 100, arcane: 100, physical: 100 }, shred: { fire: 1, arcane: 1, physical: 1 } } });
   const golem = createEnemy(g, 'golem', 100, 0);
   for (const t of DAMAGE_TYPES) {
     g.events.length = 0;
     const x0 = golem.x;
-    assert.equal(dealDamage(g, golem, 50, t, { x: 0, y: 0 }), 0);
+    const p0 = golem.poise;
+    assert.equal(dealDamage(g, golem, 50, t, { x: 0, y: 0 }, 10), 0);
     assert.equal(golem.hp, GOLEM_HP);
-    assert.equal(golem.x - x0, GOLEM_KNOCKBACK);
+    assert.equal(golem.x, x0);
+    assert.equal(golem.poise - p0, 10, 'the knock, whatever the type');
     assert.ok(g.events.some((ev) => ev.name === 'hit_golem'));
   }
 });

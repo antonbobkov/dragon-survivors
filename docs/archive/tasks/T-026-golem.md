@@ -1,6 +1,6 @@
 # T-026: Golem: poise and stagger, tower shove, screen shake
 
-**Source:** [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §5; owner notes 2 ("mega golem needs push back and screen shaking and stuff??") · **Model:** Opus · **Depends on:** T-019 (knockback, Force; merged)
+**Source:** [strategy-depth design](../../../reports/designs/2026-11-26-strategy-depth-design.md) §5; owner notes 2 ("mega golem needs push back and screen shaking and stuff??") · **Model:** Opus · **Depends on:** T-019 (knockback, Force; merged)
 
 ## Why
 

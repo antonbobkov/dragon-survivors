@@ -90,6 +90,13 @@ export class Game {
     this.events.push({ type: 'sound', name });
   }
 
+  // §5 screen shake for the renderer: `kind` is 'spawn', 'step' or 'stagger' (the golem's, §8.10).
+  // At most one event per kind per tick.
+  shake(kind) {
+    for (const ev of this.events) if (ev.type === 'shake' && ev.kind === kind) return;
+    this.events.push({ type: 'shake', kind });
+  }
+
   score() {
     return Math.floor(this.t) + this.kills;
   }

@@ -51,12 +51,15 @@ async function boot() {
   // §19: ?debug=1 turns on the debug tools and exposes the App as `app` in the console
   // (read it; do not write it).
   const debug = new URLSearchParams(location.search).get('debug') === '1';
+  // §5: ?shake=0 turns the screen shake off.
+  const shake = new URLSearchParams(location.search).get('shake') !== '0';
   const app = new App({
     makeGame: (seed, meta) => new Game({ seed, debug, meta }),
     fixedSeed: parseSeed(location.search),
     randomSeed,
     audio,
     debug,
+    shake,
     now: () => performance.now(),
     // §13.1: the purse lives in localStorage; reading `window.localStorage` itself can throw.
     store: createStore(() => window.localStorage),
@@ -73,8 +76,9 @@ async function boot() {
     const frame = readFrame(input.poll(dragonScreen(app.game.dragon)), inputState);
     app.frame(now, frame);
     const game = app.game;
-    renderer.drawWorld(ctx, game);
-    if (debug) drawDebugWorld(ctx, game);
+    const shakeOffset = app.shake.offset(now); // §5: the world shakes, the HUD does not
+    renderer.drawWorld(ctx, game, shakeOffset);
+    if (debug) drawDebugWorld(ctx, game, shakeOffset);
     if (app.screen === 'title') { drawTitle(ctx, app.purse.gold); return; }
     if (app.screen === 'armoury') { drawArmoury(ctx, app.purse, app.armourySel, app.resetArmed); return; }
     drawHud(ctx, game, atlas);
