@@ -1,7 +1,7 @@
 // Bestiary (§17.1): every enemy type with its sprite, stats, resistances and the tiers met
 // (§8.6); types not met this run as silhouettes. One legend line gives the tier multipliers. Pure helpers (layout, rows, bar styles) are tested under node;
 // drawBestiary reads the game and never writes it.
-import { ENEMIES, ENEMY_TYPES, DAMAGE_TYPES, DAMAGE_TYPE_NAMES, TICK_HZ, TIERS, TIER_IDS, GOLEM_KNOCKBACK } from '../sim/content.js';
+import { ENEMIES, ENEMY_TYPES, DAMAGE_TYPES, DAMAGE_TYPE_NAMES, TICK_HZ, TIERS, TIER_IDS, GOLEM_KNOCKBACK, MEGASLIME_HP_FACTOR } from '../sim/content.js';
 import { effectiveResist } from '../sim/damage.js';
 import { VIEW_W, VIEW_H } from '../viewport.js';
 import { shadowText, BIG_FONT } from './hud.js';
@@ -54,6 +54,14 @@ export function tierLegend() {
   return `HP ×${col('hp')}  DPS ×${col('dps')}  XP ×${col('xp')}  SPD ×${col('speed')}`;
 }
 
+// The HP and XP a card shows: the golem's HP is ∞; the slime's lists its generations (3/2/1, the
+// three sizes, §8.4); the megaslime's come from its fusion (§8.9).
+export function hpXpText(def) {
+  if (def.fused) return `HP ${MEGASLIME_HP_FACTOR}×sum  XP sum`;
+  const hp = def.hp === Infinity ? '∞' : def.gens ? def.gens.map((g) => g.hp).join('/') : def.hp;
+  return `HP ${hp}  XP ${def.xp}`;
+}
+
 // One entry per enemy type, in ENEMY_TYPES order. Resistances are after the armoury's shred.
 // `tiers`: the tiers of a met type seen this run, ascending (none for the golem, always tier 1).
 export function bestiaryRows(game) {
@@ -65,7 +73,7 @@ export function bestiaryRows(game) {
       walk: def.walk, alpha: def.alpha, unkillable: !!def.unkillable,
       tiers: seen && !def.unkillable ? [...((game.seenTiers && game.seenTiers[type]) || [])] : [],
       stats: seen ? [
-        `HP ${def.hp === Infinity ? '∞' : def.hp}  XP ${def.xp}`,
+        hpXpText(def),
         `SPD ${def.speed}  DPS ${def.dps}`,
         // §8.7: mass divides knockback; the golem keeps its fixed push per hit.
         def.mass ? `MASS ${def.mass}` : `KNOCKBACK ${GOLEM_KNOCKBACK}`,
@@ -93,6 +101,12 @@ export function animFrameAt(ticks, tick) {
 // Sprite scale (× the standard 2×) so a w×h frame fits a box: 1, or 0.5 (1×) if 2× is too big.
 export function spriteFit(w, h, box) {
   return w * SPRITE_SCALE <= box && h * SPRITE_SCALE <= box ? 1 : 0.5;
+}
+
+// The lowest top edge a card's sprite of height `dh` may have so it ends 1 px above the tier
+// pips (and their black edge).
+export function spriteTopMax(c, dh) {
+  return c.y + c.h - BESTIARY.pipBottom - BESTIARY.pip - 2 - dh;
 }
 
 // Dark silhouettes of atlas frames, made once per frame in an offscreen canvas.
@@ -156,7 +170,11 @@ export function drawBestiary(ctx, game, atlas, ms = 0, { makeCanvas = defaultCan
     if (r) {
       const s = SPRITE_SCALE * spriteFit(r.w, r.h, L.spriteBox);
       const dw = r.w * s, dh = r.h * s;
-      const dx = Math.round(c.x + 8 + (L.spriteBox - dw) / 2), dy = Math.round(c.y + (c.h - dh) / 2);
+      // Centred in the card's height, raised when it would reach the tier pips (the megaslime;
+      // the golem has no pips).
+      const dx = Math.round(c.x + 8 + (L.spriteBox - dw) / 2);
+      const mid = Math.round(c.y + (c.h - dh) / 2);
+      const dy = row.unkillable ? mid : Math.min(mid, spriteTopMax(c, dh));
       if (row.seen) {
         ctx.save();
         ctx.globalAlpha = row.alpha;

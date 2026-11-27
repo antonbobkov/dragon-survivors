@@ -59,7 +59,7 @@ Ops always run swap, then tint, then outline (the outline is never tinted). A th
 
 ### Enemy tiers
 
-The bronze, silver and gold enemies ([§8.6](../docs/demo-spec.md#86-tiers)) are not listed one by one: the manifest's `tiers` block names the enemy anims once and the three tier variants once, and the build makes `<anim>@t2`, `@t3` and `@t4` of each (57 anims). A new enemy anim gets its tiers by joining `tiers.anims` (a test checks the list against `content.js`).
+The bronze, silver and gold enemies ([§8.6](../docs/demo-spec.md#86-tiers)) are not listed one by one: the manifest's `tiers` block names the enemy anims once and the three tier variants once, and the build makes `<anim>@t2`, `@t3` and `@t4` of each (78 anims). A new enemy anim gets its tiers by joining `tiers.anims` (a test checks the list against `content.js`).
 
 | Tier | Tint | Strength | Outline | Why |
 |---|---|---|---|---|
@@ -128,7 +128,11 @@ What the pack's sprites look like (print any of them with `node tools/bmp-to-art
 | `icons/saw.txt` | `icon.saw` | Saw blade: a toothed steel disc, charcoal hub, lit from the top left |
 | `effects/jaws.txt` | `bite.jaws` | 16 × 16 bite on the target: red jaws hinged on the left, 2 px bands climbing in 2 px steps; wide open, closing, shut with the fangs interlocked (4, 3, 8 ticks). Mirrored in game when the target is left of the dragon |
 | `effects/saw.txt` | `saw.spin` | 12 × 12 saw blade, 4 frames of 2 ticks: eight hooked white teeth turning a quarter tooth (11.25°) clockwise per frame around a silver disc whose glint stays on the top left, so it spins without canvas rotation. Generated from a disc and a sawtooth profile, then kept as text |
+| `enemies/slime-small.txt` | `slime.walk1` | 12 × 12 gen-1 slime: the pack's 16 px slime redrawn smaller (one `green`, 2 px `black` eyes set to the right, a nub on top, side arms), the same 4-frame hop: squat with arms out, then stretched a pixel or two with the arms flapping down and up |
+| `enemies/slime-small-split.txt` | `slime.split1` | 6 frames (8, 20, 4, 4, 4, 4 ticks): as the pack's `slime.split`, an empty frame, a 2-row puddle, then it wells up into the gen-1 slime |
+| `enemies/slime-tiny.txt` | `slime.walk2` | 9 × 9 gen-2 slime: the same creature at its smallest, 1 px eyes (as the pack's own growing slime has), the same hop |
+| `enemies/slime-tiny-die.txt` | `slime.die2` | 5 frames: as the pack's `slime.die`, red runs down into it, it bursts into red, dark red and maroon splatter, the drops scatter and fade |
 
 World objects and pickups are drawn at 2× like everything else; dark objects (the bomb) need a broad lit side in `grey`/`silver`, because `charcoal` alone vanishes on the dark grass.
 
-The horse is `gold.dark` with `brown` shade, not `brown`: `brown` has about the grass's own brightness and the body would sink into it. A `gold` line along the back and neck is the lit top edge, `brown.dark` the mane, tail and hooves. The mounted knight's rider reuses the pack knight's pixels and keys (charcoal, silver, grey, blue, yellow), so the two read as the same army.
+The horse is `gold.dark` with `brown` shade, not `brown`: `brown` has about the grass's own brightness and the body would sink into it. A `gold` line along the back and neck is the lit top edge, `brown.dark` the mane, tail and hooves. The slime generations are the pack's slime redrawn, never downscaled: keep the silhouette (nub, body, arms), the eyes on the right and the hop, and drop rows and columns evenly; at 9 px the eyes become single pixels. The mounted knight's rider reuses the pack knight's pixels and keys (charcoal, silver, grey, blue, yellow), so the two read as the same army.

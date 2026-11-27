@@ -72,6 +72,7 @@ export class Game {
     this.pickups = [];
     this.brazierTimer = BRAZIER_INTERVAL_TICKS; // spawner steps until the next brazier attempt
     this.lastBomb = null; // tickCount of the last bomb pickup (read by the renderer's flash)
+    this.lastFusion = null; // tickCount of the last slime fusion (§8.9)
     this.spawner = createSpawner();
     this.grid = new Grid();
     this.kills = 0;
@@ -161,7 +162,7 @@ export class Game {
     stepSpawner(this);
     stepBraziers(this);
   }
-  // 5. Special timers (mage cast, summon anim), AI, move, separation, despawn (§8).
+  // 5. Special timers (mage cast, summon anim), AI, move, separation, despawn, slime fusion (§8).
   stepEnemies() { stepEnemies(this); }
   // 6. §10: cooldowns, firing, ring positions, mini towers.
   stepWeapons() { stepWeapons(this); }
@@ -219,7 +220,7 @@ export class Game {
       pendingLevelUps: this.pendingLevelUps, offers: this.offers, spawner: this.spawner,
       dragon: this.dragon, tower: this.tower, enemies: this.enemies,
       projectiles: this.projectiles, enemyShots: this.enemyShots, effects: this.effects, gems: this.gems, miniTowers: this.miniTowers, slashes: this.slashes, blades: this.blades,
-      braziers: this.braziers, pickups: this.pickups, brazierTimer: this.brazierTimer, lastBomb: this.lastBomb,
+      braziers: this.braziers, pickups: this.pickups, brazierTimer: this.brazierTimer, lastBomb: this.lastBomb, lastFusion: this.lastFusion,
       weapons: this.weapons, buffs: this.buffs,
     };
   }

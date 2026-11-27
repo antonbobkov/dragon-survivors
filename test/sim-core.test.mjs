@@ -415,10 +415,12 @@ test('run counters start as decided', () => {
     [0, 1, 0, 0, [], [{ id: 'fireball', level: 1, timer: 0 }], 'play', 0, 0],
   );
   assert.equal(g.tower.hp, g.tower.maxHp);
-  // every enemy type can be created with its table values (hp ∞ is held as the finite GOLEM_HP)
+  // every enemy type can be created with its table values (hp ∞ is held as the finite GOLEM_HP;
+  // a megaslime gets its HP from a fusion, §8.9, and has 1 when made otherwise)
   for (const type of Object.keys(ENEMIES)) {
     const e = createEnemy(g, type, 0, 0);
-    assert.deepEqual([e.type, e.hp, e.r, e.alpha, e.anim], [type, ENEMIES[type].unkillable ? GOLEM_HP : ENEMIES[type].hp, ENEMIES[type].r, ENEMIES[type].alpha, ENEMIES[type].walk]);
+    const hp = ENEMIES[type].unkillable ? GOLEM_HP : ENEMIES[type].fused ? 1 : ENEMIES[type].hp;
+    assert.deepEqual([e.type, e.hp, e.r, e.alpha, e.anim], [type, hp, ENEMIES[type].r, ENEMIES[type].alpha, ENEMIES[type].walk]);
   }
   // the rng is read through game.rng on every draw, so a stub takes effect
   const h = new Game({ seed: 1, timeline: [{ t: 0, rate: 90, weights: { knight: 100 } }] });

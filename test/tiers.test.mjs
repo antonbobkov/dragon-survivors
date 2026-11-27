@@ -11,7 +11,7 @@ import { animLength } from '../src/sim/effects.js';
 import { ANIMS } from '../src/sim/anims.js';
 import {
   ENEMIES, ENEMY_TYPES, TIERS, TIER_IDS, TIERED_ANIMS, TIMELINE, ATLAS_NAMES, DT, tierAnim, tierHp, tierOf,
-  SLIME_CHILD_HP, SLIME_CHILD_R, MAGE_CAST_INTERVAL, MAGE_CAST_TIME, GHOST_BURN_TIME, GOLEM_HP,
+  SLIME_GENS, MAGE_CAST_INTERVAL, MAGE_CAST_TIME, GHOST_BURN_TIME, GOLEM_HP,
 } from '../src/sim/content.js';
 import { expandTiers, tierAnimName, resolveEntries, parseOps } from '../tools/build-atlas.mjs';
 import { createRenderer, tierSprite, SPRITE_SCALE } from '../src/render/draw.js';
@@ -66,7 +66,8 @@ test('createEnemy: HP and radius scale with the tier, resistances do not; tier 1
     for (const t of TIER_IDS) {
       const e = createEnemy(g, type, 0, 0, t);
       assert.equal(e.tier, t);
-      assert.equal(e.hp, Math.ceil(def.hp * TIERS[t].hp - 1e-9), `${type} t${t} hp`);
+      // A megaslime's HP comes from its fusion (§8.9); made directly it has 1.
+      assert.equal(e.hp, def.fused ? 1 : Math.ceil(def.hp * TIERS[t].hp - 1e-9), `${type} t${t} hp`);
       assert.equal(e.r, def.r * TIERS[t].r, `${type} t${t} r`);
       assert.equal(e.anim, def.walk, 'the sim keeps the plain anim name');
     }
@@ -134,7 +135,12 @@ test('inheritance: slime children take the parent tier, with the child HP and ra
     const kids = ofType(g, 'slime');
     assert.equal(kids.length, 2);
     for (const k of kids) {
-      assert.deepEqual([k.gen, k.tier, k.hp, k.r], [1, t, tierHp(SLIME_CHILD_HP, t), SLIME_CHILD_R * TIERS[t].r], `t${t}`);
+      assert.deepEqual([k.gen, k.tier, k.hp, k.maxHp, k.r], [1, t, tierHp(SLIME_GENS[1].hp, t), tierHp(SLIME_GENS[1].hp, t), SLIME_GENS[1].r * TIERS[t].r], `t${t}`);
+    }
+    kill(g, kids[0]); // and through the second split
+    assert.deepEqual(g.effects.map((f) => [f.anim, f.tier]), [['slime.split', t], ['slime.split1', t]]);
+    for (const k of ofType(g, 'slime').filter((e) => e.gen === 2)) {
+      assert.deepEqual([k.tier, k.hp, k.maxHp, k.r], [t, tierHp(SLIME_GENS[2].hp, t), tierHp(SLIME_GENS[2].hp, t), SLIME_GENS[2].r * TIERS[t].r], `gen 2 t${t}`);
     }
   }
 });

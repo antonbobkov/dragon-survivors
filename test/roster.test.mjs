@@ -39,7 +39,7 @@ test('skeleton: no special; walks at its table speed and dies with the generic s
 
 // ---- slime -----------------------------------------------------------------------
 
-test('slime split: a gen-0 slime yields two gen-1 slimes flanking its path; those yield none', () => {
+test('slime split: a gen-0 slime yields two gen-1 slimes flanking its path; gen 1 splits again, gen 2 does not', () => {
   const g = still();
   const p = createEnemy(g, 'slime', 0, 300); // the tower is above: path points up
   p.flip = true;
@@ -48,15 +48,19 @@ test('slime split: a gen-0 slime yields two gen-1 slimes flanking its path; thos
   const kids = ofType(g, 'slime');
   assert.equal(kids.length, 2);
   // u = (0, -1): perpendicular (-uy, ux) = (1, 0)
-  assert.deepEqual(kids.map((k) => [k.x, k.y, k.gen, k.hp, k.r, k.flip]), [
-    [20, 300, 1, 1, 8, false],
-    [-20, 300, 1, 1, 8, false],
+  assert.deepEqual(kids.map((k) => [k.x, k.y, k.gen, k.hp, k.r, k.flip, k.anim]), [
+    [20, 300, 1, 2, 9, false, 'slime.walk1'],
+    [-20, 300, 1, 2, 9, false, 'slime.walk1'],
   ]);
   assert.deepEqual(g.effects.map((f) => [f.anim, f.x, f.y, f.flip]), [['slime.split', 0, 300, true]]);
   for (const k of kids) kill(g, k);
-  assert.equal(g.enemies.length, 0, 'gen-1 slimes do not split');
   assert.equal(g.kills, 3);
-  assert.deepEqual(g.effects.map((f) => f.anim), ['slime.split', 'slime.die', 'slime.die']);
+  const grand = ofType(g, 'slime');
+  assert.deepEqual(grand.map((k) => [k.gen, k.hp, k.r, k.anim]), Array(4).fill([2, 1, 7, 'slime.walk2']), 'gen 1 splits into gen 2');
+  for (const k of grand) kill(g, k);
+  assert.equal(g.enemies.length, 0, 'gen-2 slimes do not split');
+  assert.equal(g.kills, 7);
+  assert.deepEqual(g.effects.map((f) => f.anim), ['slime.split', 'slime.split1', 'slime.split1', 'slime.die2', 'slime.die2', 'slime.die2', 'slime.die2']);
 });
 
 test('slime split: offsets are perpendicular to any direction; at the tower centre they use (0, 1)', () => {
