@@ -1,6 +1,6 @@
 # T-020: Damage calculator
 
-**Source:** [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §11; owner notes 2 ("determine weapon damage floor and ceiling at different points of the game … a formula based on area, proc chance etc.") · **Model:** Opus · **Depends on:** T-018, T-019, T-021–T-027 — all merged
+**Source:** [strategy-depth design](../../../reports/designs/2026-11-26-strategy-depth-design.md) §11; owner notes 2 ("determine weapon damage floor and ceiling at different points of the game … a formula based on area, proc chance etc.") · **Model:** Opus · **Depends on:** T-018, T-019, T-021–T-027 — all merged
 
 ## Why
 
