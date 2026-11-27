@@ -29,6 +29,7 @@ test('measure: one short seed per bot runs, is deterministic, and tabulates', ()
       const row = summarize([r], 5);
       assert.equal(row.medianText, '>=5.0');
       assert.equal(row.golem, 0);
+      assert.equal(row.crunch, 0, "a capped run never counts as a fall");
       assert.match(summaryTable([row]), new RegExp(`\\| ${policy}\\+${pick} \\| 1 \\|`));
       assert.match(timelineTable([r], 1, 5), /\| 5 \| 100 \|/);
     }
@@ -41,6 +42,7 @@ test('measure: a run that falls reports the fall time, and towerHp / --set apply
   const r = runOne({ policy: 'idle', seed: 1, maxSeconds: 60, towerHp: 1 });
   assert.equal(r.capped, false);
   assert.ok(r.survived > 5 && r.survived < 60, `fell at ${r.survived}`);
+  assert.deepEqual([90, 179.9, 180, 89].map((s) => summarize([{ ...r, survived: s }], 420).crunch), [1, 1, 0, 0], "fell 1:30–3:00");
   const s = applySets(['rate.30=0.25', 'towerHp=7']);
   assert.equal(s.towerHp, 7);
   assert.equal(s.timeline.find((x) => x.t === 30).rate, 0.25);
@@ -211,6 +213,10 @@ test('measure: the merchant plan: trade when affordable, wait while he comes, ro
   assert.equal(merchantPlan(g), null, 'nothing affordable and he is coming: wait');
   g.xp = SHOP_PRICES.reroll;
   assert.deepEqual(merchantPlan(g), { mode: 'trade', m });
+  assert.equal(merchantPlan(g, { pick: 'greedy' }), null, 'greedy waits until the card is affordable');
+  g.xp = SHOP_PRICES.card;
+  assert.deepEqual(merchantPlan(g, { pick: 'greedy' }), { mode: 'trade', m });
+  g.xp = SHOP_PRICES.reroll;
   assert.equal(merchantPlan(g, { merchant: 'ignore' }), null);
   let it = POLICIES.aim(g);
   assert.ok(heads(it, g, m.x, m.y), 'walks to him');

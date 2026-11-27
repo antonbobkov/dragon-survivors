@@ -167,7 +167,7 @@ test('level-up: with several pending, each pick rolls the next offers from the n
   const g = still();
   g.weapons = [createWeapon('fireball', 1)];
   g.xp = 7;
-  gemAt(g, 0, 0, 30); // 37 XP: L1->2 (8), L2->3 (11), L3->4 (14), 4 left
+  gemAt(g, 0, 0, 15); // 22 XP: L1->2 (4), L2->3 (6), L3->4 (8), 4 left
   g.rng = () => 0; // always the first pool card: the fireball upgrade
   g.tick({});
   assert.equal(g.pendingLevelUps, 3);
@@ -365,7 +365,7 @@ test('mini tower: lobbed 80 px toward the nearest enemy, silent in flight, then 
     if (g.projectiles.some((x) => !seen.has(x.id))) fired.push(i);
     for (const x of g.projectiles) seen.add(x.id);
   }
-  assert.deepEqual(fired.slice(0, 2), [47, 95], 'every 0.8 s');
+  assert.deepEqual(fired.slice(0, 2), [44, 89], 'every 0.75 s');
   assert.ok(e.hp < 1000);
 });
 
@@ -574,7 +574,7 @@ test('buffs: stat buffs reach every weapon (fireball, laser, mini tower shot, ri
   const ms = g.projectiles[before];
   assert.deepEqual([ms.damage, ms.speed, ms.range], [3, 420 * 1.2, 420 * 1.2]);
   assert.ok(near(ms.r, 6 * 1.3));
-  assert.ok(near(g.miniTowers[0].timer, 0.8 * 0.76 - DT), 'fireRate × cooldown');
+  assert.ok(near(g.miniTowers[0].timer, 0.75 * 0.76 - DT), 'fireRate × cooldown');
 });
 
 // ---- procs ---------------------------------------------------------------------------

@@ -357,7 +357,7 @@ test('determinism: a mixed-roster run is identical for the same seed, and every 
   const play = () => {
     const g = new Game({ seed: 77, timeline: ALL });
     g.tower.hp = 1e9;
-    g.weapons = [createWeapon('fireball', 5)];
+    g.weapons = [createWeapon('fireball', 5), createWeapon('ring', 5)]; // enough to kill ghost knights whatever the stream
     const seen = new Set();
     for (let i = 0; i < 25 * 60; i++) {
       g.tick(script(i));

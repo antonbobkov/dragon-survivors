@@ -185,8 +185,8 @@ test('dps: fans, claw rectangles, the cone and bite caps follow their geometry',
   near(rate('bite', top, amount(1), dense), 2 / B.cooldown, 1e-9);
   const C = WEAPONS.rightClaw.levels[top - 1];
   near(rate('rightClaw', top, amount(1), dense), (C.maxTargets + 1) / C.cooldown, 1e-6);
-  // the mini tower L1: a lob every 6 s, 8 s of life capped by 1 × 6 s − 0.5 s lob: 5.5 s at 0.8 s → 7 shots
-  assert.ok(Math.abs(miniTowerShotRate(1, none) - 7 / 6) < 1e-9);
+  // the mini tower L1: a lob every 6 s, 8 s of life capped by 1 × 6 s − 0.5 s lob: 5.5 s at 0.75 s → 8 shots
+  assert.ok(Math.abs(miniTowerShotRate(1, none) - 8 / 6) < 1e-9);
 });
 
 test('dps: the ring, saw and fireball models match the real sim', () => {
@@ -203,9 +203,9 @@ test('dps: the ring, saw and fireball models match the real sim', () => {
 });
 
 test('dps: levels, naive builds and the floor', () => {
-  // the measured curve (naive bots on 6e6be02); a new measurement replaces it
-  assert.deepEqual(LEVEL_CURVE, { 30: 1, 60: 1, 90: 4, 120: 9, 150: 14, 180: 23, 210: 32, 240: 41, 270: 49, 300: 60 });
-  assert.equal(levelAt(90), 4);
+  // the measured curve (naive bots on the T-029 rebalance); a new measurement replaces it
+  assert.deepEqual(LEVEL_CURVE, { 30: 1, 60: 2, 90: 6, 120: 11, 150: 17, 180: 26, 210: 38, 240: 51, 270: 65, 300: 80 });
+  assert.equal(levelAt(90), 6);
   assert.equal(levelAt(45, { 30: 1, 60: 5 }), 3);
   // a naive build takes card 0 of every offer
   let differs = 0;

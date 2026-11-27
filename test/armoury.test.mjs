@@ -43,17 +43,17 @@ test('gold: floor(score / 20)', () => {
   assert.equal(goldFor(-40), 0);
 });
 
-test('rank costs: rank n costs 20 n²; a full track costs 1100', () => {
-  assert.deepEqual([1, 2, 3, 4, 5].map(rankCost), [20, 80, 180, 320, 500]);
-  assert.equal(spentOn(MAX_RANK), 1100);
+test('rank costs: rank n costs 150 n; a full track costs 2250', () => {
+  assert.deepEqual([1, 2, 3, 4, 5].map(rankCost), [150, 300, 450, 600, 750]);
+  assert.equal(spentOn(MAX_RANK), 2250);
   assert.equal(spentOn(0), 0);
 });
 
 test('buying takes the next rank cost; unaffordable or maxed buys nothing; the old purse is untouched', () => {
-  const p = purseWith(100);
-  assert.equal(nextCost(p, 'power', 'fire'), 20);
+  const p = purseWith(450);
+  assert.equal(nextCost(p, 'power', 'fire'), 150);
   const a = buy(p, 'power', 'fire');
-  assert.equal(a.gold, 80);
+  assert.equal(a.gold, 300);
   assert.equal(a.ranks.power.fire, 1);
   assert.equal(p.ranks.power.fire, 0, 'pure');
   const b = buy(a, 'power', 'fire');
@@ -68,12 +68,12 @@ test('buying takes the next rank cost; unaffordable or maxed buys nothing; the o
 
 test('refund sells every rank back for what it cost', () => {
   const p = purseWith(7, { 'power.fire': 3, 'shred.arcane': 1, 'power.physical': 5 });
-  assert.equal(totalSpent(p), 280 + 20 + 1100);
+  assert.equal(totalSpent(p), 900 + 150 + 2250);
   const r = refundAll(p);
-  assert.equal(r.gold, 7 + 1400);
+  assert.equal(r.gold, 7 + 3300);
   assert.equal(totalSpent(r), 0);
-  assert.equal(addGold(r, 12.9).gold, 1419);
-  assert.equal(addGold(r, -5).gold, 1407);
+  assert.equal(addGold(r, 12.9).gold, 3319);
+  assert.equal(addGold(r, -5).gold, 3307);
 });
 
 test('a purse from untrusted data is clamped and defaulted', () => {
@@ -166,15 +166,15 @@ test('App: U / Y or the Armoury button opens the armoury from the title; Esc, U,
 
 test('App: buying with Enter / A and clicks, saved at once; the run then uses the ranks', () => {
   const storage = memoryStorage();
-  storage.setItem(ARMOURY_KEY, JSON.stringify({ gold: 120, ranks: {} }));
+  storage.setItem(ARMOURY_KEY, JSON.stringify({ gold: 600, ranks: {} }));
   const { app, step, built, played } = makeApp({ storage });
-  assert.equal(app.purse.gold, 120);
+  assert.equal(app.purse.gold, 600);
   const title = app.game;
   step(press({ armoury: true }));
   assert.equal(app.armourySel, 0);
-  step(press({ confirm: true })); // Fire Power rank 1: 20
+  step(press({ confirm: true })); // Fire Power rank 1: 150
   assert.equal(app.purse.ranks.power.fire, 1);
-  assert.equal(app.purse.gold, 100);
+  assert.equal(app.purse.gold, 450);
   assert.ok(played.includes('powerup'));
   step(press({ menu: { x: 0, y: 1 } })); // down to Fire Shred
   assert.equal(app.armourySel, 3);
@@ -183,10 +183,10 @@ test('App: buying with Enter / A and clicks, saved at once; the run then uses th
   step(press({ click: centre(armouryRects()[4]) })); // Arcane Shred
   assert.equal(app.armourySel, 4);
   assert.equal(app.purse.ranks.shred.arcane, 1);
-  assert.equal(app.purse.gold, 60);
-  step(press({ confirm: true })); // Arcane Shred rank 2 costs 80: not enough
+  assert.equal(app.purse.gold, 150);
+  step(press({ confirm: true })); // Arcane Shred rank 2 costs 300: not enough
   assert.equal(app.purse.ranks.shred.arcane, 1);
-  assert.equal(app.purse.gold, 60);
+  assert.equal(app.purse.gold, 150);
   assert.deepEqual(JSON.parse(storage.map.get(ARMOURY_KEY)), app.purse, 'saved');
 
   step(press({ pause: true }));
@@ -223,7 +223,7 @@ test('App: Reset needs a confirm, refunds everything, and is disarmed by moving 
   assert.equal(app.resetArmed, true);
   step(press({ confirm: true }));
   assert.equal(app.resetArmed, false);
-  assert.equal(app.purse.gold, 5 + 100 + 20);
+  assert.equal(app.purse.gold, 5 + 450 + 150);
   assert.equal(totalSpent(app.purse), 0);
   assert.deepEqual(JSON.parse(storage.map.get(ARMOURY_KEY)), app.purse);
   step(press({ confirm: true }));
@@ -279,7 +279,7 @@ test('App: a debug page pays no gold (its grants and jump would farm it)', () =>
 test('App: with storage unavailable the armoury still works for the session', () => {
   const { app, step } = makeApp({ storage: throwingStorage });
   assert.deepEqual(app.purse, freshPurse());
-  app.purse = purseWith(20); // test only: as if a run had paid out
+  app.purse = purseWith(150); // test only: as if a run had paid out
   step(press({ armoury: true }));
   step(press({ confirm: true }));
   assert.equal(app.purse.ranks.power.fire, 1);
@@ -341,14 +341,14 @@ test('armoury navigation: a 3×2 grid with Reset under the first two columns and
 });
 
 test('armoury cells: one line per rank effect, the next cost coloured by affordability', () => {
-  const p = purseWith(30, { 'power.fire': 2, 'shred.arcane': MAX_RANK });
+  const p = purseWith(200, { 'power.fire': 2, 'shred.arcane': MAX_RANK });
   const fire = cellInfo(p, 0);
   assert.equal(fire.title, 'Fire Power');
   assert.equal(fire.effect, '+8% fire damage per rank');
   assert.equal(fire.now, 'Now +16% damage');
-  assert.equal(fire.cost, 'Next rank: 180 gold');
+  assert.equal(fire.cost, 'Next rank: 450 gold');
   assert.equal(fire.costColor, '#e0533a', 'cannot afford');
-  assert.equal(cellInfo(p, 1).costColor, '#7dff6a', 'can afford 20');
+  assert.equal(cellInfo(p, 1).costColor, '#7dff6a', 'can afford 150');
   const arc = cellInfo(p, 4);
   assert.equal(arc.effect, '-10% enemy arcane resist per rank');
   assert.equal(arc.now, 'Now -50% resist');

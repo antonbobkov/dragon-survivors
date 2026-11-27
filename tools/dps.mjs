@@ -91,10 +91,10 @@ const DEG = Math.PI / 180;
 // ---- assumptions (printed with every report) ------------------------------------------
 
 // Median level of the naive bots (aim+naive and kite+naive, seeds 1..48) still standing at each
-// time, measured on this build (main at 6e6be02) with a scratch probe over tools/measure.mjs
-// runs. After 2:30 only 3–10 runs per bot were still standing, so later points are thin; the
-// greedy bots' survivors levelled within ±3 of these. Override with --levels.
-export const LEVEL_CURVE = { 30: 1, 60: 1, 90: 4, 120: 9, 150: 14, 180: 23, 210: 32, 240: 41, 270: 49, 300: 60 };
+// time, measured on the T-029 rebalance with a scratch probe over tools/measure.mjs runs (the
+// bots break braziers and trade; 96 runs: 96, 96, 96, 60, 49, 41, 40, 39, 35, 31 standing at
+// each time; 1:30 is the median 5.5 rounded). Override with --levels.
+export const LEVEL_CURVE = { 30: 1, 60: 2, 90: 6, 120: 11, 150: 17, 180: 26, 210: 38, 240: 51, 270: 65, 300: 80 };
 export const MINUTES = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300];
 export const DEFAULTS = {
   viewTime: 6, // s: the crowd near the dragon is the enemies that arrive in this long

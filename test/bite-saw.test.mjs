@@ -225,7 +225,7 @@ test('bite: breaks the braziers its reach overlaps; draws no random numbers', ()
   const h = still(armed('bite', 3, [{ id: 'amount', level: 2 }]));
   for (let i = 0; i < 5; i++) dummy(h, 'skeleton', 10 + i * 5, i, 20);
   h.rng = () => { throw new Error('no draws'); };
-  for (let i = 0; i < 300; i++) tick(h);
+  for (let i = 0; i < 300; i++) { tick(h); h.gems.length = 0; } // no gems: no level-up offers to roll
   assert.ok(h.kills > 0, 'bit and killed without a draw');
 });
 

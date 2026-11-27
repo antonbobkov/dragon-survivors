@@ -16,9 +16,11 @@ export function goldFor(score) {
   return Number.isFinite(score) && score > 0 ? Math.floor(score / SCORE_PER_GOLD) : 0;
 }
 
-// The price of rank n (buying it from rank n − 1): 20 × n².
+// The price of rank n (buying it from rank n − 1): RANK_COST × n, so a first rank takes about
+// one typical run's gold and a whole track (15 × RANK_COST) about a dozen runs.
+export const RANK_COST = 150;
 export function rankCost(n) {
-  return 20 * n * n;
+  return RANK_COST * n;
 }
 
 // Everything paid for ranks 1..n of one track.

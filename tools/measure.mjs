@@ -33,7 +33,8 @@
 //   dodge   a mage orb within DODGE_RANGE px that will pass closer than its radius + the
 //           dragon's + DODGE_MARGIN: step straight away from its path (the most imminent
 //           first). --no-dodge turns it off.
-//   trade   a merchant who will trade, while an offer is affordable and he is within
+//   trade   a merchant who will trade, while an offer the bot wants is affordable (canTrade:
+//           naive any, greedy the card or a heal below 60% HP) and he is within
 //           MERCHANT_RANGE of HOME: stand TRADE_STAND px above or below him, aiming away from
 //           him, until the shop opens; then the pick rule's shop rule. --merchant ignore
 //           turns trading and robbing off (a shop that opens is left).
@@ -66,10 +67,10 @@
 // --meta plays every run with armoury ranks (§13.1), mapped to the sim's `meta` as the
 // browser does: `fire:3/1` is Power rank 3 and Shred rank 1 for fire; types left out are 0/0.
 import { Game } from '../src/sim/game.js';
-import { DT, TIMELINE, ENEMIES, ENEMY_TYPES, DAMAGE_TYPES, DRAGON_START, DRAGON_RADIUS, TOWER_RADIUS, tierOf, PRINCESS_LURE } from '../src/sim/content.js';
+import { DT, TIMELINE, ENEMIES, ENEMY_TYPES, DAMAGE_TYPES, DRAGON_START, DRAGON_RADIUS, TOWER_RADIUS, tierOf, PRINCESS_LURE, SHOP_PRICES } from '../src/sim/content.js';
 import { shopOffer } from '../src/sim/shop.js';
 import { cardPool } from '../src/sim/levelup.js';
-import { emptyRanks, metaFromRanks, MAX_RANK } from '../src/armoury.js';
+import { emptyRanks, metaFromRanks, MAX_RANK, goldFor } from '../src/armoury.js';
 import { pathToFileURL } from 'node:url';
 
 export const HOME = { x: DRAGON_START.x, y: DRAGON_START.y };
@@ -202,9 +203,13 @@ export function brazierTarget(game, range = BRAZIER_RANGE) {
   return nearestToDragon(game, game.braziers, (b) => dist(b, HOME.x, HOME.y) <= range);
 }
 
-// Whether any shop offer is affordable and useful now (§14.3).
-export function canTrade(game) {
-  return ['reroll', 'card', 'heal'].some((id) => shopOffer(game, id).ok);
+// Whether the bot wants to trade now (§14.3): naive when any offer is affordable and useful;
+// greedy only for what its shop rule buys first, a card, or a heal below SHOP_HEAL_BELOW, so
+// it waits for the card's price rather than settle for a reroll.
+export function canTrade(game, pick = 'naive') {
+  if (pick !== 'greedy') return ['reroll', 'card', 'heal'].some((id) => shopOffer(game, id).ok);
+  const tw = game.tower;
+  return shopOffer(game, 'card').ok || (shopOffer(game, 'heal').ok && tw.hp < SHOP_HEAL_BELOW * tw.maxHp);
 }
 
 // What the bot does about the merchant: { mode: 'trade' | 'rob', m } or null. Trade: he will
@@ -218,7 +223,7 @@ export function merchantPlan(game, o = {}) {
   const m = game.merchants.find((x) => x.hp > 0);
   if (!m) return null;
   const d = game.dragon;
-  if (m.willTrade && canTrade(game)) return dist(m, HOME.x, HOME.y) <= MERCHANT_RANGE ? { mode: 'trade', m } : null;
+  if (m.willTrade && canTrade(game, o.pick)) return dist(m, HOME.x, HOME.y) <= MERCHANT_RANGE ? { mode: 'trade', m } : null;
   const leaving = m.dx * (m.x - HOME.x) + m.dy * (m.y - HOME.y) > 0;
   if (m.willTrade && !leaving) return null;
   return dist(m, d.x, d.y) <= ROB_RANGE ? { mode: 'rob', m } : null;
@@ -377,7 +382,7 @@ export function botIntent(game, policy, pick = 'naive', opts = {}) {
   const p = POLICIES[policy], k = PICKS[pick];
   if (!p) throw new Error(`unknown policy "${policy}"`);
   if (!k) throw new Error(`unknown pick rule "${pick}"`);
-  const base = p(game, opts);
+  const base = p(game, { ...opts, pick });
   if (game.offers.length) {
     if (pick === 'greedy' && greedyRerolls(game)) return { ...base, pick: -1, reroll: true, leave: false };
     return { ...base, pick: k(game), leave: false };
@@ -439,7 +444,7 @@ export function runOne({ policy, pick = 'naive', seed, maxSeconds = 420, step = 
   const samples = [];
   const sample = () => samples.push({ t: game.t, hp: game.tower.hp, alive: game.enemies.length, kills: game.kills, spawned: game.spawner.spawned, level: game.level });
   let repaired = 0, movedTicks = 0, worldTicks = 0;
-  const extras = { broken: 0, collected: { heart: 0, magnet: 0, bomb: 0, chest: 0 }, bought: { reroll: 0, card: 0, heal: 0 }, robbed: 0, rescued: 0, princessLost: 0, rerolled: 0 };
+  const extras = { broken: 0, collected: { heart: 0, magnet: 0, bomb: 0, chest: 0 }, bought: { reroll: 0, card: 0, heal: 0 }, robbed: 0, rescued: 0, princessLost: 0, rerolled: 0, firstMerchant: false, firstAffordable: false, firstCard: false, gold: 0 };
   const seenPickups = new Set();
   // Ticks spent with offers open do not advance the clock; bound them so a broken pick
   // flow cannot hang the instrument.
@@ -457,6 +462,14 @@ export function runOne({ policy, pick = 'naive', seed, maxSeconds = 420, step = 
     if (shop && !game.shop && game.xp < shop.xp) {
       const what = shop.page === 'cards' ? 'card' : ['reroll', 'card', 'heal'][intent.pick];
       if (what) extras.bought[what]++;
+      if (what === 'card' && game.t < 180) extras.firstCard = true;
+    }
+    if (game.t < 180) {
+      for (const m of game.merchants) {
+        if (!m.willTrade || dist(m, HOME.x, HOME.y) > MERCHANT_RANGE) continue;
+        extras.firstMerchant = true;
+        if (game.xp >= SHOP_PRICES.card) extras.firstAffordable = true;
+      }
     }
     if (game.tickCount !== before) {
       worldTicks++;
@@ -474,6 +487,7 @@ export function runOne({ policy, pick = 'naive', seed, maxSeconds = 420, step = 
     }
   }
   const capped = game.phase === 'play';
+  extras.gold = goldFor(game.score());
   let cause = null;
   if (!capped) {
     const sum = {};
@@ -492,7 +506,7 @@ export function runOne({ policy, pick = 'naive', seed, maxSeconds = 420, step = 
 // that reads better): braziers broken, pickups collected, shop purchases, merchants robbed,
 // princesses rescued and lost, rerolls used.
 export function extrasTable(runs) {
-  const out = ['| Bot | Braziers broken | Hearts | Magnets | Bombs | Trades (runs) | Cards / heals / rerolls bought | Robbed (runs) | Chests | Rescued / lost | Rerolls used |', '|---|---|---|---|---|---|---|---|---|---|---|'];
+  const out = ['| Bot | Braziers broken | Hearts | Magnets | Bombs | Trades (runs) | Cards / heals / rerolls bought | Robbed (runs) | Chests | Rescued / lost | Rerolls used | First merchant: card affordable / bought | Gold median / mean |', '|---|---|---|---|---|---|---|---|---|---|---|---|---|'];
   const by = {};
   for (const r of runs) (by[r.bot] || (by[r.bot] = [])).push(r);
   for (const bot of Object.keys(by)) {
@@ -500,7 +514,7 @@ export function extrasTable(runs) {
     const mean = (f) => (rs.reduce((x, r) => x + f(r.extras), 0) / n).toFixed(1);
     const runsWith = (f) => rs.filter((r) => f(r.extras) > 0).length;
     const trades = (e) => e.bought.reroll + e.bought.card + e.bought.heal;
-    out.push(`| ${bot} | ${mean((e) => e.broken)} | ${mean((e) => e.collected.heart)} | ${mean((e) => e.collected.magnet)} | ${mean((e) => e.collected.bomb)} | ${mean(trades)} (${runsWith(trades)}/${n}) | ${mean((e) => e.bought.card)} / ${mean((e) => e.bought.heal)} / ${mean((e) => e.bought.reroll)} | ${mean((e) => e.robbed)} (${runsWith((e) => e.robbed)}/${n}) | ${mean((e) => e.collected.chest)} | ${mean((e) => e.rescued)} / ${mean((e) => e.princessLost)} | ${mean((e) => e.rerolled)} |`);
+    out.push(`| ${bot} | ${mean((e) => e.broken)} | ${mean((e) => e.collected.heart)} | ${mean((e) => e.collected.magnet)} | ${mean((e) => e.collected.bomb)} | ${mean(trades)} (${runsWith(trades)}/${n}) | ${mean((e) => e.bought.card)} / ${mean((e) => e.bought.heal)} / ${mean((e) => e.bought.reroll)} | ${mean((e) => e.robbed)} (${runsWith((e) => e.robbed)}/${n}) | ${mean((e) => e.collected.chest)} | ${mean((e) => e.rescued)} / ${mean((e) => e.princessLost)} | ${mean((e) => e.rerolled)} | ${rs.filter((r) => r.extras.firstAffordable).length} / ${rs.filter((r) => r.extras.firstCard).length} of ${rs.filter((r) => r.extras.firstMerchant).length} | ${median(rs.map((r) => r.extras.gold))} / ${(rs.reduce((x, r) => x + r.extras.gold, 0) / n).toFixed(0)} |`);
   }
   return out.join('\n');
 }
@@ -531,6 +545,7 @@ export function summarize(runs, maxSeconds) {
     policy: runs[0].bot || runs[0].policy, seeds: runs.length,
     median: med, min, max, capped: runs.filter((r) => r.capped).length,
     golem: runs.filter((r) => r.survived >= 300 - DT / 2).length,
+    crunch: runs.filter((r) => !r.capped && r.survived >= 90 && r.survived < 180).length, // fell 1:30-3:00
     medianText: fmtT(med, capT(med)), minText: fmtT(min, capT(min)), maxText: fmtT(max, capT(max)),
     kills: median(runs.map((r) => r.kills)), level: median(runs.map((r) => r.level)),
     causes: causeText(runs), moved: median(runs.map((r) => r.moved || 0)),
@@ -538,8 +553,8 @@ export function summarize(runs, maxSeconds) {
 }
 
 export function summaryTable(rows) {
-  const out = ['| Bot | Seeds | Median s | Min s | Max s | Reached 5:00 | Reached cap | Kills (median) | Level (median) | Fall causes | Tower moving |', '|---|---|---|---|---|---|---|---|---|---|---|'];
-  for (const r of rows) out.push(`| ${r.policy} | ${r.seeds} | ${r.medianText} | ${r.minText} | ${r.maxText} | ${r.golem} | ${r.capped} | ${r.kills} | ${r.level} | ${r.causes} | ${Math.round(r.moved * 100)}% |`);
+  const out = ['| Bot | Seeds | Median s | Min s | Max s | Fell 1:30–3:00 | Reached 5:00 | Reached cap | Kills (median) | Level (median) | Fall causes | Tower moving |', '|---|---|---|---|---|---|---|---|---|---|---|---|'];
+  for (const r of rows) out.push(`| ${r.policy} | ${r.seeds} | ${r.medianText} | ${r.minText} | ${r.maxText} | ${r.crunch} | ${r.golem} | ${r.capped} | ${r.kills} | ${r.level} | ${r.causes} | ${Math.round(r.moved * 100)}% |`);
   return out.join('\n');
 }
 
