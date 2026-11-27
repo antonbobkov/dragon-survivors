@@ -110,13 +110,13 @@ export const GOLEM_TIME = 300;
 export const TIMELINE = [
   { t: 0,   rate: 0.3,  stage: 'Muster', weights: { knight: 100, skeleton: 0,  slime: 0,  mage: 0,  ghostKnight: 0,  mountedKnight: 0 } },
   { t: 30,  rate: 0.5,  weights: { knight: 70, skeleton: 30, slime: 0,  mage: 0,  ghostKnight: 0,  mountedKnight: 0 } },
-  { t: 60,  rate: 0.6,  stage: 'Ooze',   weights: { knight: 20, skeleton: 15, slime: 65, mage: 0,  ghostKnight: 0,  mountedKnight: 0 },  stampede: { every: 20, min: 5, max: 6 } },
-  { t: 120, rate: 2.5,  stage: 'Arcana', weights: { knight: 20, skeleton: 30, slime: 20, mage: 30, ghostKnight: 0,  mountedKnight: 0 },  stampede: { every: 30, min: 5, max: 7 } },
-  { t: 150, rate: 6.25, weights: { knight: 15, skeleton: 30, slime: 15, mage: 25, ghostKnight: 0,  mountedKnight: 15 }, tiers: { 1: 90, 2: 10, 3: 0,  4: 0 }, stampede: { every: 30, min: 5, max: 7 } },
-  { t: 180, rate: 10,   stage: 'Haunt',  weights: { knight: 15, skeleton: 15, slime: 10, mage: 10, ghostKnight: 40, mountedKnight: 10 }, tiers: { 1: 70, 2: 30, 3: 0,  4: 0 }, stampede: { every: 30, min: 6, max: 8 } },
-  { t: 210, rate: 13,   weights: { knight: 15, skeleton: 15, slime: 10, mage: 10, ghostKnight: 40, mountedKnight: 10 }, tiers: { 1: 65, 2: 30, 3: 5,  4: 0 }, stampede: { every: 30, min: 6, max: 8 } },
-  { t: 240, rate: 16,   stage: 'Siege',  weights: { knight: 20, skeleton: 20, slime: 15, mage: 10, ghostKnight: 15, mountedKnight: 20 }, tiers: { 1: 60, 2: 25, 3: 15, 4: 0 }, stampede: { every: 15, min: 8, max: 12 } },
-  { t: 300, rate: 18,   weights: { knight: 20, skeleton: 20, slime: 15, mage: 10, ghostKnight: 15, mountedKnight: 20 }, tiers: { 1: 55, 2: 25, 3: 15, 4: 5 }, stampede: { every: 15, min: 8, max: 12 }, golem: true },
+  { t: 60,  rate: 0.6,  stage: 'Ooze',   weights: { knight: 33, skeleton: 30, slime: 37, mage: 0,  ghostKnight: 0,  mountedKnight: 0 }, stampede: { every: 20, min: 5, max: 6 } },
+  { t: 120, rate: 2.5,  stage: 'Arcana', weights: { knight: 30, skeleton: 30, slime: 20, mage: 20, ghostKnight: 0,  mountedKnight: 0 }, stampede: { every: 30, min: 5, max: 7 } },
+  { t: 150, rate: 6.25, weights: { knight: 28, skeleton: 30, slime: 20, mage: 20, ghostKnight: 0,  mountedKnight: 2 }, tiers: { 1: 90, 2: 10, 3: 0,  4: 0 }, stampede: { every: 30, min: 5, max: 7 } },
+  { t: 180, rate: 10,   stage: 'Haunt',  weights: { knight: 22, skeleton: 23, slime: 17, mage: 10, ghostKnight: 25, mountedKnight: 3 }, tiers: { 1: 70, 2: 30, 3: 0,  4: 0 }, stampede: { every: 30, min: 6, max: 8 } },
+  { t: 210, rate: 13,   weights: { knight: 22, skeleton: 23, slime: 17, mage: 10, ghostKnight: 25, mountedKnight: 3 }, tiers: { 1: 65, 2: 30, 3: 5,  4: 0 }, stampede: { every: 30, min: 6, max: 8 } },
+  { t: 240, rate: 16,   stage: 'Siege',  weights: { knight: 22, skeleton: 22, slime: 18, mage: 10, ghostKnight: 23, mountedKnight: 5 }, tiers: { 1: 60, 2: 25, 3: 15, 4: 0 }, stampede: { every: 15, min: 8, max: 12 } },
+  { t: 300, rate: 18,   weights: { knight: 22, skeleton: 22, slime: 18, mage: 10, ghostKnight: 23, mountedKnight: 5 }, tiers: { 1: 55, 2: 25, 3: 15, 4: 5 }, stampede: { every: 15, min: 8, max: 12 }, golem: true },
 ];
 // §8.8 stampedes: horses in a line STAMPEDE_SPACING px apart, perpendicular to their run.
 export const STAMPEDE_TYPE = 'horse';
