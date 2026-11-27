@@ -45,6 +45,15 @@ export function formatPalette(counted, { count = 32, min = 5, names = new Map(),
   ].join('\n') + '\n';
 }
 
+/** The sorted BMP paths the palette is sampled from: BMP frames with no colour op (variants and art excluded). */
+export function plainBmpFiles(anims) {
+  const files = new Set();
+  for (const frames of anims.values()) {
+    for (const f of frames) if (f.file && !f.ops.length) files.add(f.file);
+  }
+  return [...files].sort();
+}
+
 function main(argv) {
   const manifest = loadManifest();
   const sourceRoot = resolveSourceRoot(manifest, argv);
@@ -55,11 +64,8 @@ function main(argv) {
   const out = resolve(argValue(argv, '--out') || join(ART_ROOT, PALETTE_FILE));
   const count = Number(argValue(argv, '--count') || 32);
   const min = Number(argValue(argv, '--min') || 5);
-  const files = new Set();
-  for (const frames of resolveManifest(manifest, sourceRoot).anims.values()) {
-    for (const f of frames) if (f.file && !f.ops.length) files.add(f.file);
-  }
-  const decoded = [...files].sort().map((f) => decodeBmp(readFileSync(join(sourceRoot, f))));
+  const files = plainBmpFiles(resolveManifest(manifest, sourceRoot).anims);
+  const decoded = files.map((f) => decodeBmp(readFileSync(join(sourceRoot, f))));
   const names = new Map();
   if (existsSync(out)) for (const [hex, name] of parsePalette(readFileSync(out, 'utf8')).byHex) names.set(hex, name);
   const text = formatPalette(countColors(decoded), { count, min, names, frameTotal: decoded.length });
