@@ -1,8 +1,34 @@
 # T-029: Rebalance with the damage calculator and bots
 
-**Source:** [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §11 · **Model:** Opus · **Depends on:** T-017–T-028
+**Source:** [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §1, §11; owner notes 2 ("more control strategy than VS in early mid game; late game is still about weapon/buff strategy"); every note below · **Model:** Opus · **Depends on:** all feature tasks (merged)
 
-Planned. This file collects notes for the task as earlier tasks report them; the full brief is written when it starts.
+## Why
+
+Every system the owner asked for is in, but the numbers are a pile of *unmeasured* guesses and interim fixes. The corrected calculator says 1:00–2:00 is unwinnable even for the best build, proc stacking is 8–14× everything else late, some weapons are never worth taking, and the armoury and merchant prices are off by an order of magnitude. This task makes the public demo play like the design's intent.
+
+## Goals (the owner's direction, made measurable)
+
+- **Early–mid is about control, not luck:** at every minute the **ceiling ≥ 1.3× pressure** and the **naive floor 0.5–0.9×** (`tools/dps.mjs`, corrected) — a good player can always answer the stage, a careless one gets squeezed.
+- **Late is about the build:** ceiling/floor ratio from 3:00 on **≤ 4×** (procs strong, not everything); at least **6 of the 9 weapons** appear in some minute's ceiling or are within 25% of it in their role (single target / crowd) at their stage.
+- **Bots** (≥ 48 seeds, medians and run counts, never means over picked builds): `idle` falls 25–90 s; a careless (`naive`) bot falls mostly in 1:30–3:00; a `greedy` bot that collects gems, breaks braziers and trades/robs sensibly reaches 5:00 in 50–67% of runs; every tower falls by 7:00 (the golem ends runs; also try a "drag the tower away" bot and report whether it escapes).
+- **Meta:** a player buys a first armoury rank after 1–2 runs and fills one track in ~10–15 runs; the merchant's "Any card" is affordable at the first merchant in a typical run.
+
+## Method
+
+1. **Instruments first:** extend `tools/measure.mjs` bots: collect gems within range (already), seek and break braziers within ~300 px, trade with the merchant when an offer is affordable (else rob if he is in range), ignore or escort the princess (report both), a "drag" policy for the golem check. Keep 16-seed defaults for speed but judge with ≥ 48. Commit.
+2. **Baseline** with both tools; name the causes per goal.
+3. **Tune** one lever at a time, re-measure, record old → new with a reason; prefer structural levers named in the notes (Pierce/Explode/Split crossover strength and chances, Area on explosions, mini-tower L5 fire rate, laser and bite numbers, slime generation HP/DPS (replace the interim DPS 4), XP curve and gem pickup, stage weights and rates, merchant prices as a share of a level, gold rate/armoury costs, brazier interval and weights, princess reward, prince numbers). Keep the fun features (`docs/fun-features.md`). Do not change the owner's fixed numbers: enemy speeds, `DRAGON_SPEED`, `TETHER_LENGTH`.
+4. **Small fixes the notes list:** Duration/Area/Amount card texts mention all their targets; soak test robust to stream shifts; debug runs do not pay gold; the merchant's debug circle/count.
+5. **Report** `reports/measurements/2026-11-27-full-rebalance.md` (frozen): baseline, each change, after tables for both tools, which goals hold and which do not (and why), and a short "what to feel for in play" list for the owner.
+6. Spec tables and `content.js` change together (the content test cross-checks them); numbers you measured lose their *unmeasured* mark only if a target pins them.
+
+## Must not
+
+Change rules or add mechanics (if a goal needs one, stop at a recommendation in the report). Do not edit `docs/backlog.md`, merge into main or push. Another agent (T-038, merchant tests) works in `test/` in parallel. Commit only when `npm run gate` exits 0; commit after each step. When reverting experiments, restore from your own backup copy, not `git checkout`.
+
+## Done means
+
+`npm run gate` green; the report exists with goals met or explained; spec and content agree; commit `T-029: …` with `Closes: T-029`.
 
 ## Notes from earlier tasks
 
