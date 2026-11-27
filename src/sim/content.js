@@ -47,7 +47,7 @@ export const ENEMY_TYPES = ['knight', 'skeleton', 'slime', 'megaslime', 'mage', 
 export const ENEMIES = {
   knight:      { name: 'Knight',       hp: 3,        speed: 27.5, r: 12, dps: 2,  xp: 1, mass: 1,    walk: 'knight.walk',  die: 'knight.die',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.25 } },
   skeleton:    { name: 'Skeleton',     hp: 1,        speed: 45,   r: 10, dps: 6,  xp: 1, mass: 0.7,  walk: 'skelly.walk',  die: 'skelly.die',  alpha: 1, resist: { fire: 0,    arcane: 0.25, physical: -0.5 }, summon: 'skelly.summon' },
-  slime:       { name: 'Slime',        hp: 3,        speed: 35,   r: 12, dps: 8,  xp: 1, mass: 0.8,  walk: 'slime.walk',   die: 'slime.die',   alpha: 1, resist: { fire: -0.5, arcane: 0,    physical: 0.5 }, split: 'slime.split', gens: SLIME_GENS },
+  slime:       { name: 'Slime',        hp: 3,        speed: 35,   r: 12, dps: 4,  xp: 1, mass: 0.8,  walk: 'slime.walk',   die: 'slime.die',   alpha: 1, resist: { fire: -0.5, arcane: 0,    physical: 0.5 }, split: 'slime.split', gens: SLIME_GENS },
   megaslime:   { name: 'Megaslime',    hp: null,     speed: 15,   r: 28, dps: 0,  xp: null, mass: 4, walk: 'megaslime.walk', die: 'megaslime.die', alpha: 1, resist: { fire: -0.5, arcane: 0, physical: 0.5 }, summon: 'megaslime.fuse', fused: true },
   mage:        { name: 'Mage',         hp: 4,        speed: 20,   r: 12, dps: 5,  xp: 5, mass: 1,    walk: 'mage.walk',    die: 'mage.die',    alpha: 1, resist: { fire: 0,    arcane: 0.5,  physical: -0.25 }, spell: 'mage.spell' },
   ghostKnight: { name: 'Ghost knight', hp: 10,       speed: 27.5, r: 12, dps: 10, xp: 2, mass: 1,    walk: 'ghost.knight', die: 'ghost.burn',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.25 } },

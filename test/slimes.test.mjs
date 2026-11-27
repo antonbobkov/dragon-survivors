@@ -267,7 +267,7 @@ test('bestiary: 10 cards fit; the slime lists its three sizes, the megaslime its
   createEnemy(g, 'slime', 0, 300);
   createEnemy(g, 'megaslime', 0, 300);
   const rows = bestiaryRows(g);
-  assert.deepEqual(rows.find((r) => r.type === 'slime').stats, ['HP 3/2/1  XP 1', 'SPD 35  DPS 8', 'MASS 0.8']);
+  assert.deepEqual(rows.find((r) => r.type === 'slime').stats, ['HP 3/2/1  XP 1', `SPD 35  DPS ${ENEMIES.slime.dps}`, 'MASS 0.8']);
   const m = rows.find((r) => r.type === 'megaslime');
   assert.deepEqual([m.name, m.stats], ['Megaslime', [`HP ${MEGASLIME_HP_FACTOR}×sum  XP sum`, 'SPD 15  DPS 0', 'MASS 4']]);
   assert.deepEqual(m.resists.map((r) => r.label), ['weak 50%', '0%', 'resist 50%']);
