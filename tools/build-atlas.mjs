@@ -22,6 +22,8 @@ export const FANCY_TICK_SCALE = 2;
 export const ART_ROOT = join(REPO_ROOT, 'art');
 export const ART_PREFIX = 'art/';
 export const PALETTE_FILE = 'palette.txt';
+/** Starts every variant suffix of a frame key (`#rg`, `#tint=...`), so no source path may contain it. */
+export const KEY_SEPARATOR = '#';
 
 /**
  * Parse a sequence .txt. Tokens are whitespace separated (CRLF, blank lines, trailing spaces and a
@@ -165,7 +167,7 @@ export function parseOps(e) {
   if (e.tint !== undefined) {
     const rgb = parseHex(e.tint);
     if (!rgb) throw new Error(`${where}: bad tint "${e.tint}" (#rrggbb)`);
-    const s = e.tintStrength ?? 1;
+    const s = e.tintStrength === undefined ? 1 : e.tintStrength;
     if (typeof s !== 'number' || !(s > 0 && s <= 1)) throw new Error(`${where}: tintStrength ${s} is not in (0, 1]`);
     ops.push({ op: 'tint', color: rgb, strength: s, suffix: `#tint=${toHex(rgb).slice(1)}@${s}` });
   } else if (e.tintStrength !== undefined) {
@@ -204,6 +206,7 @@ export function resolveManifest(manifest, sourceRoot, { artRoot = ART_ROOT } = {
   const anims = new Map();
   const art = new Map();
   const warnings = [];
+  const keyOwners = new Map(); // frame key -> source and ops that produce it
   let palette;
   const loadPalette = () => {
     if (palette === undefined) {
@@ -228,6 +231,7 @@ export function resolveManifest(manifest, sourceRoot, { artRoot = ART_ROOT } = {
       frames = base.map((f) => ({ ...f, key: f.key + suffix, ops: [...f.ops, ...ops], swap: e.swap }));
     } else if (e.art !== undefined) {
       const rel = posix.normalize(e.art);
+      if (rel.includes(KEY_SEPARATOR)) throw new Error(`${where}: art path "${rel}" contains "${KEY_SEPARATOR}" (it starts the variant suffix of a frame key)`);
       if (!art.has(rel)) {
         const p = join(artRoot, rel);
         if (!existsSync(p)) throw new Error(`${where}: missing art file art/${rel}`);
@@ -239,6 +243,7 @@ export function resolveManifest(manifest, sourceRoot, { artRoot = ART_ROOT } = {
     } else {
       let list;
       if (e.list) {
+        if (e.list.includes(KEY_SEPARATOR)) throw new Error(`${where}: list path "${e.list}" contains "${KEY_SEPARATOR}" (it starts the variant suffix of a frame key)`);
         const dir = posix.dirname(e.list);
         const text = readFileSync(join(sourceRoot, e.list), 'utf8');
         list = parseSequence(text).map((f) => ({ file: posix.normalize(posix.join(dir, f.file)), ticks: f.ticks }));
@@ -247,10 +252,17 @@ export function resolveManifest(manifest, sourceRoot, { artRoot = ART_ROOT } = {
       } else {
         list = [{ file: posix.normalize(e.file), ticks: DEFAULT_TICKS }];
       }
+      for (const f of list) if (f.file.includes(KEY_SEPARATOR)) throw new Error(`${where}: BMP path "${f.file}" contains "${KEY_SEPARATOR}" (it starts the variant suffix of a frame key)`);
       for (const f of list) if (f.file.startsWith(ART_PREFIX)) throw new Error(`${where}: BMP paths under ${ART_PREFIX} would collide with art keys`);
       frames = list.map((f) => ({ key: f.file + suffix, file: f.file, ticks: f.ticks, ops, swap: e.swap }));
     }
     if (!frames.length) throw new Error(`manifest entry "${e.name}" has no frames`);
+    for (const f of frames) {
+      const id = JSON.stringify([f.file ?? null, f.art ?? null, f.index ?? null, f.ops]);
+      const seen = keyOwners.get(f.key);
+      if (seen !== undefined && seen !== id) throw new Error(`${where}: frame key "${f.key}" is already used by a different source or op list`);
+      keyOwners.set(f.key, id);
+    }
     anims.set(e.name, frames);
   }
   return { anims, art, warnings };
