@@ -12,7 +12,7 @@ const SCALE_MIN = 1, SCALE_MAX = 12;
 const SKIP_DIRS = new Set(['.git', 'node_modules']);
 
 const state = {
-  sourceName: '', reload: null, // async () => sprites
+  sourceName: '', sourceKey: 'game', reload: null, // async () => sprites
   sprites: [], shown: [], sprite: null, data: null, error: '',
   presets: [], variant: 'plain', custom: { swap: '', tint: '', tintStrength: 0.6, outline: '' },
   scale: 4, bg: 'grass', flip: false, playing: true, speed: 1, tick: 0, compare: false,
@@ -98,13 +98,36 @@ function mapFileList(list) {
   return out;
 }
 
+// A folder served over HTTP with an index.json ({ files: [path] }, tools/folder-index.mjs).
+async function loadServedFolder(base) {
+  const { files } = await fetchOk(`${base}index.json`, 'json');
+  const url = (p) => base + p.split('/').map(encodeURIComponent).join('/');
+  const map = new Map(files.map((p) => [p, {
+    text: () => fetchOk(url(p), 'text'),
+    bytes: async () => new Uint8Array(await fetchOk(url(p), 'arrayBuffer')),
+  }]));
+  return scan(map);
+}
+
 async function scan(files) {
   return scanFolder(files, { decodeImage: decodePng, fallbackPalette: await fallbackPalette() });
+}
+
+// The sources a link can name (#src=…); a local folder cannot be linked.
+const SOURCES = {
+  game: { name: 'Game sprites', load: () => loadGame() },
+  pack: { name: 'Old game pack', load: () => loadServedFolder('../pack/') },
+};
+
+function useNamed(key, keepId) {
+  state.sourceKey = key;
+  return useSource(SOURCES[key].name, SOURCES[key].load, keepId);
 }
 
 async function useSource(name, reload, keepId) {
   state.error = '';
   $('srcName').textContent = `${name}: loading…`;
+  if (!state.presets.length) await loadPresets(); // the tiers apply to any source
   try {
     const sprites = await reload();
     state.sourceName = name;
@@ -126,6 +149,7 @@ async function openFolder() {
     let dir;
     try { dir = await window.showDirectoryPicker({ id: 'pixel-viewer', mode: 'read' }); } catch { return; }
     if (!state.presets.length) await loadPresets();
+    state.sourceKey = null;
     await useSource(dir.name, async () => scan(await walkHandle(dir)));
   } else {
     $('folderInput').click();
@@ -138,6 +162,7 @@ $('folderInput').addEventListener('change', async (ev) => {
   if (!state.presets.length) await loadPresets();
   const name = (list[0].webkitRelativePath || '').split('/')[0] || 'folder';
   const files = mapFileList(list); // a FileList cannot be re-read, so Reload shows the same files
+  state.sourceKey = null;
   await useSource(name, () => scan(files));
   ev.target.value = '';
 });
@@ -447,7 +472,8 @@ function moveSelection(n) {
   document.querySelector(`.item[data-id="${CSS.escape(next.id)}"]`)?.scrollIntoView({ block: 'nearest' });
 }
 
-$('gameBtn').addEventListener('click', () => useSource('Game sprites', loadGame));
+$('gameBtn').addEventListener('click', () => useNamed('game'));
+$('packBtn').addEventListener('click', () => useNamed('pack'));
 $('folderBtn').addEventListener('click', openFolder);
 $('reloadBtn').addEventListener('click', () => state.reload && useSource(state.sourceName, state.reload, state.sprite?.id));
 $('filter').addEventListener('input', renderTree);
@@ -499,12 +525,15 @@ function readHash() {
   const scale = Number(p.get('scale'));
   if (Number.isInteger(scale) && scale >= SCALE_MIN && scale <= SCALE_MAX) state.scale = scale;
   if (p.get('v')) state.variant = p.get('v');
-  return p.get('s');
+  const src = SOURCES[p.get('src')] ? p.get('src') : 'game';
+  const s = p.get('s');
+  return { src, id: s ? (src === 'game' ? `atlas:${s}` : `file:${s}`) : undefined };
 }
 
 function writeHash() {
   const p = new URLSearchParams();
-  if (state.sprite && state.sprite.id.startsWith('atlas:')) p.set('s', state.sprite.name);
+  if (state.sourceKey && state.sourceKey !== 'game') p.set('src', state.sourceKey);
+  if (state.sourceKey && state.sprite) p.set('s', state.sprite.id.replace(/^(atlas|file):/, ''));
   p.set('scale', state.scale);
   if (state.variant !== 'plain' && state.variant !== 'custom') p.set('v', state.variant);
   history.replaceState(null, '', `#${p}`);
@@ -512,7 +541,7 @@ function writeHash() {
 
 const wanted = readHash();
 renderVariantButtons();
-await useSource('Game sprites', loadGame, wanted ? `atlas:${wanted}` : undefined);
+await useNamed(wanted.src, wanted.id);
 if (!variantKeys().includes(state.variant)) state.variant = 'plain';
 renderVariantButtons();
 requestAnimationFrame(frame);

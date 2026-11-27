@@ -8,6 +8,7 @@ A browser viewer for the game's sprites and any folder of pixel art: the first s
 ## Sources
 
 - **Game sprites** (default): the built atlas, `assets/atlas.json` and `atlas.png`, in folders from `tools/manifest.json` (`art/…` for this repo's text art, `pack/…` for the dragongame pack). Run `npm run build:assets` after changing art, then press Reload.
+- **Old game pack**: every sprite of the original dragon game, [pack/](../pack/README.md), 191 sprites including the ones this game never used (served from `pack/index.json`).
 - **Open folder…**: any local folder, for example this repo's `art/` or the dragongame pack. Chrome and Edge open it in place, so Reload re-reads the files after an edit; other browsers upload a copy. It reads:
 
 | Files | Sprite |
@@ -25,7 +26,7 @@ Everything else is ignored, and so are `.git` and `node_modules`.
 - **Scale** is always a whole number, 1–12×; **game** sets the scale the game draws the sprite at (2×; 3× for silver and gold, more for the mounted knight).
 - **Variants:** plain, the enemy tiers from the manifest (bronze, silver, gold), or custom swap, tint and outline. The bar shows the manifest line for the variant on show. **Compare all** shows every variant side by side.
 - Keys: space play/pause · ← → frame · ↑ ↓ sprite · + − scale · m mirror · v next variant · r reload.
-- The URL keeps the game sprite, the scale and the tier, so a link opens the same view.
+- The URL keeps the source (game or pack), the sprite, the scale and the tier, so a link opens the same view.
 
 ## Code
 
