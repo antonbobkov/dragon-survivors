@@ -459,3 +459,13 @@ test('art: jaws, saw blade and icons have the documented sizes, frames and timin
   assert.deepEqual([...frames].sort(), [0, 1, 2, 3]);
   void DT;
 });
+
+test('measure: the greedy bot takes the bite and the saw blade like any weapon', async () => {
+  const { PICKS } = await import('../tools/measure.mjs');
+  const g = new Game({ seed: 1, timeline: QUIET });
+  g.offers = [{ kind: 'buff', id: 'might', level: 1 }, { kind: 'weapon', id: 'saw', level: 1 }, { kind: 'weapon', id: 'fireball', level: 2 }];
+  assert.equal(PICKS.greedy(g), 1, 'a new weapon first');
+  g.weapons.push(createWeapon('bite', 3));
+  g.offers = [{ kind: 'weapon', id: 'fireball', level: 2 }, { kind: 'weapon', id: 'bite', level: 4 }, { kind: 'buff', id: 'might', level: 1 }];
+  assert.equal(PICKS.greedy(g), 1, 'then the highest-level weapon\'s upgrade');
+});
