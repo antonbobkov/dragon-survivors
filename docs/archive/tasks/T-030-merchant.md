@@ -1,6 +1,6 @@
 # T-030: Merchant
 
-**Source:** decision D-8 (accepted by the owner), [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §12; Peter's ideas ("merchants: drop power ups? … hard to kill … requires some strategy") · **Model:** Opus · **Depends on:** nothing open
+**Source:** decision D-8 (accepted by the owner), [strategy-depth design](../../../reports/designs/2026-11-26-strategy-depth-design.md) §12; Peter's ideas ("merchants: drop power ups? … hard to kill … requires some strategy") · **Model:** Opus · **Depends on:** nothing open
 
 ## Why
 

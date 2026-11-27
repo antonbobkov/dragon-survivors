@@ -25,3 +25,7 @@ Retune other numbers. Another agent (T-030: merchant) adds `game.merchants`, a s
 ## Done means
 
 `npm run gate` green; `npm run build:assets` reproduces the atlas; a princess can be escorted to the tower (max HP up, full heal) and can die, in a run; spec updated; `Measured:` in the commit body; commit `T-031: …` with `Closes: T-031`.
+
+## What T-030 (merchant) left you
+
+Reuse its pattern: add her to `CHARACTERS` in `content.js` (non-enemy characters; `dealDamage` reads resistances/mass from there — though player weapons must never hurt her, so keep her out of every hit pass); her own list (`game.princesses`) and a timer counting spawner steps; the edge-marker line in `hud.js`; the speech-bubble/HP-bar drawing over the merchant as a model for her HP bar. `merchantsHit(game, overlaps)` is the helper weapons call for non-enemy characters — she must not be added to it.
