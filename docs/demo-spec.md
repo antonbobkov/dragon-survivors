@@ -423,15 +423,15 @@ The spawner uses `t` at the start of the tick. The weights are those of the last
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 0:00 | 0.3 | 100 | 0 | 0 | 0 | 0 | 0 | – | – | – | – | – |
 | 0:30 | 0.5 | 70 | 30 | 0 | 0 | 0 | 0 | – | – | – | – | – |
-| 1:00 | 0.6 | 33 | 30 | 37 | 0 | 0 | 0 | – | – | – | – | every 20 s, 5–6 |
-| 2:00 | 2.5 | 30 | 30 | 20 | 20 | 0 | 0 | – | – | – | – | every 30 s, 5–7 |
-| 2:30 | 6.25 | 28 | 30 | 20 | 20 | 0 | 2 | 90 | 10 | 0 | 0 | every 30 s, 5–7 |
-| 3:00 | 10 | 22 | 23 | 17 | 10 | 25 | 3 | 70 | 30 | 0 | 0 | every 30 s, 6–8 |
-| 3:30 | 13 | 22 | 23 | 17 | 10 | 25 | 3 | 65 | 30 | 5 | 0 | every 30 s, 6–8 |
-| 4:00 | 16 | 22 | 22 | 18 | 10 | 23 | 5 | 60 | 25 | 15 | 0 | every 15 s, 8–12 |
-| 5:00 | 18 + golem | 22 | 22 | 18 | 10 | 23 | 5 | 55 | 25 | 15 | 5 | every 15 s, 8–12 |
+| 1:00 | 0.6 | 45 | 30 | 25 | 0 | 0 | 0 | – | – | – | – | every 20 s, 5–6 |
+| 2:00 | 2.5 | 40 | 25 | 20 | 15 | 0 | 0 | – | – | – | – | every 30 s, 5–7 |
+| 2:30 | 6.25 | 39 | 25 | 20 | 15 | 0 | 1 | 90 | 10 | 0 | 0 | every 30 s, 5–7 |
+| 3:00 | 10 | 28 | 23 | 17 | 10 | 20 | 2 | 70 | 30 | 0 | 0 | every 30 s, 6–8 |
+| 3:30 | 13 | 28 | 23 | 17 | 10 | 20 | 2 | 65 | 30 | 5 | 0 | every 30 s, 6–8 |
+| 4:00 | 16 | 26 | 25 | 18 | 10 | 18 | 3 | 60 | 25 | 15 | 0 | every 15 s, 8–12 |
+| 5:00 | 18 + golem | 26 | 25 | 18 | 10 | 18 | 3 | 55 | 25 | 15 | 5 | every 15 s, 8–12 |
 
-*unmeasured*. Plain, Bronze, Silver and Gold are the tier weights; `–` means the row has none. Stampede is the row's horse stampedes (§8.8): one every so many seconds, each of that many horses; `–` means none. Horses are not in the type weights: they come only in stampedes. Each stage's lead threat (§9.1) peaks in its own rows: slimes in Ooze, mages in Arcana, ghost knights in Haunt, mounted knights, silver tiers and the biggest stampedes in Siege. Mounted knights are an elite, a few in a hundred spawns: at a higher share they ended most bot runs at 2:30–3:00. The 2:30 and 3:30 rows sit inside a stage: their rates are the ones interpolated between their neighbours, so the rate curve is the same as without them; 2:30 starts tiers and brings mounted knights, 3:30 changes only the tiers. With this table the stampedes come at 1:00, 1:20, 1:40, 2:00, 2:30, 3:00, 3:30, 4:00, then every 15 s. At 5:00 the mega golem spawns on the ring on the far side of the tower from the dragon and `ohno` plays: in the clock step of the first tick where `t >= 300` (the `t` of the timeline row marked `golem`; a timeline without such a row has no golem), once per run, at `dragon + 560 px × normalize(tower − dragon)`, or straight below the dragon if dragon and tower coincide. It ignores the cap. The timeline keeps running after 5:00 (rate stays at 18) until the tower falls.
+*unmeasured*. Plain, Bronze, Silver and Gold are the tier weights; `–` means the row has none. Stampede is the row's horse stampedes (§8.8): one every so many seconds, each of that many horses; `–` means none. Horses are not in the type weights: they come only in stampedes. Each stage's lead threat (§9.1) peaks in its own rows, the share of every type kept near the run's earlier mix so the stages change the threat more than the difficulty: slimes and the first stampedes in Ooze, mages in Arcana, ghost knights and bronze in Haunt, mounted knights, silver tiers and the biggest stampedes in Siege. Mounted knights are an elite, one to three in a hundred spawns: at a higher share they ended most bot runs at 2:30–3:00, and slime shares above about 30 at 1:00 ended many in Ooze. The 2:30 and 3:30 rows sit inside a stage: their rates are the ones interpolated between their neighbours, so the rate curve is the same as without them; 2:30 starts tiers and brings mounted knights, 3:30 changes only the tiers. With this table the stampedes come at 1:00, 1:20, 1:40, 2:00, 2:30, 3:00, 3:30, 4:00, then every 15 s. At 5:00 the mega golem spawns on the ring on the far side of the tower from the dragon and `ohno` plays: in the clock step of the first tick where `t >= 300` (the `t` of the timeline row marked `golem`; a timeline without such a row has no golem), once per run, at `dragon + 560 px × normalize(tower − dragon)`, or straight below the dragon if dragon and tower coincide. It ignores the cap. The timeline keeps running after 5:00 (rate stays at 18) until the tower falls.
 
 ### 9.1 Stages
 

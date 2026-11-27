@@ -263,10 +263,7 @@ test('timeline: the rate curve is unchanged; mounted knights from 2:30; each sta
   peak('mage', 120, 180);
   peak('ghostKnight', 180, 240);
   peak('mountedKnight', 240, 300);
-  const ooze = TIMELINE.find((r) => r.t === 60).weights, haunt = TIMELINE.find((r) => r.t === 180).weights;
-  assert.equal(Math.max(...Object.values(ooze)), ooze.slime, 'slimes the largest share in Ooze');
-  assert.equal(Math.max(...Object.values(haunt)), haunt.ghostKnight, 'ghost knights the largest share in Haunt');
-  for (const r of TIMELINE) assert.ok(r.weights.mountedKnight <= 5, 'mounted knights stay an elite');
+  for (const r of TIMELINE) assert.ok(r.weights.mountedKnight <= 3, 'mounted knights stay an elite');
   const siege = TIMELINE.find((r) => r.t === 240);
   assert.ok(siege.tiers[3] > 0 && siege.stampede.max > TIMELINE.find((r) => r.t === 60).stampede.max, 'Siege: silver, bigger stampedes');
   assert.ok(TIMELINE.find((r) => r.t === 180).tiers[2] > TIMELINE.find((r) => r.t === 150).tiers[2], 'Haunt: more bronze');
