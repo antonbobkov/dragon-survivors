@@ -1,7 +1,7 @@
 // World rendering (§5): background, tether ring, entities in draw order, effects.
 // Reads the game and never writes it.
 import { mulberry32 } from '../sim/rng.js';
-import { TETHER_LENGTH, WEAPONS, TICK_HZ, PICKUP_BLINK, CHARACTERS, tierAnim, screenScale, CLAW_CONE_ANIMS } from '../sim/content.js';
+import { TETHER_LENGTH, WEAPONS, TICK_HZ, PICKUP_BLINK, CHARACTERS, ENEMIES, tierAnim, screenScale, CLAW_CONE_ANIMS } from '../sim/content.js';
 import { TRADE_TICKS } from '../sim/merchant.js';
 import { VIEW_W, VIEW_H, cameraOffset } from '../viewport.js';
 
@@ -212,6 +212,47 @@ export function drawMerchant(ctx, atlas, m, x, y) {
   }
 }
 
+// §14.5 a prince's overlay above his sprite, from the bottom: a red HP bar once hurt (the
+// merchant's bar), then while his sack holds XP the sack: the gem at 1× and `stolen` as text.
+export const PRINCE_SACK = { gem: 6, gap: 2, font: '12px monospace', color: '#9be8ff', shadow: '#000' };
+export function princeOverlay(e) {
+  return {
+    hp: e.hp < e.maxHp ? Math.max(0, e.hp / e.maxHp) : null,
+    sack: e.stolen > 0 ? e.stolen : 0,
+  };
+}
+// `gem` is the renderer's 2× gem canvas (drawn at 1× here); (x, y) the prince's screen centre.
+export function drawPrinceOverlay(ctx, atlas, gem, e, x, y) {
+  const { hp, sack } = princeOverlay(e);
+  const r = frameRect(atlas, e.anim, e.frame);
+  let top = Math.round(y - (r ? r.h : 16) * SPRITE_SCALE / 2);
+  const B = MERCHANT_BARS;
+  if (hp !== null) {
+    top -= B.gap + B.h;
+    const left = Math.round(x - B.w / 2);
+    ctx.fillStyle = B.back;
+    ctx.fillRect(left, top, B.w, B.h);
+    ctx.fillStyle = B.hp;
+    ctx.fillRect(left, top, Math.round(B.w * hp), B.h);
+  }
+  if (!sack) return;
+  const S = PRINCE_SACK;
+  const text = String(sack);
+  ctx.font = S.font;
+  const tw = Math.ceil(ctx.measureText(text).width);
+  const w = S.gem + S.gap + tw;
+  top -= B.gap + S.gem;
+  const left = Math.round(x - w / 2);
+  if (gem) ctx.drawImage(gem, left, top, S.gem, S.gem);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  const tx = left + S.gem + S.gap, ty = top + S.gem / 2;
+  ctx.fillStyle = S.shadow;
+  ctx.fillText(text, tx + 1, ty + 1);
+  ctx.fillStyle = S.color;
+  ctx.fillText(text, tx, ty);
+}
+
 // Enemies in draw order (by y, then id), as a new array: the game's list is never reordered.
 export function enemyDrawOrder(enemies, out = []) {
   out.length = 0;
@@ -262,7 +303,7 @@ export function createRenderer({ atlas, makeCanvas }) {
   }
 
   // Draw order (§5): background, gems, tower, mini towers, braziers, pickups, merchants, enemies by y,
-  // ring fireballs, saw blades, projectiles, enemy shots (mage orbs), dragon, claw slashes,
+  // the princes' bars and sacks, ring fireballs, saw blades, projectiles, enemy shots (mage orbs), dragon, claw slashes,
   // effects (the bite's jaws among them), the bomb flash. The HUD and screens draw on top.
   // `shake` ({ x, y } px, optional) offsets the whole world (§5).
   function drawWorld(ctx, game, shake) {
@@ -313,6 +354,8 @@ export function createRenderer({ atlas, makeCanvas }) {
       drawAnim(ctx, atlas, s.anim, e.frame, e.x + o.x, e.y + o.y, { flip: e.flip, alpha: e.alpha, scale: s.scale });
     }
     sorted.length = 0;
+    // §14.5 the princes' HP bars and sacks, over every enemy
+    for (const e of game.enemies) if (ENEMIES[e.type] && ENEMIES[e.type].rival) drawPrinceOverlay(ctx, atlas, gem, e, e.x + o.x, e.y + o.y);
 
     for (const w of game.weapons) {
       if (w.id !== 'ring' || !Array.isArray(w.balls)) continue;

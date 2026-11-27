@@ -1,6 +1,6 @@
 // HUD (§17): timer, tower HP bar, XP bar with level, weapon and buff icons with level pips,
 // the stage banner. Reads the game and never writes it.
-import { BUFFS, BUFF_MAX_LEVEL, weaponMaxLevel, xpToNext, BANNER_TIME, BANNER_FADE } from '../sim/content.js';
+import { BUFFS, BUFF_MAX_LEVEL, ENEMIES, weaponMaxLevel, xpToNext, BANNER_TIME, BANNER_FADE } from '../sim/content.js';
 import { stageAt } from '../sim/spawner.js';
 import { VIEW_W, VIEW_H, cameraOffset } from '../viewport.js';
 import { drawAnim, frameRect, SPRITE_SCALE, pickupVisible } from './draw.js';
@@ -81,9 +81,11 @@ export function iconSlots(weapons, buffs) {
   });
 }
 
-// §17 edge markers: an arrow at the screen edge toward each merchant, brazier or pickup whose sprite is
-// wholly off screen, with the thing's own sprite at 1× just inside it.
+// §17 edge markers: an arrow at the screen edge toward each merchant, prince, brazier or pickup whose
+// sprite is wholly off screen, with the thing's own sprite at 1× just inside it. A prince's arrow is
+// red (FOE_MARKER): he is a foe.
 export const MARKER = { margin: 26, size: 7, iconGap: 20, fill: '#ffbf00', edge: '#7f0000' };
+export const FOE_MARKER = { fill: '#ff4040', edge: '#000000' };
 
 // The marker for a sprite of half size (hw, hh) at screen point (x, y), or null while any of it
 // is on the w × h screen. The arrow sits where the line from the screen centre to the point
@@ -98,18 +100,19 @@ export function edgeMarker(x, y, hw, hh, w = VIEW_W, h = VIEW_H, margin = MARKER
   return { x: cx + dx * s, y: cy + dy * s, angle: Math.atan2(dy, dx) };
 }
 
-// Markers of every off-screen merchant, then brazier, then pickup still showing, in list order:
-// [{ x, y, angle, anim, frame }].
+// Markers of every off-screen merchant, then prince, then brazier, then pickup still showing, in
+// list order: [{ x, y, angle, anim, frame, fill, edge }].
 export function edgeMarkers(game, atlas) {
   const o = cameraOffset(game.dragon);
   const out = [];
-  const add = (ent) => {
+  const add = (ent, colors = MARKER) => {
     const r = frameRect(atlas, ent.anim, ent.frame);
     const hw = r ? (r.w * SPRITE_SCALE) / 2 : 0, hh = r ? (r.h * SPRITE_SCALE) / 2 : 0;
     const m = edgeMarker(ent.x + o.x, ent.y + o.y, hw, hh);
-    if (m) out.push({ ...m, anim: ent.anim, frame: ent.frame });
+    if (m) out.push({ ...m, anim: ent.anim, frame: ent.frame, fill: colors.fill, edge: colors.edge });
   };
   for (const m of game.merchants || []) add(m); // §14.3
+  for (const e of game.enemies || []) if (ENEMIES[e.type] && ENEMIES[e.type].rival) add(e, FOE_MARKER); // §14.5
   for (const b of game.braziers || []) add(b);
   for (const p of game.pickups || []) if (pickupVisible(p)) add(p);
   return out;
@@ -128,10 +131,10 @@ function drawMarker(ctx, atlas, m) {
   ctx.lineTo(-size * 0.4, 0);
   ctx.lineTo(-size, size);
   ctx.closePath();
-  ctx.fillStyle = MARKER.fill;
+  ctx.fillStyle = m.fill || MARKER.fill;
   ctx.fill();
   ctx.lineWidth = 2;
-  ctx.strokeStyle = MARKER.edge;
+  ctx.strokeStyle = m.edge || MARKER.edge;
   ctx.stroke();
   ctx.restore();
 }

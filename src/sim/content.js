@@ -43,6 +43,9 @@ export const SLIME_GENS = [
 // the slime's generations (SLIME_GENS, §8.4). `fused` marks the megaslime: it comes only from a
 // slime fusion (§8.9), which sets its HP and XP (`hp` and `xp` null here). `summon` is an anim
 // played once on arrival, without walking, before `walk` (a summoned skeleton, a fusing megaslime).
+// `rival` marks the prince (§14.5): an enemy that comes only on his own schedule, always tier 1,
+// walks at the dragon and steals gems; he is not in ENEMY_TYPES (the §8 table and the bestiary).
+// ENEMY_TYPES is the §8 table in order, which is also the bestiary's order (§17.1).
 export const ENEMY_TYPES = ['knight', 'skeleton', 'slime', 'megaslime', 'mage', 'ghostKnight', 'ghost', 'horse', 'mountedKnight', 'golem'];
 export const ENEMIES = {
   knight:      { name: 'Knight',       hp: 3,        speed: 27.5, r: 12, dps: 2,  xp: 1, mass: 1,    walk: 'knight.walk',  die: 'knight.die',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.25 } },
@@ -55,7 +58,11 @@ export const ENEMIES = {
   horse:       { name: 'Horse',        hp: 2,        speed: 120,  r: 10, dps: 4,  xp: 1, mass: 0.5,  walk: 'horse.walk',   die: 'horse.die',   alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0 }, stampede: true },
   mountedKnight: { name: 'Mounted knight', hp: 30,   speed: 60,   r: 16, dps: 15, xp: 8, mass: 2,    walk: 'mounted.walk', die: 'mounted.die', alpha: 1, resist: { fire: 0.25, arcane: -0.25, physical: 0.5 }, scale: 3 },
   golem:       { name: 'Mega golem',   hp: Infinity, speed: 75,   r: 56, dps: 40, xp: 0, mass: null, walk: 'golem.walk',   die: 'golem.die',   alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0 }, immovable: true, procImmune: true, unkillable: true },
+  // §14.5 the prince: `xp` is his bounty, added to the XP in his sack when he drops his gem.
+  prince:      { name: 'Prince',       hp: 40,       speed: 70,   r: 12, dps: 0,  xp: 5, mass: 1.5,  walk: 'prince.walk',  die: 'prince.die',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.5 }, rival: true },
 };
+// Enemy types that are always tier 1 (§8.6): the golem and the prince.
+export const untiered = (def) => !!(def.unkillable || def.rival);
 
 // §8.6 Tiers: one sprite in four tiers. Multipliers on the type's HP (rounded up), contact DPS,
 // XP and speed; `r` multiplies the radius; `scale` is the screen scale (the standard is 2×).
@@ -78,7 +85,7 @@ export const tierAnim = (anim, tier) => (tier > 1 ? `${anim}@t${tier}` : anim);
 // later generations (§8.4). Tier variants exist for every enemy type's anims except the golem's.
 export const enemyAnims = (d) => [d.walk, d.die, d.summon, d.split, d.spell,
   ...(d.gens || []).slice(1).flatMap((g) => [g.walk, g.split, g.die])].filter(Boolean);
-export const TIERED_ANIMS = ENEMY_TYPES.filter((t) => !ENEMIES[t].unkillable).flatMap((t) => enemyAnims(ENEMIES[t]));
+export const TIERED_ANIMS = ENEMY_TYPES.filter((t) => !untiered(ENEMIES[t])).flatMap((t) => enemyAnims(ENEMIES[t]));
 // §5, §8.6 the screen scale of an enemy or death-effect sprite: its type's scale (2 unless the
 // type is drawn bigger) times the tier's ratio to the standard, rounded down to a whole number.
 // A 3× type is 3× at tiers 1–2 and 4× at tiers 3–4; every other type 2× and 3×.
@@ -393,6 +400,20 @@ export const SHOP_ITEMS = ['reroll', 'card', 'heal'];
 export const SHOP_PRICES = { reroll: 10, card: 25, heal: 15 };
 export const SHOP_HEAL = 30;
 
+// §14.5 the prince. Times in s, distances in px. From PRINCE_FIRST, every PRINCE_INTERVAL s on a
+// fixed grid of the clock, one appears on the spawn ring unless one is alive. While within
+// PRINCE_STEAL_RANGE of the dragon, every PRINCE_STEAL_INTERVAL he steals the nearest gem within
+// PRINCE_GRAB_RADIUS of himself that is not homing; killed, he drops one gem worth his sack plus
+// his bounty (ENEMIES.prince.xp).
+export const PRINCE_TYPE = 'prince';
+export const PRINCE_FIRST = 135;
+export const PRINCE_INTERVAL = 100;
+export const PRINCE_STEAL_RANGE = 60;
+export const PRINCE_GRAB_RADIUS = 120;
+export const PRINCE_STEAL_INTERVAL = 0.5;
+export const PRINCE_STEAL_SOUND = 'dropping';
+export const PRINCE_DIE_SOUND = 'ohno';
+
 // §15 Grid
 export const GRID_CELL = 64;
 
@@ -418,6 +439,7 @@ export const ATLAS_NAMES = [
   'icon.leftclaw', 'icon.rightclaw', 'icon.dualclaw', 'claw.swipe', 'claw.cone', 'claw.cone22', 'claw.cone45',
   'icon.bite', 'icon.saw', 'bite.jaws', 'saw.spin',
   'merchant.walk', 'merchant.die', 'merchant.bubble', 'pickup.chest', 'icon.reroll',
+  'prince.walk', 'prince.die',
 ];
 // §8.6 the generated tier variants of every tiered enemy anim (tiers 2–4).
 ATLAS_NAMES.push(...TIERED_ANIMS.flatMap((a) => TIER_IDS.filter((t) => t > 1).map((t) => tierAnim(a, t))));

@@ -4,10 +4,10 @@ import { openOffers } from './levelup.js';
 
 // Called once per killed enemy (step 9), at its death position, before its death effect.
 // The gem is worth the type's XP times the tier's (§8.6), or for a megaslime the `xp` its fusion
-// gave it (§8.9). Enemies worth no XP (the golem) drop nothing. Past MAX_GEMS the oldest gem is
-// merged into the gem nearest to it (ties: lower id).
+// gave it (§8.9); a prince's holds his sack too (`stolen`, §14.5). Enemies worth no XP (the golem)
+// drop nothing. Past MAX_GEMS the oldest gem is merged into the gem nearest to it (ties: lower id).
 export function dropGem(game, enemy) {
-  const value = enemy.xp !== undefined ? enemy.xp : ENEMIES[enemy.type].xp * tierOf(enemy).xp;
+  const value = (enemy.xp !== undefined ? enemy.xp : ENEMIES[enemy.type].xp * tierOf(enemy).xp) + (enemy.stolen || 0);
   if (!(value > 0)) return;
   game.gems.push({ id: game.nextId++, x: enemy.x, y: enemy.y, value, homing: false });
   if (game.gems.length > MAX_GEMS) mergeOldest(game.gems);

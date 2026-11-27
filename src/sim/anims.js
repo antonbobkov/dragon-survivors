@@ -113,6 +113,8 @@ export const ANIMS = {
   'pickup.chest': { ticks: [6] },
   'pickup.heart': { ticks: [6] },
   'pickup.magnet': { ticks: [6] },
+  'prince.die': { ticks: [6, 6, 6, 6, 6, 6, 6] },
+  'prince.walk': { ticks: [6, 6] },
   'royal.prince': { ticks: [6] },
   'royal.princess': { ticks: [6] },
   'saw.spin': { ticks: [2, 2, 2, 2] },

@@ -97,6 +97,7 @@ test('art: brazier 12×16 with 3 flicker and 4 break frames; pickups 9 wide', ()
 
 test('braziers: the first appears on the 1500th tick (t = 25 s), then one every 25 s, up to 4', () => {
   const g = still();
+  g.princeNext = Infinity; // the prince (§14.5, due at 2:15) is an enemy; this run counts none
   run(g, BRAZIER_INTERVAL_TICKS - 1);
   assert.equal(g.braziers.length, 0);
   g.tick({});
