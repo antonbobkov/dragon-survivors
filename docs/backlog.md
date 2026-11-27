@@ -12,5 +12,6 @@ Every open task, one table. Only the orchestrator edits this file. Work files li
 | T-031 | Princess | D-9 (accepted) | T-029 | Opus | planned |
 | T-032 | Prince | D-10 (accepted) | T-029 | Opus | planned |
 | T-033 | Art pipeline: fixes from the T-017 review | reports/reviews/2026-11-26-T-017-review.md | T-021 | Sonnet | open |
-| T-034 | Close claw test gaps from the T-022 review | reports/reviews/2026-11-26-T-022-review.md | T-023 | Sonnet | open |
+| T-034 | Close claw test gaps from the T-022 review | reports/reviews/2026-11-26-T-022-review.md | — | Sonnet | open |
 | T-035 | Close horse and stage test gaps from the T-024 review | reports/reviews/2026-11-26-T-024-review.md | T-025 | Sonnet | open |
+| T-036 | Close bite and saw test gaps from the T-023 review | reports/reviews/2026-11-26-T-023-review.md | — | Sonnet | open |
