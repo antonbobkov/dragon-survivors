@@ -138,7 +138,7 @@ export const RESIST_MIN = -0.5; // the floor of a resistance, after the armoury'
 // new weapons, only through EVOLUTIONS.
 export const WEAPON_SLOTS = 4;
 export const WEAPON_MAX_LEVEL = 5;
-export const WEAPON_IDS = ['fireball', 'laser', 'miniTower', 'ring', 'leftClaw', 'rightClaw', 'dualClaw'];
+export const WEAPON_IDS = ['fireball', 'laser', 'miniTower', 'ring', 'leftClaw', 'rightClaw', 'dualClaw', 'bite', 'saw'];
 export const weaponMaxLevel = (id) => WEAPONS[id].levels.length;
 export const WEAPONS = {
   fireball: {
@@ -220,6 +220,35 @@ export const WEAPONS = {
     name: 'Dual claw', aimed: true, type: 'physical', knock: 22, sideDelay: 0, repeatDelay: 0.1, evolution: true,
     levels: [
       { cooldown: 0.7, damage: 9, width: 140, height: 44, sides: 2, angle: 75, reach: 100, maxTargets: 3 },
+    ],
+  },
+  // §10.8 bite: every cooldown the dragon bites the nearest live enemy whose circle overlaps
+  // `reach` px around its centre (Amount: the next-nearest too); ×executeMult against an enemy
+  // below `execute` of its max HP. No target: no bite, the cooldown waits.
+  bite: {
+    name: 'Bite', aimed: false, type: 'physical', knock: 30, execute: 0.3, executeMult: 2,
+    anim: 'bite.jaws', sound: 'megaslime_hit',
+    levels: [
+      { cooldown: 1.6, damage: 8,  reach: 50 },
+      { cooldown: 1.5, damage: 10, reach: 54 },
+      { cooldown: 1.3, damage: 13, reach: 57 },
+      { cooldown: 1.2, damage: 15, reach: 60 },
+      { cooldown: 1.0, damage: 18, reach: 64 },
+    ],
+  },
+  // §10.9 saw blade: every cooldown the tower launches `count` blades along the line from the
+  // tower through the dragon (Amount adds blades, fanned `fanStep` degrees apart); each flies
+  // `range` px out at `speed`, spins `dwell` s, flies back to the tower and hits every enemy it
+  // overlaps (radius `r`), each at most once per `rehit` s.
+  saw: {
+    name: 'Saw blade', aimed: false, type: 'physical', knock: 6, rehit: 0.4, fanStep: 12,
+    anim: 'saw.spin',
+    levels: [
+      { cooldown: 3,    damage: 2, count: 1, r: 10, range: 260, speed: 260, dwell: 0.6 },
+      { cooldown: 2.75, damage: 3, count: 1, r: 11, range: 275, speed: 260, dwell: 0.75 },
+      { cooldown: 2.5,  damage: 3, count: 1, r: 12, range: 290, speed: 260, dwell: 0.9 },
+      { cooldown: 2.25, damage: 4, count: 2, r: 13, range: 305, speed: 260, dwell: 1.05 },
+      { cooldown: 2,    damage: 5, count: 2, r: 14, range: 320, speed: 260, dwell: 1.2 },
     ],
   },
 };
@@ -330,6 +359,7 @@ export const ATLAS_NAMES = [
   'icon.might', 'icon.haste', 'icon.duration', 'icon.force', 'icon.amount',
   'brazier.burn', 'brazier.break', 'pickup.heart', 'pickup.magnet', 'pickup.bomb',
   'icon.leftclaw', 'icon.rightclaw', 'icon.dualclaw', 'claw.swipe', 'claw.cone', 'claw.cone22', 'claw.cone45',
+  'icon.bite', 'icon.saw', 'bite.jaws', 'saw.spin',
 ];
 // §8.6 the generated tier variants of every tiered enemy anim (tiers 2–4).
 ATLAS_NAMES.push(...TIERED_ANIMS.flatMap((a) => TIER_IDS.filter((t) => t > 1).map((t) => tierAnim(a, t))));

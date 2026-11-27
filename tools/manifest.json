@@ -61,7 +61,11 @@
     { "name": "horse.walk", "art": "enemies/horse.txt" },
     { "name": "horse.die", "art": "enemies/horse-die.txt" },
     { "name": "mounted.walk", "art": "enemies/mounted-knight.txt" },
-    { "name": "mounted.die", "art": "enemies/mounted-knight-die.txt" }
+    { "name": "mounted.die", "art": "enemies/mounted-knight-die.txt" },
+    { "name": "icon.bite", "art": "icons/bite.txt" },
+    { "name": "icon.saw", "art": "icons/saw.txt" },
+    { "name": "bite.jaws", "art": "effects/jaws.txt" },
+    { "name": "saw.spin", "art": "effects/saw.txt" }
   ],
   "tiers": {
     "anims": [

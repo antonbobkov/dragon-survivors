@@ -47,7 +47,7 @@ const beforeHits = (g) => {
 // ---- data -------------------------------------------------------------------------
 
 test('claws: data matches the work-file numbers; physical; evolution table', () => {
-  assert.deepEqual(WEAPON_IDS.slice(4), ['leftClaw', 'rightClaw', 'dualClaw']);
+  assert.deepEqual(WEAPON_IDS.slice(4, 7), ['leftClaw', 'rightClaw', 'dualClaw']);
   assert.deepEqual(WEAPONS.leftClaw.levels.map((l) => [l.cooldown, l.damage, l.width, l.height, l.sides]),
     [[1.3, 2, 110, 36, 1], [1.2, 3, 115, 38, 1], [1.1, 3, 125, 40, 2], [1.0, 4, 130, 42, 2], [0.9, 5, 140, 44, 2]]);
   assert.deepEqual(WEAPONS.rightClaw.levels.map((l) => [l.cooldown, l.damage, l.angle, l.reach, l.maxTargets]),
@@ -260,12 +260,12 @@ test('evolution: offered (weight 10) only with both claws at L5, never as a weap
   assert.equal(g.weapons[1].timer, 0, 'fires on the next weapons step');
   assert.ok(!cardPool(g).some((p) => p.card.kind === 'evolve'), 'no second offer');
   assert.deepEqual(cardPool(g).filter((p) => p.card.kind === 'weapon' && p.card.level === 1).map((p) => p.card.id),
-    ['miniTower', 'ring'], 'a slot is free again, but not for the claws the dual claw was made from');
+    ['miniTower', 'ring', 'bite', 'saw'], 'a slot is free again, but not for the claws the dual claw was made from');
   // picking it through the level-up flow
   const h = new Game({ seed: 3, timeline: QUIET });
   h.weapons = [createWeapon('leftClaw', 5), createWeapon('rightClaw', 5)];
-  // pool: fireball, laser, miniTower, ring new (12), the evolution (10), 10 buffs (30), repair (1)
-  h.rng = () => 15 / 53;
+  // pool: fireball, laser, miniTower, ring, bite, saw new (18), the evolution (10), 10 buffs (30), repair (1)
+  h.rng = () => 21 / 59;
   h.gems.push({ id: h.nextId++, x: 0, y: 0, value: 6, homing: false });
   tick(h);
   assert.deepEqual(h.offers[0], { kind: 'evolve', id: 'dualClaw', level: 1 });

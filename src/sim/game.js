@@ -6,7 +6,8 @@ import { createDragon, applyIntent, moveDragon } from './dragon.js';
 import { createTower, stepTether, collideTower } from './tower.js';
 import { stepEnemies, stepDeaths } from './enemies.js';
 import { createSpawner, stepSpawner, spawnGolemIfDue } from './spawner.js';
-import { createWeapon, stepWeapons, collideRing } from './weapons.js';
+import { createWeapon, stepWeapons, collideRing, collideBites } from './weapons.js';
+import { stepBlades, collideBlades } from './saw.js';
 import { collideSlashes, stepSlashes } from './claws.js';
 import { stepProjectiles, collideProjectiles } from './projectiles.js';
 import { stepEnemyShots, collideEnemyShots } from './enemyShots.js';
@@ -66,6 +67,7 @@ export class Game {
     this.gems = [];
     this.miniTowers = [];
     this.slashes = []; // claw slashes, pending and playing (§10.5–10.7)
+    this.blades = []; // saw blades in flight (§10.9)
     this.braziers = []; // §14.2
     this.pickups = [];
     this.brazierTimer = BRAZIER_INTERVAL_TICKS; // spawner steps until the next brazier attempt
@@ -163,19 +165,24 @@ export class Game {
   stepEnemies() { stepEnemies(this); }
   // 6. §10: cooldowns, firing, ring positions, mini towers.
   stepWeapons() { stepWeapons(this); }
-  // 7. Projectiles, then enemy shots: move, expire by range.
+  // 7. Projectiles, then saw blades, then enemy shots: move, expire by range (a blade by
+  // returning to the tower).
   stepProjectiles() {
     stepProjectiles(this);
+    stepBlades(this);
     stepEnemyShots(this);
   }
   // 8. Player hits vs braziers, projectile vs enemy (with procs), ring vs enemy, claw slashes
-  // vs enemy (and braziers), enemy vs tower, enemy shot vs dragon, dragon vs pickups (§14.2).
+  // vs enemy (and braziers), bite vs enemy (and braziers), saw blades vs enemy, enemy vs tower,
+  // enemy shot vs dragon, dragon vs pickups (§14.2).
   stepCollisions() {
     this.grid.build(this.enemies);
     collideBraziers(this);
     collideProjectiles(this);
     collideRing(this);
     collideSlashes(this);
+    collideBites(this);
+    collideBlades(this);
     collideTower(this);
     collideEnemyShots(this);
     collidePickups(this);
@@ -211,7 +218,7 @@ export class Game {
       nextId: this.nextId, kills: this.kills, level: this.level, xp: this.xp,
       pendingLevelUps: this.pendingLevelUps, offers: this.offers, spawner: this.spawner,
       dragon: this.dragon, tower: this.tower, enemies: this.enemies,
-      projectiles: this.projectiles, enemyShots: this.enemyShots, effects: this.effects, gems: this.gems, miniTowers: this.miniTowers, slashes: this.slashes,
+      projectiles: this.projectiles, enemyShots: this.enemyShots, effects: this.effects, gems: this.gems, miniTowers: this.miniTowers, slashes: this.slashes, blades: this.blades,
       braziers: this.braziers, pickups: this.pickups, brazierTimer: this.brazierTimer, lastBomb: this.lastBomb,
       weapons: this.weapons, buffs: this.buffs,
     };

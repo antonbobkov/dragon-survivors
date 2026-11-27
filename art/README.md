@@ -124,6 +124,10 @@ What the pack's sprites look like (print any of them with `node tools/bmp-to-art
 | `enemies/horse-die.txt` | `horse.die` | 5 frames: red spatter, the forelegs buckle, it lies on its side, the hide burns to cream bones (the last frame holds 12 ticks) |
 | `enemies/mounted-knight.txt` | `mounted.walk` | 22 × 22: the pack's knight, rider's helm, visor, mail and blue shield copied from `knight.walk`, on the chestnut horse under a blue saddle cloth with a yellow hem; a cream lance held upright with a red pennant that flaps. Drawn at 3× in game (4× at silver and gold) |
 | `enemies/mounted-knight-die.txt` | `mounted.die` | 6 frames: struck, the horse stumbles and the lance tips forward, the rider is thrown off the back, both lie on the ground, then burn to bones with the shield gone dark, as the knight's does |
+| `icons/bite.txt` | `icon.bite` | Bite: red jaws from the side, open to the right, two white fangs above interlocking with two below |
+| `icons/saw.txt` | `icon.saw` | Saw blade: a toothed steel disc, charcoal hub, lit from the top left |
+| `effects/jaws.txt` | `bite.jaws` | 16 × 16 bite on the target: red jaws hinged on the left, 2 px bands climbing in 2 px steps; wide open, closing, shut with the fangs interlocked (4, 3, 8 ticks). Mirrored in game when the target is left of the dragon |
+| `effects/saw.txt` | `saw.spin` | 12 × 12 saw blade, 4 frames of 2 ticks: eight hooked white teeth turning a quarter tooth (11.25°) clockwise per frame around a silver disc whose glint stays on the top left, so it spins without canvas rotation. Generated from a disc and a sawtooth profile, then kept as text |
 
 World objects and pickups are drawn at 2× like everything else; dark objects (the bomb) need a broad lit side in `grey`/`silver`, because `charcoal` alone vanishes on the dark grass.
 

@@ -85,7 +85,7 @@ function breakBrazier(game, b) {
 }
 
 // Every player hit area: breaks, in list order, each brazier whose circle overlaps the circle
-// at (x, y) of radius r. Weapons call it for their hit shapes (explosions today).
+// at (x, y) of radius r. Weapons call it for their hit circles (explosions, the bite's reach).
 export function hitBraziers(game, x, y, r) {
   const rr = r + BRAZIER_RADIUS;
   breakBraziersWhere(game, (bx, by) => (bx - x) ** 2 + (by - y) ** 2 < rr * rr);
@@ -104,8 +104,9 @@ export function breakBraziersWhere(game, overlaps) {
   list.length = n;
 }
 
-// Step 8, first: every projectile, then every ring fireball, breaks the braziers it overlaps.
-// Braziers are not targets: a projectile flies on and remembers nothing.
+// Step 8, first: every projectile, then every ring fireball, then every saw blade, breaks the
+// braziers it overlaps. Braziers are not targets: a projectile or blade flies on and remembers
+// nothing.
 export function collideBraziers(game) {
   if (game.braziers.length === 0) return;
   for (const p of game.projectiles) hitBraziers(game, p.x, p.y, p.r);
@@ -113,6 +114,7 @@ export function collideBraziers(game) {
     if (w.id !== 'ring' || !Array.isArray(w.balls)) continue;
     for (const b of w.balls) hitBraziers(game, b.x, b.y, WEAPONS.ring.r);
   }
+  for (const b of game.blades || []) hitBraziers(game, b.x, b.y, b.r);
 }
 
 // Step 8, last: a pickup within GEM_COLLECT_RADIUS of the dragon is collected; any other

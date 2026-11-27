@@ -17,7 +17,7 @@ const GHOST_BURN_TICKS = Math.round(GHOST_BURN_TIME / DT);
 // that direction (45°, 135°, ... for 4), so the mage walks on between the first two.
 const SUMMON_ANGLES = Array.from({ length: MAGE_SUMMON_COUNT }, (_, i) => ((i + 0.5) / MAGE_SUMMON_COUNT) * 2 * Math.PI);
 
-// `tier` (§8.6, default 1) scales HP and radius here; DPS, XP and speed are read through
+// `tier` (§8.6, default 1) scales HP and radius here (`maxHp` keeps the HP it starts with); DPS, XP and speed are read through
 // tierOf(e) where they are used. The golem is always tier 1.
 export function createEnemy(game, type, x, y, tier = 1) {
   const def = ENEMIES[type];
@@ -39,6 +39,7 @@ export function createEnemy(game, type, x, y, tier = 1) {
   }
   if (def.unkillable) { e.hp = GOLEM_HP; e.unkillable = true; }
   if (def.procImmune) e.procImmune = true;
+  e.maxHp = e.hp; // the HP it was created with (§4.1), read by the bite's execute (§10.8)
   game.enemies.push(e);
   if (!game.seen.includes(type)) game.seen.push(type); // §17.1 bestiary
   noteTier(game.seenTiers, type, tier);
@@ -147,6 +148,7 @@ function splitSlime(game, e) {
     const c = createEnemy(game, 'slime', e.x - uy * SLIME_CHILD_OFFSET * sgn, e.y + ux * SLIME_CHILD_OFFSET * sgn, e.tier);
     c.gen = 1;
     c.hp = tierHp(SLIME_CHILD_HP, c.tier);
+    c.maxHp = c.hp;
     c.r = SLIME_CHILD_R * tierOf(c).r;
   }
 }

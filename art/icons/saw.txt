@@ -1,0 +1,18 @@
+# icon.saw (Saw blade): a toothed steel disc with a charcoal hub, lit from the top left, over
+# the bonus tray.
+key
+  w white
+  s silver
+  g grey
+  k charcoal
+  Y gold
+frame
+..w.w.w..
+.wwwssw..
+w.wsss.g.
+.wwsksgg.
+..ssssgsg
+.ssgggs..
+..g.g.g..
+YY.....YY
+.YYYYYYY.

@@ -222,8 +222,8 @@ export function createRenderer({ atlas, makeCanvas }) {
   }
 
   // Draw order (§5): background, gems, tower, mini towers, braziers, pickups, enemies by y,
-  // ring fireballs, projectiles, enemy shots (mage orbs), dragon, claw slashes, effects, the
-  // bomb flash. The HUD and screens draw on top.
+  // ring fireballs, saw blades, projectiles, enemy shots (mage orbs), dragon, claw slashes,
+  // effects (the bite's jaws among them), the bomb flash. The HUD and screens draw on top.
   function drawWorld(ctx, game) {
     ctx.imageSmoothingEnabled = false;
     const o = cameraOffset(game.dragon);
@@ -277,6 +277,8 @@ export function createRenderer({ atlas, makeCanvas }) {
         drawAnim(ctx, atlas, w.anim || 'fireball.anim', w.frame ?? 0, b.x + o.x, b.y + o.y);
       }
     }
+
+    for (const b of game.blades || []) drawAnim(ctx, atlas, b.anim, b.frame, b.x + o.x, b.y + o.y);
 
     for (const p of game.projectiles) {
       const f = DIR_ANIMS.has(p.anim) ? p.dirFrame : p.frame;
