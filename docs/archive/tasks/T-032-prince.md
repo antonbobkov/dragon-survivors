@@ -1,6 +1,6 @@
 # T-032: Prince (rival)
 
-**Source:** decision D-10 (accepted by the owner), [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §12 · **Model:** Opus · **Depends on:** T-030 (merchant pattern, merged)
+**Source:** decision D-10 (accepted by the owner), [strategy-depth design](../../../reports/designs/2026-11-26-strategy-depth-design.md) §12 · **Model:** Opus · **Depends on:** T-030 (merchant pattern, merged)
 
 ## Why
 
