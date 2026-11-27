@@ -167,7 +167,7 @@ test('level-up: with several pending, each pick rolls the next offers from the n
   const g = still();
   g.weapons = [createWeapon('fireball', 1)];
   g.xp = 7;
-  gemAt(g, 0, 0, 30); // 37 XP: L1->2 (8), L2->3 (11), L3->4 (14), 4 left
+  gemAt(g, 0, 0, 15); // 22 XP: L1->2 (4), L2->3 (6), L3->4 (8), 4 left
   g.rng = () => 0; // always the first pool card: the fireball upgrade
   g.tick({});
   assert.equal(g.pendingLevelUps, 3);
@@ -219,11 +219,11 @@ test('level-up: card text for every card is one short line with a known icon', (
   }
   assert.equal(cardInfo({ kind: 'weapon', id: 'miniTower', level: 1 }).name, 'Mini Tower');
   assert.equal(cardInfo({ kind: 'buff', id: 'might', level: 2 }).text, '+40% damage');
-  assert.equal(cardInfo({ kind: 'weapon', id: 'laser', level: 3 }).text, 'dmg 1→2, cd 1.3→1.2, speed 700→750');
+  assert.equal(cardInfo({ kind: 'weapon', id: 'laser', level: 3 }).text, 'dmg 4→5, cd 1.1→1, speed 700→750');
   assert.equal(cardInfo({ kind: 'weapon', id: 'laser', level: 1 }).text, 'Fast long-range aimed laser');
   assert.equal(cardInfo({ kind: 'weapon', id: 'miniTower', level: 1 }).text, 'Lobs turrets that shoot your fireball');
   assert.equal(cardInfo({ kind: 'weapon', id: 'miniTower', level: 3 }).text, 'rate 0.7→0.6, cd 6→5');
-  assert.equal(cardInfo({ kind: 'buff', id: 'pierce', level: 2 }).text, '35% lasers pierce; L3: fireballs too');
+  assert.equal(cardInfo({ kind: 'buff', id: 'pierce', level: 2 }).text, '25% lasers pierce; L3: fireballs too');
   assert.equal(cardInfo({ kind: 'buff', id: 'explode', level: 1 }).icon.anim, BUFFS.explode.icon);
 });
 
@@ -234,17 +234,17 @@ test('level-up: buff names, icons and card text at each level; Explode and Pierc
   assert.deepEqual(BUFF_IDS.map((id) => cardInfo({ kind: 'buff', id, level: 1 }).icon.anim),
     ['icon.might', 'icon.haste', 'icon.nuke', 'icon.speed', 'icon.duration', 'icon.force', 'icon.amount', 'icon.explode', 'icon.split', 'icon.laser']);
   assert.deepEqual([1, 2, 3].map((l) => text('might', l)), ['+20% damage', '+40% damage', '+60% damage']);
-  assert.deepEqual([1, 2, 3].map((l) => text('haste', l)), ['-10% cooldowns', '-20% cooldowns', '-30% cooldowns']);
-  assert.equal(text('area', 2), '+40% area and orbit');
-  assert.equal(text('velocity', 3), '+60% shot speed and range');
-  assert.deepEqual([1, 2, 3].map((l) => text('duration', l)), ['+25% mini tower life', '+50% mini tower life', '+75% mini tower life']);
+  assert.deepEqual([1, 2, 3].map((l) => text('haste', l)), ['-8% cooldowns', '-16% cooldowns', '-24% cooldowns']);
+  assert.equal(text('area', 2), '+30% shot, blast, ring, claw, bite, saw size');
+  assert.equal(text('velocity', 3), '+60% shot and saw speed and range');
+  assert.deepEqual([1, 2, 3].map((l) => text('duration', l)), ['+25% life: mini towers, pickups; saw spin', '+50% life: mini towers, pickups; saw spin', '+75% life: mini towers, pickups; saw spin']);
   assert.deepEqual([1, 2, 3].map((l) => text('force', l)), ['+50% knockback', '+100% knockback', '+150% knockback']);
-  assert.deepEqual([1, 2, 3].map((l) => text('amount', l)), [1, 2, 3].map((n) => `+${n} shots, ring balls, max mini towers`));
-  assert.equal(text('explode', 1), '20% fireballs explode; L3: lasers too');
-  assert.equal(text('explode', 3), '50% chance to explode; lasers explode too');
-  assert.equal(text('split', 2), '35% chance fireballs split in two');
-  assert.equal(text('pierce', 1), '20% lasers pierce; L3: fireballs too');
-  assert.equal(text('pierce', 3), '50% chance to pierce; fireballs pierce too');
+  assert.deepEqual([1, 2, 3].map((l) => text('amount', l)), [1, 2, 3].map((n) => `+${n} shots, ring, towers, slashes, bites, saws`));
+  assert.equal(text('explode', 1), '15% fireballs explode; L3: lasers too');
+  assert.equal(text('explode', 3), '35% chance to explode; lasers explode too');
+  assert.equal(text('split', 2), '25% chance fireballs split in two');
+  assert.equal(text('pierce', 1), '15% lasers pierce; L3: fireballs too');
+  assert.equal(text('pierce', 3), '35% chance to pierce; fireballs pierce too');
 });
 
 // ---- laser ---------------------------------------------------------------------------
@@ -254,12 +254,12 @@ test('laser: level 1 and level 5 stats, parallel pair at ±6 px, sprite and soun
   g.weapons = [createWeapon('laser', 1)];
   const fired = [];
   for (let i = 0; i < 200; i++) { g.tick({ aimX: 1, aimY: 0, hasAim: true }); if (sounded(g, 'laser01')) fired.push(i); }
-  assert.deepEqual(fired.slice(0, 3), [0, 84, 168], '1.4 s cooldown');
+  assert.deepEqual(fired.slice(0, 3), [0, 72, 144], '1.2 s cooldown');
   const h = still();
   h.weapons = [createWeapon('laser', 1)];
   h.tick({ aimX: 1, aimY: 0, hasAim: true });
   const [p] = h.projectiles;
-  assert.deepEqual([p.kind, p.anim, p.dirFrame, p.damage, p.speed, p.range, p.r], ['laser', 'laser.dir', 12, 1, 700, 600, 6]);
+  assert.deepEqual([p.kind, p.anim, p.dirFrame, p.damage, p.speed, p.range, p.r], ['laser', 'laser.dir', 12, 3, 700, 600, 6]);
   assert.ok(!('maxHits' in p) && !('hitCount' in p), 'no hit budget: a laser stops at its first hit');
   const k = still();
   k.weapons = [createWeapon('laser', 5)];
@@ -268,7 +268,7 @@ test('laser: level 1 and level 5 stats, parallel pair at ±6 px, sprite and soun
   const [a, b] = k.projectiles;
   assert.ok(near(a.x, 6) && near(b.x, -6), `${a.x} ${b.x}`);
   assert.ok(near(a.dx, b.dx) && near(a.dy, b.dy) && near(a.dy, -1), 'parallel');
-  assert.deepEqual([a.anim, a.damage, a.speed, a.range, a.r], ['laser.bigdir', 3, 800, 700, 8]);
+  assert.deepEqual([a.anim, a.damage, a.speed, a.range, a.r], ['laser.bigdir', 8, 800, 700, 8]);
 });
 
 // Fire one projectile through a row of tough enemies on the x-axis, enemies held still.
@@ -291,13 +291,13 @@ test('laser: stops at its first hit without Pierce, draws nothing and spawns no 
   assert.equal(g.projectiles.length, 0);
 });
 
-test('laser: the Pierce buff gives a pierce chance (20/35/50%) rolled on every hit', () => {
-  // rng 0.3: below 35% and 50%, not below 20%
+test('laser: the Pierce buff gives a pierce chance (15/25/35%) rolled on every hit', () => {
+  // rng 0.2: below 25% and 35%, not below 15%
   for (const [pierce, hits] of [[1, 1], [2, 10], [3, 10]]) {
     const g = still();
     g.buffs = [{ id: 'pierce', level: pierce }];
     g.weapons = [createWeapon('laser', 1)];
-    const c = countingRng(g, [0.3]);
+    const c = countingRng(g, [0.2]);
     assert.equal(throughRow(g, 10, () => g.stepWeapons()), hits, `pierce L${pierce}`);
     assert.equal(c.n, hits, 'one pierce roll per hit');
   }
@@ -305,7 +305,7 @@ test('laser: the Pierce buff gives a pierce chance (20/35/50%) rolled on every h
   const g = still();
   g.buffs = [{ id: 'pierce', level: 1 }];
   g.weapons = [createWeapon('laser', 1)];
-  const c = countingRng(g, [0.1, 0.19, 0.2, 0]);
+  const c = countingRng(g, [0.1, 0.14, 0.15, 0]);
   assert.equal(throughRow(g, 10, () => g.stepWeapons()), 3);
   assert.equal(c.n, 3);
 });
@@ -330,7 +330,7 @@ test('laser: never splits, and explodes only from Explode L3 (affinity)', () => 
   const beside = dummy(g, 100, 30);
   assert.equal(throughRow(g, 10, () => g.stepWeapons()), 2, 'the explosion catches the second enemy of the row');
   assert.equal(c.n, 1, 'one explode roll; no split roll');
-  assert.equal(beside.hp, 999, 'an arcane explosion: the laser damage');
+  assert.equal(beside.hp, 997, 'an arcane explosion: the laser damage');
   const fx = g.effects.filter((f) => f.anim === 'explosion.laser');
   assert.equal(fx.length, 1, 'arcane explosions use the laser explosion sprite');
   assert.ok(near(fx[0].scale, (2 * EXPLODE_RADIUS) / (45 * 2)));
@@ -365,7 +365,7 @@ test('mini tower: lobbed 80 px toward the nearest enemy, silent in flight, then 
     if (g.projectiles.some((x) => !seen.has(x.id))) fired.push(i);
     for (const x of g.projectiles) seen.add(x.id);
   }
-  assert.deepEqual(fired.slice(0, 2), [47, 95], 'every 0.8 s');
+  assert.deepEqual(fired.slice(0, 2), [44, 89], 'every 0.75 s');
   assert.ok(e.hp < 1000);
 });
 
@@ -430,11 +430,11 @@ test('mini tower: each shot is a copy of the dragon fireball at its level and bu
   const l1 = firstMiniShot(1, buffs).p;
   assert.deepEqual(statsOf(l1), statsOf(dragonFireball(1, buffs)));
   assert.deepEqual(statsOf(l1).slice(0, 5), ['fireball', 'fireball.anim', 3, 420 * 1.2, 420 * 1.2]);
-  assert.ok(near(l1.r, 6 * 1.4));
+  assert.ok(near(l1.r, 6 * 1.3));
   const { g, p: l5 } = firstMiniShot(5, buffs);
   assert.deepEqual(statsOf(l5), statsOf(dragonFireball(5, buffs)));
   assert.deepEqual(statsOf(l5).slice(0, 5), ['fireball', 'fireball.big', 5, 460 * 1.2, 520 * 1.2], 'big sprite from level 4');
-  assert.ok(near(l5.r, 8 * 1.4));
+  assert.ok(near(l5.r, 8 * 1.3));
   assert.equal(sounded(g, 'shoot01'), false, 'a mini-tower shot plays no sound');
   // upgrading the fireball changes the next shot of a standing mini tower
   const m = firstMiniShot(1, []);
@@ -486,7 +486,7 @@ test('ring: balls orbit the dragon evenly at level 1 and level 5; area widens th
   h.tick({ moveX: 1 });
   const b = h.weapons[0].balls;
   assert.equal(b.length, 5);
-  for (const ball of b) assert.ok(near(Math.hypot(ball.x - h.dragon.x, ball.y - h.dragon.y), 80 * 1.2), 'orbit 80 × area');
+  for (const ball of b) assert.ok(near(Math.hypot(ball.x - h.dragon.x, ball.y - h.dragon.y), 80 * 1.15), 'orbit 80 × area');
   assert.ok(near(h.weapons[0].angle, 260 * DT * Math.PI / 180));
 });
 
@@ -541,12 +541,13 @@ test('buffs: buffMods for every buff level; Might is ceil(base × (1 + 0.2 × le
     g.buffs = BUFF_IDS.map((id) => ({ id, level: l }));
     const m = buffMods(g);
     assert.ok(near(m.damage, [1.2, 1.4, 1.6][l - 1]), 'Might +20% per level');
-    assert.ok(near(m.cooldown, [0.9, 0.8, 0.7][l - 1]), 'Haste -10% per level');
-    assert.ok(near(m.area, [1.2, 1.4, 1.6][l - 1]) && near(m.speed, m.area), 'Area and Velocity +20% per level');
+    assert.ok(near(m.cooldown, [0.92, 0.84, 0.76][l - 1]), 'Haste -8% per level');
+    assert.ok(near(m.area, [1.15, 1.3, 1.45][l - 1]), 'Area +15% per level');
+    assert.ok(near(m.speed, [1.2, 1.4, 1.6][l - 1]), 'Velocity +20% per level');
     assert.ok(near(m.duration, [1.25, 1.5, 1.75][l - 1]), 'Duration +25% per level');
     assert.ok(near(m.force, [1.5, 2, 2.5][l - 1]), 'Force +50% per level');
     assert.equal(m.amount, l, 'Amount +1 per level');
-    for (const k of ['explode', 'split', 'pierce']) assert.equal(m[k], [0.2, 0.35, 0.5][l - 1]);
+    for (const k of ['explode', 'split', 'pierce']) assert.equal(m[k], [0.15, 0.25, 0.35][l - 1]);
     assert.deepEqual(m.procLevel, { explode: l, split: l, pierce: l });
   }
   const d = (base, lvl) => buffDamage(base, { damage: lvl ? 1 + BUFFS.might.levels[lvl - 1] : 1 });
@@ -560,11 +561,11 @@ test('buffs: stat buffs reach every weapon (fireball, laser, mini tower shot, ri
   g.stepWeapons();
   const [fb, lz] = g.projectiles;
   assert.deepEqual([fb.damage, fb.speed, fb.range], [3, 420 * 1.2, 420 * 1.2]);
-  assert.ok(near(fb.r, 6 * 1.4));
-  assert.deepEqual([lz.damage, lz.speed, lz.range], [2, 700 * 1.2, 600 * 1.2]);
-  assert.ok(near(lz.r, 6 * 1.4));
-  assert.ok(near(g.weapons[0].timer, 0.9 * 0.7 - DT) && near(g.weapons[1].timer, 1.4 * 0.7 - DT) && near(g.weapons[2].timer, 6 * 0.7 - DT));
-  assert.ok(near(Math.hypot(g.weapons[3].balls[0].x, g.weapons[3].balls[0].y), 60 * 1.4));
+  assert.ok(near(fb.r, 6 * 1.3));
+  assert.deepEqual([lz.damage, lz.speed, lz.range], [4, 700 * 1.2, 600 * 1.2]);
+  assert.ok(near(lz.r, 6 * 1.3));
+  assert.ok(near(g.weapons[0].timer, 0.75 * 0.76 - DT) && near(g.weapons[1].timer, 1.2 * 0.76 - DT) && near(g.weapons[2].timer, 6 * 0.76 - DT));
+  assert.ok(near(Math.hypot(g.weapons[3].balls[0].x, g.weapons[3].balls[0].y), 60 * 1.3));
   // the mini tower's shot after landing (a level 1 fireball)
   g.weapons = [g.weapons[2]];
   dummy(g, 100, 200);
@@ -572,8 +573,8 @@ test('buffs: stat buffs reach every weapon (fireball, laser, mini tower shot, ri
   for (let i = 0; i < 40 && g.projectiles.length === before; i++) g.stepWeapons();
   const ms = g.projectiles[before];
   assert.deepEqual([ms.damage, ms.speed, ms.range], [3, 420 * 1.2, 420 * 1.2]);
-  assert.ok(near(ms.r, 6 * 1.4));
-  assert.ok(near(g.miniTowers[0].timer, 0.8 * 0.7 - DT), 'fireRate × cooldown');
+  assert.ok(near(ms.r, 6 * 1.3));
+  assert.ok(near(g.miniTowers[0].timer, 0.75 * 0.76 - DT), 'fireRate × cooldown');
 });
 
 // ---- procs ---------------------------------------------------------------------------
@@ -599,7 +600,7 @@ test('procs: explosion radius 60 × area, every enemy once except the one hit; g
   const g = still();
   g.buffs = [{ id: 'explode', level: 1 }, { id: 'area', level: 1 }];
   g.rng = () => 0;
-  const R = EXPLODE_RADIUS * 1.2;
+  const R = EXPLODE_RADIUS * 1.15;
   const hit = dummy(g, 0, 0);
   const inside = dummy(g, R + 12 - 0.5, 0);
   const outside = dummy(g, 0, R + 12 + 0.5);
@@ -725,7 +726,7 @@ test('procs: affinity (§12): Explode fire, arcane from L3; Split fire only; Pie
   for (let l = 1; l <= 3; l++) {
     g.buffs = at(l);
     const m = buffMods(g);
-    const c = [0.2, 0.35, 0.5][l - 1];
+    const c = [0.15, 0.25, 0.35][l - 1];
     assert.deepEqual(['explode', 'split', 'pierce'].map((k) => procChance(m, k, 'fire')), [c, c, l === 3 ? c : 0]);
     assert.deepEqual(['explode', 'split', 'pierce'].map((k) => procChance(m, k, 'arcane')), [l === 3 ? c : 0, 0, c]);
     assert.deepEqual(['explode', 'split', 'pierce'].map((k) => procChance(m, k, 'physical')), [0, 0, 0]);

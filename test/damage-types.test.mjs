@@ -106,10 +106,10 @@ test('hits: the dragon\'s fireball deals fire and the laser arcane (a ghost: fir
   assert.ok(taken(ghost) > 0);
 
   const h = still();
-  h.weapons = [createWeapon('laser', 1)]; // damage 1
+  h.weapons = [createWeapon('laser', 1)]; // damage 3
   const ghost2 = tough(h, 'ghost', 40, 0);
   for (let i = 0; i < 30 && taken(ghost2) === 0; i++) h.tick({ aimX: 1, aimY: 0, hasAim: true });
-  assert.equal(taken(ghost2), 2, 'one laser hit: ceil(1 × 1.5) = 2');
+  assert.equal(taken(ghost2), 5, 'one laser hit: ceil(3 × 1.5) = 5');
 });
 
 test('hits: mini-tower shots are fire (a copy of the fireball)', () => {

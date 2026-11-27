@@ -244,8 +244,8 @@ test('determinism: the same seed and intents through stampedes give the same dig
 
 // ---- stages --------------------------------------------------------------------------
 
-test('timeline: the rate curve is unchanged; mounted knights from 2:30; each stage led by its threat', () => {
-  assert.deepEqual(TIMELINE.map((r) => [r.t, r.rate]), [[0, 0.3], [30, 0.5], [60, 0.6], [120, 2.5], [150, 6.25], [180, 10], [210, 13], [240, 16], [300, 18]]);
+test('timeline: the rate curve; mounted knights from 2:30; each stage led by its threat', () => {
+  assert.deepEqual(TIMELINE.map((r) => [r.t, r.rate]), [[0, 0.3], [30, 0.5], [60, 0.6], [120, 2.5], [150, 5.75], [180, 9], [210, 12.5], [240, 16], [300, 18]]);
   for (let t = 0; t <= 300; t += 15) {
     const w = TIMELINE[rowIndexAt(TIMELINE, t)].weights;
     assert.equal(w.mountedKnight > 0, t >= 150, `mounted knights at ${t}`);
@@ -267,7 +267,7 @@ test('timeline: the rate curve is unchanged; mounted knights from 2:30; each sta
   const siege = TIMELINE.find((r) => r.t === 240);
   assert.ok(siege.tiers[3] > 0 && siege.stampede.max > TIMELINE.find((r) => r.t === 60).stampede.max, 'Siege: silver, bigger stampedes');
   assert.ok(TIMELINE.find((r) => r.t === 180).tiers[2] > TIMELINE.find((r) => r.t === 150).tiers[2], 'Haunt: more bronze');
-  assert.ok(Math.abs(rateAt(TIMELINE, 135) - (2.5 + 6.25) / 2) < 1e-12);
+  assert.ok(Math.abs(rateAt(TIMELINE, 135) - (2.5 + 5.75) / 2) < 1e-12);
 });
 
 test('stages: five named stages at 0:00, 1:00, 2:00, 3:00, 4:00; stageAt picks the running one', () => {

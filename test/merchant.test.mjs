@@ -27,6 +27,7 @@ import {
   drawShop, drawLevelUp, tileRects, shopItemAt, shopNav, cardRects, SHOP_BUTTON, BACK_BUTTON, REROLL_BUTTON, TILE, clipText,
 } from '../src/render/screens.js';
 import { botIntent } from '../tools/measure.mjs';
+import { drawDebugWorld, debugLines } from '../src/render/debug.js';
 
 const atlasJson = JSON.parse(readFileSync(new URL('../assets/atlas.json', import.meta.url), 'utf8'));
 const atlas = { image: {}, frames: atlasJson.frames, anims: atlasJson.anims };
@@ -79,7 +80,7 @@ test('merchant: constants match the §14.3 tables', () => {
     const l = sec.split('\n').find((x) => x.startsWith(`| ${id[0].toUpperCase() + id.slice(1)}`) || x.startsWith(`| Any card`) && id === 'card');
     assert.ok(l && l.includes(`${SHOP_PRICES[id]} XP`), `${id} price in the spec`);
   }
-  assert.deepEqual(SHOP_PRICES, { reroll: 10, card: 25, heal: 15 });
+  assert.deepEqual(SHOP_PRICES, { reroll: 5, card: 10, heal: 8 });
   assert.equal(MERCHANT_INTERVAL_TICKS, 5400);
   assert.equal(TRADE_TICKS, 90);
   assert.equal(MERCHANT_FLEE_TICKS, 180);
@@ -220,8 +221,9 @@ test('shop: the world is frozen (no step runs, the digest holds) until a choice 
 });
 
 test('shop: offers greyed by price, by an empty pool (card) and by a full tower (heal); the cards are the pool without Repair', () => {
-  const { g } = openShop(14);
-  assert.deepEqual(shopOffers(g).map((o) => [o.id, o.price, o.ok]), [['reroll', 10, true], ['card', 25, false], ['heal', 15, false]]);
+  const P = SHOP_PRICES;
+  const { g } = openShop(P.reroll); // the cheapest offer only
+  assert.deepEqual(shopOffers(g).map((o) => [o.id, o.price, o.ok]), [['reroll', P.reroll, true], ['card', P.card, false], ['heal', P.heal, false]]);
   g.xp = 30;
   assert.deepEqual(shopOffers(g).map((o) => o.ok), [true, true, false], 'heal: tower at full HP');
   g.tower.hp = 50;
@@ -231,8 +233,8 @@ test('shop: offers greyed by price, by an empty pool (card) and by a full tower 
   assert.deepEqual(shopCards(g), cardPool(g).map((p) => p.card).filter((c) => c.kind !== 'repair'));
 });
 
-test('shop: reroll costs 10 XP and banks a reroll; the shop closes and he walks on, never to trade again', () => {
-  const { g, m } = openShop(12);
+test('shop: reroll costs its price and banks a reroll; the shop closes and he walks on, never to trade again', () => {
+  const { g, m } = openShop(SHOP_PRICES.reroll + 2);
   const lv = g.level;
   g.rng = noRng();
   g.tick({ pick: 0 });
@@ -244,18 +246,18 @@ test('shop: reroll costs 10 XP and banks a reroll; the shop closes and he walks 
   assert.ok(m.y > y, 'walks on although the dragon is by him');
 });
 
-test('shop: heal costs 15 XP and adds 30 tower HP, capped', () => {
-  const { g } = openShop(20);
+test('shop: heal costs its price and adds 30 tower HP, capped', () => {
+  const { g } = openShop(SHOP_PRICES.heal + 5);
   g.tower.hp = 90;
   g.tick({ pick: 2 });
   assert.deepEqual([g.xp, g.tower.hp, g.shop], [5, 100, null]);
-  const o = openShop(15);
+  const o = openShop(SHOP_PRICES.heal);
   o.g.tower.hp = 40;
   o.g.tick({ pick: 2 });
   assert.equal(o.g.tower.hp, 40 + SHOP_HEAL);
 });
 
-test('shop: a chosen card opens the pool page; leave goes back; a card costs 25 XP and is applied as a level-up card', () => {
+test('shop: a chosen card opens the pool page; leave goes back; a card costs its price and is applied as a level-up card', () => {
   const { g } = openShop(30);
   g.rng = noRng();
   g.tick({ pick: 1 });
@@ -271,7 +273,7 @@ test('shop: a chosen card opens the pool page; leave goes back; a card costs 25 
   assert.equal(g.shop.page, 'cards');
   g.tick({ pick: i });
   assert.equal(g.shop, null);
-  assert.equal(g.xp, 5);
+  assert.equal(g.xp, 30 - SHOP_PRICES.card);
   assert.ok(g.weapons.some((w) => w.id === 'saw' && w.level === 1));
   assert.equal(g.rng.count(), 0, 'the shop draws nothing');
 });
@@ -438,13 +440,23 @@ test('determinism: the same seed and intents (walking to merchants, trading, lea
   assert.notEqual(c.digest(), d0);
 });
 
-test('measure bots ignore the merchant: a shop that opens is left', () => {
+test('measure bots trade in the shop; with merchant "ignore" (and idle) a shop that opens is left', () => {
   const { g } = openShop(50);
-  const it = botIntent(g, 'aim', 'greedy');
+  const it = botIntent(g, 'aim', 'greedy', { merchant: 'ignore' });
   assert.equal(it.leave, true);
+  assert.equal(botIntent(g, 'idle', 'greedy').leave, true);
   g.tick(it);
   assert.equal(g.shop, null);
   assert.equal(botIntent(still(), 'aim').leave, false);
+  // By default the greedy bot opens the cards page and buys a card by its own rule.
+  const { g: h } = openShop(50);
+  const a = botIntent(h, 'aim', 'greedy');
+  assert.deepEqual([a.pick, a.leave], [1, false]);
+  h.tick(a);
+  assert.equal(h.shop.page, 'cards');
+  h.tick(botIntent(h, 'aim', 'greedy'));
+  assert.equal(h.shop, null);
+  assert.equal(h.xp, 50 - SHOP_PRICES.card);
 });
 
 // ---- input --------------------------------------------------------------------------
@@ -556,6 +568,15 @@ function fakeCtx() {
 }
 const texts = (c) => c.calls.filter((x) => x[0] === 'fillText').map((x) => x[1]);
 
+test("debug overlay: the merchant's circle, his trade radius while he will trade, and the count", () => {
+  const { g, m } = trading(200);
+  const arcs = () => { const c = fakeCtx(); drawDebugWorld(c, g); return c.calls.filter((x) => x[0] === 'arc').map((x) => x[3]); };
+  assert.ok(arcs().includes(DEF.r) && arcs().includes(TRADE_RADIUS));
+  m.willTrade = false;
+  assert.ok(arcs().includes(DEF.r) && !arcs().includes(TRADE_RADIUS));
+  assert.match(debugLines(g, { ticks: 1, tickMs: 0.1 }, 1).join(' '), /merchants 1/);
+});
+
 test('shop layout: 19 tiles fit above Back; hit tests and navigation', () => {
   const r = tileRects(19);
   assert.equal(r.length, 19);
@@ -573,11 +594,11 @@ test('shop layout: 19 tiles fit above Back; hit tests and navigation', () => {
 });
 
 test('shop screen: the offers (greyed when not ok), Leave; the cards page; level-up shows the reroll button; nothing written', () => {
-  const { g } = openShop(12);
+  const { g } = openShop(SHOP_PRICES.reroll);
   const before = JSON.stringify(g.snapshot());
   let c = fakeCtx();
   drawShop(c, g, atlas, 0);
-  assert.ok(texts(c).includes('MERCHANT') && texts(c).includes('Leave  Esc / B') && texts(c).includes('10 XP'));
+  assert.ok(texts(c).includes('MERCHANT') && texts(c).includes('Leave  Esc / B') && texts(c).includes(`${SHOP_PRICES.reroll} XP`));
   assert.equal(c.calls.filter((x) => x[0] === 'set' && x[1] === 'globalAlpha' && x[2] === 0.4).length, 2, 'card and heal greyed');
   g.xp = 30;
   g.tick({ pick: 1 });

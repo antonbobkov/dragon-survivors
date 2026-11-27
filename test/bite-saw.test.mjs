@@ -52,10 +52,10 @@ const lost = (e, hp = 1000) => hp - e.hp;
 test('bite and saw: data matches the spec; physical; pool order; sounds and anims exist', () => {
   assert.deepEqual(WEAPON_IDS.slice(7), ['bite', 'saw']);
   assert.deepEqual(WEAPONS.bite.levels.map((l) => [l.cooldown, l.damage, l.reach]),
-    [[1.6, 8, 50], [1.5, 10, 54], [1.3, 13, 57], [1.2, 15, 60], [1.0, 18, 64]]);
+    [[1.5, 8, 56], [1.4, 10, 60], [1.2, 13, 64], [1.1, 15, 68], [0.9, 18, 72]]);
   assert.deepEqual(WEAPONS.saw.levels.map((l) => [l.cooldown, l.damage, l.count, l.r, l.range, l.speed, l.dwell]), [
     [3, 2, 1, 10, 260, 260, 0.6], [2.75, 3, 1, 11, 275, 260, 0.75], [2.5, 3, 1, 12, 290, 260, 0.9],
-    [2.25, 4, 2, 13, 305, 260, 1.05], [2, 5, 2, 14, 320, 260, 1.2]]);
+    [2.25, 4, 2, 13, 305, 260, 1.05], [2, 6, 2, 14, 320, 260, 1.2]]);
   for (const id of ['bite', 'saw']) {
     assert.equal(WEAPONS[id].type, 'physical', id);
     assert.equal(weaponMaxLevel(id), 5);
@@ -112,8 +112,8 @@ test('bite: no target, no bite: the cooldown waits at 0 and it bites on the firs
   const e = dummy(g, 'knight', 20, 0);
   tick(g);
   assert.equal(lost(e), 6);
-  assert.ok(near(g.weapons[0].timer, 1.6));
-  // then every 1.6 s = 96 ticks while a target stays (put back after each knock)
+  assert.ok(near(g.weapons[0].timer, 1.5));
+  // then every 1.5 s = 90 ticks while a target stays (put back after each knock)
   const at = [];
   for (let i = 0; i < 300; i++) {
     const hp = e.hp;
@@ -121,7 +121,7 @@ test('bite: no target, no bite: the cooldown waits at 0 and it bites on the firs
     tick(g);
     if (e.hp < hp) at.push(g.tickCount);
   }
-  assert.deepEqual(at.slice(0, 3).map((t, i, a) => (i ? t - a[i - 1] : 96)), [96, 96, 96]);
+  assert.deepEqual(at.slice(0, 3).map((t, i, a) => (i ? t - a[i - 1] : 90)), [90, 90, 90]);
   // a fresh bite with a target bites on its first tick
   const h = still(armed('bite'));
   const f = dummy(h, 'skeleton', 10, 0);
@@ -158,7 +158,7 @@ test('bite: Amount bites the next-nearest too; Might, Area, Haste apply', () => 
   assert.ok(lost(a) > 0 && lost(b) > 0);
   assert.equal(c.hp, 1000);
   assert.equal(g.effects.filter((fx) => fx.anim === 'bite.jaws').length, 2);
-  // Might 1: ceil(8 × 1.2) = 10 → ceil(10 × 0.75) = 8; Area 1: reach 60 reaches a knight at 71
+  // Might 1: ceil(8 × 1.2) = 10 → ceil(10 × 0.75) = 8; Area 1: reach 64.4 reaches a knight at 71
   const h = still(armed('bite', 1, [{ id: 'might', level: 1 }, { id: 'area', level: 1 }]));
   const k = dummy(h, 'knight', 71, 0);
   tick(h);
@@ -167,11 +167,11 @@ test('bite: Amount bites the next-nearest too; Might, Area, Haste apply', () => 
   const m = dummy(n, 'knight', 71, 0);
   tick(n);
   assert.equal(m.hp, 1000, 'out of reach without Area');
-  // Haste 3: cooldown 1.6 × 0.7
+  // Haste 3: cooldown 1.5 × 0.76
   const q = still(armed('bite', 1, [{ id: 'haste', level: 3 }]));
   dummy(q, 'knight', 20, 0);
   tick(q);
-  assert.ok(near(q.weapons[0].timer, 1.6 * 0.7));
+  assert.ok(near(q.weapons[0].timer, 1.5 * 0.76));
 });
 
 test('bite: knock straight away from the dragon by mass and Force; the jaws face the target', () => {
@@ -217,15 +217,15 @@ test('bite: physical through resistances and the armoury; the golem takes nothin
 test('bite: breaks the braziers its reach overlaps; draws no random numbers', () => {
   const g = still(armed('bite'));
   dummy(g, 'knight', 20, 0);
-  g.braziers.push({ id: g.nextId++, x: -50 - BRAZIER_RADIUS + 1, y: 0, anim: 'brazier.burn', frame: 0, frameTicks: 0 });
-  g.braziers.push({ id: g.nextId++, x: 0, y: 50 + BRAZIER_RADIUS + 1, anim: 'brazier.burn', frame: 0, frameTicks: 0 });
+  g.braziers.push({ id: g.nextId++, x: -56 - BRAZIER_RADIUS + 1, y: 0, anim: 'brazier.burn', frame: 0, frameTicks: 0 });
+  g.braziers.push({ id: g.nextId++, x: 0, y: 56 + BRAZIER_RADIUS + 1, anim: 'brazier.burn', frame: 0, frameTicks: 0 });
   tick(g);
   assert.equal(g.braziers.length, 1, 'the one in reach broke, the other stands');
   assert.equal(g.pickups.length, 1);
   const h = still(armed('bite', 3, [{ id: 'amount', level: 2 }]));
   for (let i = 0; i < 5; i++) dummy(h, 'skeleton', 10 + i * 5, i, 20);
   h.rng = () => { throw new Error('no draws'); };
-  for (let i = 0; i < 300; i++) tick(h);
+  for (let i = 0; i < 300; i++) { tick(h); h.gems.length = 0; } // no gems: no level-up offers to roll
   assert.ok(h.kills > 0, 'bit and killed without a draw');
 });
 
@@ -320,7 +320,7 @@ test('saw: Amount fans the blades 12° apart; L4 fires two; Duration, Velocity, 
   const k = armed('saw', 1, [{ id: 'duration', level: 1 }, { id: 'velocity', level: 1 }, { id: 'area', level: 2 }, { id: 'might', level: 1 }, { id: 'force', level: 2 }]);
   tick(k);
   const b = k.blades[0];
-  assert.ok(near(b.speed, 312) && near(b.range, 312) && near(b.r, 14));
+  assert.ok(near(b.speed, 312) && near(b.range, 312) && near(b.r, 13));
   assert.deepEqual([b.dwell, b.damage, b.knock], [45, 3, 12]);
 });
 
@@ -364,7 +364,7 @@ test('cards: names, icons, new and upgrade texts; HUD icons', () => {
     { name: 'Bite', icon: { anim: 'icon.bite', frame: 0, scale: 1 }, tag: 'NEW', text: 'Bites the nearest foe; double on the weak' });
   assert.deepEqual(cardInfo({ kind: 'weapon', id: 'saw', level: 1 }),
     { name: 'Saw Blade', icon: { anim: 'icon.saw', frame: 0, scale: 1 }, tag: 'NEW', text: 'Tower flings a saw blade past you and back' });
-  assert.equal(cardInfo({ kind: 'weapon', id: 'bite', level: 2 }).text, 'dmg 8→10, cd 1.6→1.5, reach 50→54');
+  assert.equal(cardInfo({ kind: 'weapon', id: 'bite', level: 2 }).text, 'dmg 8→10, cd 1.5→1.4, reach 56→60');
   assert.equal(cardInfo({ kind: 'weapon', id: 'saw', level: 2 }).text, 'dmg 2→3, cd 3→2.75, size 10→11');
   assert.equal(cardInfo({ kind: 'weapon', id: 'saw', level: 3 }).text, 'cd 2.75→2.5, size 11→12, dwell 0.75→0.9');
   assert.equal(cardInfo({ kind: 'weapon', id: 'saw', level: 4 }).text, 'dmg 3→4, count 1→2, cd 2.5→2.25');
@@ -432,7 +432,7 @@ test('render: blades and jaws drawn at 2× without writing the game; debug draws
   assert.ok(ctx.calls.some((c) => c[0] === 'scale' && c[1] === -1), 'mirrored: the target is on the left');
   const arcs = ctx.calls.filter((c) => c[0] === 'arc').map((c) => c[3]);
   assert.ok(arcs.includes(10), 'blade circle');
-  assert.ok(arcs.includes(50), 'bite reach');
+  assert.ok(arcs.includes(WEAPONS.bite.levels[0].reach), 'bite reach');
 });
 
 test('art: jaws, saw blade and icons have the documented sizes, frames and timing', () => {

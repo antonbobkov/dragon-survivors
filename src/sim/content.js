@@ -50,7 +50,7 @@ export const ENEMY_TYPES = ['knight', 'skeleton', 'slime', 'megaslime', 'mage', 
 export const ENEMIES = {
   knight:      { name: 'Knight',       hp: 3,        speed: 27.5, r: 12, dps: 2,  xp: 1, mass: 1,    walk: 'knight.walk',  die: 'knight.die',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.25 } },
   skeleton:    { name: 'Skeleton',     hp: 1,        speed: 45,   r: 10, dps: 6,  xp: 1, mass: 0.7,  walk: 'skelly.walk',  die: 'skelly.die',  alpha: 1, resist: { fire: 0,    arcane: 0.25, physical: -0.5 }, summon: 'skelly.summon' },
-  slime:       { name: 'Slime',        hp: 3,        speed: 35,   r: 12, dps: 4,  xp: 1, mass: 0.8,  walk: 'slime.walk',   die: 'slime.die',   alpha: 1, resist: { fire: -0.5, arcane: 0,    physical: 0.5 }, split: 'slime.split', gens: SLIME_GENS },
+  slime:       { name: 'Slime',        hp: 3,        speed: 35,   r: 12, dps: 5,  xp: 1, mass: 0.8,  walk: 'slime.walk',   die: 'slime.die',   alpha: 1, resist: { fire: -0.5, arcane: 0,    physical: 0.5 }, split: 'slime.split', gens: SLIME_GENS },
   megaslime:   { name: 'Megaslime',    hp: null,     speed: 15,   r: 28, dps: 0,  xp: null, mass: 4, walk: 'megaslime.walk', die: 'megaslime.die', alpha: 1, resist: { fire: -0.5, arcane: 0, physical: 0.5 }, summon: 'megaslime.fuse', fused: true },
   mage:        { name: 'Mage',         hp: 4,        speed: 20,   r: 12, dps: 5,  xp: 5, mass: 1,    walk: 'mage.walk',    die: 'mage.die',    alpha: 1, resist: { fire: 0,    arcane: 0.5,  physical: -0.25 }, spell: 'mage.spell' },
   ghostKnight: { name: 'Ghost knight', hp: 10,       speed: 27.5, r: 12, dps: 10, xp: 2, mass: 1,    walk: 'ghost.knight', die: 'ghost.burn',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.25 } },
@@ -147,11 +147,11 @@ export const GOLEM_TIME = 300;
 export const TIMELINE = [
   { t: 0,   rate: 0.3,  stage: 'Muster', weights: { knight: 100, skeleton: 0,  slime: 0,  mage: 0,  ghostKnight: 0,  mountedKnight: 0 } },
   { t: 30,  rate: 0.5,  weights: { knight: 70, skeleton: 30, slime: 0,  mage: 0,  ghostKnight: 0,  mountedKnight: 0 } },
-  { t: 60,  rate: 0.6,  stage: 'Ooze',   weights: { knight: 45, skeleton: 30, slime: 25, mage: 0,  ghostKnight: 0,  mountedKnight: 0 }, stampede: { every: 20, min: 5, max: 6 } },
-  { t: 120, rate: 2.5,  stage: 'Arcana', weights: { knight: 40, skeleton: 25, slime: 20, mage: 15, ghostKnight: 0,  mountedKnight: 0 }, stampede: { every: 30, min: 5, max: 7 } },
-  { t: 150, rate: 6.25, weights: { knight: 39, skeleton: 25, slime: 20, mage: 15, ghostKnight: 0,  mountedKnight: 1 }, tiers: { 1: 90, 2: 10, 3: 0,  4: 0 }, stampede: { every: 30, min: 5, max: 7 } },
-  { t: 180, rate: 10,   stage: 'Haunt',  weights: { knight: 28, skeleton: 23, slime: 17, mage: 10, ghostKnight: 20, mountedKnight: 2 }, tiers: { 1: 70, 2: 30, 3: 0,  4: 0 }, stampede: { every: 30, min: 6, max: 8 } },
-  { t: 210, rate: 13,   weights: { knight: 28, skeleton: 23, slime: 17, mage: 10, ghostKnight: 20, mountedKnight: 2 }, tiers: { 1: 65, 2: 30, 3: 5,  4: 0 }, stampede: { every: 30, min: 6, max: 8 } },
+  { t: 60,  rate: 0.6,  stage: 'Ooze',   weights: { knight: 50, skeleton: 30, slime: 20, mage: 0,  ghostKnight: 0,  mountedKnight: 0 }, stampede: { every: 20, min: 5, max: 6 } },
+  { t: 120, rate: 2.5,  stage: 'Arcana', weights: { knight: 42, skeleton: 25, slime: 18, mage: 15, ghostKnight: 0,  mountedKnight: 0 }, stampede: { every: 30, min: 5, max: 7 } },
+  { t: 150, rate: 5.75, weights: { knight: 41, skeleton: 25, slime: 18, mage: 15, ghostKnight: 0,  mountedKnight: 1 }, tiers: { 1: 95, 2: 5,  3: 0,  4: 0 }, stampede: { every: 30, min: 5, max: 7 } },
+  { t: 180, rate: 9,    stage: 'Haunt',  weights: { knight: 28, skeleton: 23, slime: 17, mage: 10, ghostKnight: 20, mountedKnight: 2 }, tiers: { 1: 70, 2: 30, 3: 0,  4: 0 }, stampede: { every: 30, min: 6, max: 8 } },
+  { t: 210, rate: 12.5, weights: { knight: 28, skeleton: 23, slime: 17, mage: 10, ghostKnight: 20, mountedKnight: 2 }, tiers: { 1: 65, 2: 30, 3: 5,  4: 0 }, stampede: { every: 30, min: 6, max: 8 } },
   { t: 240, rate: 16,   stage: 'Siege',  weights: { knight: 26, skeleton: 25, slime: 18, mage: 10, ghostKnight: 18, mountedKnight: 3 }, tiers: { 1: 60, 2: 25, 3: 15, 4: 0 }, stampede: { every: 15, min: 8, max: 12 } },
   { t: 300, rate: 18,   weights: { knight: 26, skeleton: 25, slime: 18, mage: 10, ghostKnight: 18, mountedKnight: 3 }, tiers: { 1: 55, 2: 25, 3: 15, 4: 5 }, stampede: { every: 15, min: 8, max: 12 }, golem: true },
 ];
@@ -184,11 +184,11 @@ export const WEAPONS = {
     anim: 'fireball.anim', bigAnim: 'fireball.big', bigFrom: 4, r: 6, bigR: 8,
     sound: 'shoot01',
     levels: [
-      { cooldown: 0.9, damage: 2, count: 1, spread: 0,  speed: 420, range: 420 },
-      { cooldown: 0.8, damage: 2, count: 1, spread: 0,  speed: 420, range: 420 },
-      { cooldown: 0.8, damage: 3, count: 2, spread: 15, speed: 420, range: 450 },
-      { cooldown: 0.7, damage: 3, count: 2, spread: 15, speed: 460, range: 480 },
-      { cooldown: 0.6, damage: 4, count: 3, spread: 20, speed: 460, range: 520 },
+      { cooldown: 0.75, damage: 2, count: 1, spread: 0,  speed: 420, range: 420 },
+      { cooldown: 0.7,  damage: 2, count: 1, spread: 0,  speed: 420, range: 420 },
+      { cooldown: 0.7,  damage: 3, count: 2, spread: 15, speed: 420, range: 450 },
+      { cooldown: 0.65, damage: 3, count: 2, spread: 15, speed: 460, range: 480 },
+      { cooldown: 0.6,  damage: 4, count: 3, spread: 20, speed: 460, range: 520 },
     ],
   },
   laser: {
@@ -197,11 +197,11 @@ export const WEAPONS = {
     offset: 6, // with count 2: two parallel lasers, ±offset px perpendicular to the aim
     sound: 'laser01',
     levels: [
-      { cooldown: 1.4, damage: 1, count: 1, speed: 700, range: 600 },
-      { cooldown: 1.3, damage: 1, count: 1, speed: 700, range: 600 },
-      { cooldown: 1.2, damage: 2, count: 1, speed: 750, range: 650 },
-      { cooldown: 1.1, damage: 2, count: 2, speed: 750, range: 650 },
-      { cooldown: 1.0, damage: 3, count: 2, speed: 800, range: 700 },
+      { cooldown: 1.2, damage: 3, count: 1, speed: 700, range: 600 },
+      { cooldown: 1.1, damage: 4, count: 1, speed: 700, range: 600 },
+      { cooldown: 1.0, damage: 5, count: 1, speed: 750, range: 650 },
+      { cooldown: 1.0, damage: 6, count: 2, speed: 750, range: 650 },
+      { cooldown: 0.9, damage: 8, count: 2, speed: 800, range: 700 },
     ],
   },
   miniTower: {
@@ -210,11 +210,11 @@ export const WEAPONS = {
     lobDist: 80, lobTime: 0.5, lobHeight: 30,
     targetRadius: 300, // each shot is a copy of the dragon's fireball (§10.3)
     levels: [
-      { cooldown: 6, duration: 8,  fireRate: 0.8, maxActive: 1 },
+      { cooldown: 6, duration: 8,  fireRate: 0.75, maxActive: 1 },
       { cooldown: 6, duration: 10, fireRate: 0.7, maxActive: 2 },
       { cooldown: 5, duration: 10, fireRate: 0.6, maxActive: 2 },
-      { cooldown: 5, duration: 12, fireRate: 0.5, maxActive: 3 },
-      { cooldown: 4, duration: 14, fireRate: 0.4, maxActive: 4 },
+      { cooldown: 5, duration: 12, fireRate: 0.6, maxActive: 3 },
+      { cooldown: 4, duration: 14, fireRate: 0.55, maxActive: 4 },
     ],
   },
   ring: {
@@ -236,11 +236,11 @@ export const WEAPONS = {
   leftClaw: {
     name: 'Left claw', aimed: false, type: 'physical', knock: 14, sideDelay: 0.15, repeatDelay: 0.1,
     levels: [
-      { cooldown: 1.3, damage: 2, width: 110, height: 36, sides: 1 },
+      { cooldown: 1.3, damage: 3, width: 110, height: 36, sides: 1 },
       { cooldown: 1.2, damage: 3, width: 115, height: 38, sides: 1 },
-      { cooldown: 1.1, damage: 3, width: 125, height: 40, sides: 2 },
-      { cooldown: 1.0, damage: 4, width: 130, height: 42, sides: 2 },
-      { cooldown: 0.9, damage: 5, width: 140, height: 44, sides: 2 },
+      { cooldown: 1.1, damage: 4, width: 125, height: 40, sides: 2 },
+      { cooldown: 1.0, damage: 5, width: 130, height: 42, sides: 2 },
+      { cooldown: 0.9, damage: 6, width: 140, height: 44, sides: 2 },
     ],
   },
   rightClaw: {
@@ -249,8 +249,8 @@ export const WEAPONS = {
       { cooldown: 1.1, damage: 4, angle: 60, reach: 80, maxTargets: 1 },
       { cooldown: 1.0, damage: 5, angle: 60, reach: 85, maxTargets: 1 },
       { cooldown: 0.9, damage: 6, angle: 65, reach: 90, maxTargets: 2 },
-      { cooldown: 0.8, damage: 8, angle: 70, reach: 95, maxTargets: 2 },
-      { cooldown: 0.7, damage: 9, angle: 75, reach: 100, maxTargets: 3 },
+      { cooldown: 0.8, damage: 9, angle: 70, reach: 95, maxTargets: 2 },
+      { cooldown: 0.7, damage: 11, angle: 75, reach: 100, maxTargets: 3 },
     ],
   },
   dualClaw: {
@@ -266,11 +266,11 @@ export const WEAPONS = {
     name: 'Bite', aimed: false, type: 'physical', knock: 30, execute: 0.3, executeMult: 2,
     anim: 'bite.jaws', sound: 'megaslime_hit',
     levels: [
-      { cooldown: 1.6, damage: 8,  reach: 50 },
-      { cooldown: 1.5, damage: 10, reach: 54 },
-      { cooldown: 1.3, damage: 13, reach: 57 },
-      { cooldown: 1.2, damage: 15, reach: 60 },
-      { cooldown: 1.0, damage: 18, reach: 64 },
+      { cooldown: 1.5, damage: 8,  reach: 56 },
+      { cooldown: 1.4, damage: 10, reach: 60 },
+      { cooldown: 1.2, damage: 13, reach: 64 },
+      { cooldown: 1.1, damage: 15, reach: 68 },
+      { cooldown: 0.9, damage: 18, reach: 72 },
     ],
   },
   // §10.9 saw blade: every cooldown the tower launches `count` blades along the line from the
@@ -285,7 +285,7 @@ export const WEAPONS = {
       { cooldown: 2.75, damage: 3, count: 1, r: 11, range: 275, speed: 260, dwell: 0.75 },
       { cooldown: 2.5,  damage: 3, count: 1, r: 12, range: 290, speed: 260, dwell: 0.9 },
       { cooldown: 2.25, damage: 4, count: 2, r: 13, range: 305, speed: 260, dwell: 1.05 },
-      { cooldown: 2,    damage: 5, count: 2, r: 14, range: 320, speed: 260, dwell: 1.2 },
+      { cooldown: 2,    damage: 6, count: 2, r: 14, range: 320, speed: 260, dwell: 1.2 },
     ],
   },
 };
@@ -310,15 +310,15 @@ export const BUFF_MAX_LEVEL = 3;
 export const BUFF_IDS = ['might', 'haste', 'area', 'velocity', 'duration', 'force', 'amount', 'explode', 'split', 'pierce'];
 export const BUFFS = {
   might:    { name: 'Might',    icon: 'icon.might',    kind: 'stat',   levels: [0.2, 0.4, 0.6] },
-  haste:    { name: 'Haste',    icon: 'icon.haste',    kind: 'stat',   levels: [-0.1, -0.2, -0.3] },
-  area:     { name: 'Area',     icon: 'icon.nuke',     kind: 'stat',   levels: [0.2, 0.4, 0.6] },
+  haste:    { name: 'Haste',    icon: 'icon.haste',    kind: 'stat',   levels: [-0.08, -0.16, -0.24] },
+  area:     { name: 'Area',     icon: 'icon.nuke',     kind: 'stat',   levels: [0.15, 0.3, 0.45] },
   velocity: { name: 'Velocity', icon: 'icon.speed',    kind: 'stat',   levels: [0.2, 0.4, 0.6] },
   duration: { name: 'Duration', icon: 'icon.duration', kind: 'stat',   levels: [0.25, 0.5, 0.75] },
   force:    { name: 'Force',    icon: 'icon.force',    kind: 'stat',   levels: [0.5, 1, 1.5] },
   amount:   { name: 'Amount',   icon: 'icon.amount',   kind: 'count',  levels: [1, 2, 3] },
-  explode:  { name: 'Explode',  icon: 'icon.explode',  kind: 'chance', levels: [0.2, 0.35, 0.5], affinity: { fire: 1, arcane: 3 } },
-  split:    { name: 'Split',    icon: 'icon.split',    kind: 'chance', levels: [0.2, 0.35, 0.5], affinity: { fire: 1 } },
-  pierce:   { name: 'Pierce',   icon: 'icon.laser',    kind: 'chance', levels: [0.2, 0.35, 0.5], affinity: { arcane: 1, fire: 3 } },
+  explode:  { name: 'Explode',  icon: 'icon.explode',  kind: 'chance', levels: [0.15, 0.25, 0.35], affinity: { fire: 1, arcane: 3 } },
+  split:    { name: 'Split',    icon: 'icon.split',    kind: 'chance', levels: [0.15, 0.25, 0.35], affinity: { fire: 1 } },
+  pierce:   { name: 'Pierce',   icon: 'icon.laser',    kind: 'chance', levels: [0.15, 0.25, 0.35], affinity: { arcane: 1, fire: 3 } },
 };
 
 // §12 Procs. Which procs a projectile can roll follows its damage type (BUFFS[*].affinity);
@@ -341,7 +341,7 @@ export const MAX_HITS_MEMORY = 8;
 export const GEM_SPEED = 500;
 export const GEM_COLLECT_RADIUS = 12;
 export const MAX_GEMS = 600;
-export const xpToNext = (level) => 3 + 3 * level;
+export const xpToNext = (level) => 2 + 2 * level;
 // A full build is offered Repair only while tower HP is below this fraction of max HP.
 export const REPAIR_OFFER_BELOW = 0.5;
 export const CARD_COUNT = 3;
@@ -411,7 +411,7 @@ export const PRINCESS_TOWER_HP = 25;
 export const PRINCESS_SPARKLE_SCALE = 2;
 // The shop's three offers, prices in banked XP (`game.xp`, never a level).
 export const SHOP_ITEMS = ['reroll', 'card', 'heal'];
-export const SHOP_PRICES = { reroll: 10, card: 25, heal: 15 };
+export const SHOP_PRICES = { reroll: 5, card: 10, heal: 8 };
 export const SHOP_HEAL = 30;
 
 // §14.5 the prince. Times in s, distances in px. From PRINCE_FIRST, every PRINCE_INTERVAL s on a

@@ -308,6 +308,7 @@ test('heart: +20 tower HP, capped at max', () => {
 
 test('magnet: every gem on the ground starts homing and is collected', () => {
   const g = still();
+  g.level = 10; // 5 XP stays below a level-up, whose offers would freeze the world
   for (let i = 0; i < 5; i++) g.gems.push({ id: g.nextId++, x: 400 + i * 100, y: -300, value: 1, homing: false });
   pickup(g, 'magnet', 0, 0);
   g.tick({});

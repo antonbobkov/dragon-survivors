@@ -160,10 +160,10 @@ test('knockback and buffs draw no random numbers', () => {
 // ---- generic buffs (§11) ---------------------------------------------------------------
 
 test('Might: damage = ceil(base × (1 + 0.2 × level)) on every weapon', () => {
-  for (const [lvl, fb, lz] of [[1, 3, 2], [2, 3, 2], [3, 4, 2]]) {
+  for (const [lvl, fb, lz] of [[1, 3, 4], [2, 3, 5], [3, 4, 5]]) {
     const buffs = [{ id: 'might', level: lvl }];
     assert.equal(fire('fireball', 1, buffs).projectiles[0].damage, fb, `fireball 2 at Might L${lvl}`);
-    assert.equal(fire('laser', 1, buffs).projectiles[0].damage, lz, `laser 1 at Might L${lvl}`);
+    assert.equal(fire('laser', 1, buffs).projectiles[0].damage, lz, `laser 3 at Might L${lvl}`);
   }
   assert.equal(fire('fireball', 5, [{ id: 'might', level: 3 }]).projectiles[0].damage, 7, 'ceil(4 × 1.6)');
 });
@@ -171,8 +171,8 @@ test('Might: damage = ceil(base × (1 + 0.2 × level)) on every weapon', () => {
 test('Haste, Area and Velocity scale cooldowns, radius and orbit, speed and range', () => {
   const g = fire('fireball', 1, [{ id: 'haste', level: 2 }, { id: 'area', level: 3 }, { id: 'velocity', level: 1 }]);
   const p = g.projectiles[0];
-  assert.ok(near(g.weapons[0].timer, 0.9 * 0.8 - DT));
-  assert.ok(near(p.r, 6 * 1.6) && near(p.speed, 420 * 1.2) && near(p.range, 420 * 1.2));
+  assert.ok(near(g.weapons[0].timer, 0.75 * 0.84 - DT));
+  assert.ok(near(p.r, 6 * 1.45) && near(p.speed, 420 * 1.2) && near(p.range, 420 * 1.2));
 });
 
 test('Amount: the fireball fan widens by one step per extra shot (spreadStep at one-shot levels)', () => {

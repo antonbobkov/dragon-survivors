@@ -148,11 +148,11 @@ function buffText(id, level) {
   switch (id) {
     case 'might': return `+${pct(v)} damage`;
     case 'haste': return `-${pct(v)} cooldowns`;
-    case 'area': return `+${pct(v)} area and orbit`;
-    case 'velocity': return `+${pct(v)} shot speed and range`;
-    case 'duration': return `+${pct(v)} mini tower life`;
+    case 'area': return `+${pct(v)} shot, blast, ring, claw, bite, saw size`;
+    case 'velocity': return `+${pct(v)} shot and saw speed and range`;
+    case 'duration': return `+${pct(v)} life: mini towers, pickups; saw spin`;
     case 'force': return `+${pct(v)} knockback`;
-    case 'amount': return `+${v} shots, ring balls, max mini towers`;
+    case 'amount': return `+${v} shots, ring, towers, slashes, bites, saws`;
     // Explode and Pierce cross over at their max level (§12): the card says so.
     case 'explode': return level < BUFF_MAX_LEVEL ? `${pct(v)} fireballs explode; L3: lasers too` : `${pct(v)} chance to explode; lasers explode too`;
     case 'split': return `${pct(v)} chance fireballs split in two`;
