@@ -1,6 +1,6 @@
 # T-025: Slime rework: two splits, sizes, megaslime fusion
 
-**Source:** [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §5; owner notes 2 ("split up to twice and be slightly smaller each time… custom pixel art for each… > 100 slimes fuse into a megaslime, which just soaks up damage and doesn't hurt you") · **Model:** Opus · **Depends on:** T-017, T-018, T-019, T-021, T-024 — all merged
+**Source:** [strategy-depth design](../../../reports/designs/2026-11-26-strategy-depth-design.md) §5; owner notes 2 ("split up to twice and be slightly smaller each time… custom pixel art for each… > 100 slimes fuse into a megaslime, which just soaks up damage and doesn't hurt you") · **Model:** Opus · **Depends on:** T-017, T-018, T-019, T-021, T-024 — all merged
 
 ## Why
 
