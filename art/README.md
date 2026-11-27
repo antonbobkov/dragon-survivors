@@ -120,5 +120,9 @@ What the pack's sprites look like (print any of them with `node tools/bmp-to-art
 | `icons/dualclaw.txt` | `icon.dualclaw` | Dual claw: two scratches crossed, white and red |
 | `effects/swipe.txt` | `claw.swipe` | 56 × 18 rectangle slash: three bowed white and silver streaks from the left edge (the dragon's centre); strike, full, fading far end (3, 4, 5 ticks) |
 | `effects/cone.txt`, `cone22.txt`, `cone45.txt` | `claw.cone`, `claw.cone22`, `claw.cone45` | 40 × 40 cone slash: three white and silver claw arcs fanned around 0°, 22.5° and 45° from the apex (0, 20), (0, 6), (0, 0); near, out, fading (3, 4, 5 ticks). The game turns them by quarter turns and mirrors the 22.5° one across its diagonal for 16 directions, so no pixel leaves the grid |
+| `icons/bite.txt` | `icon.bite` | Bite: red jaws from the side, open to the right, two white fangs above interlocking with two below |
+| `icons/saw.txt` | `icon.saw` | Saw blade: a toothed steel disc, charcoal hub, lit from the top left |
+| `effects/jaws.txt` | `bite.jaws` | 16 × 16 bite on the target: red jaws hinged on the left, 2 px bands climbing in 2 px steps; wide open, closing, shut with the fangs interlocked (4, 3, 8 ticks). Mirrored in game when the target is left of the dragon |
+| `effects/saw.txt` | `saw.spin` | 12 × 12 saw blade, 4 frames of 2 ticks: eight hooked white teeth turning a quarter tooth (11.25°) clockwise per frame around a silver disc whose glint stays on the top left, so it spins without canvas rotation. Generated from a disc and a sawtooth profile, then kept as text |
 
 World objects and pickups are drawn at 2× like everything else; dark objects (the bomb) need a broad lit side in `grey`/`silver`, because `charcoal` alone vanishes on the dark grass.
