@@ -1,5 +1,5 @@
 // Game state, the tick order of §2.1 (one method per step), clock and game over.
-import { DT, TIMELINE, DYING_TIME, WEAPON_IDS, WEAPON_SLOTS, weaponMaxLevel } from './content.js';
+import { DT, TIMELINE, DYING_TIME, WEAPON_IDS, WEAPON_SLOTS, weaponMaxLevel, PRINCE_FIRST } from './content.js';
 import { mulberry32 } from './rng.js';
 import { Grid } from './grid.js';
 import { createDragon, applyIntent, moveDragon } from './dragon.js';
@@ -19,6 +19,7 @@ import { stepBraziers, collideBraziers, collidePickups, BRAZIER_INTERVAL_TICKS }
 import { spawnMerchantIfDue, stepMerchants, merchantDeaths, openShopIfDue, MERCHANT_INTERVAL_TICKS } from './merchant.js';
 import { stepShop } from './shop.js';
 import { spawnPrincessIfDue, stepPrincesses, collidePrincesses, princessDeaths, PRINCESS_INTERVAL_TICKS } from './princess.js';
+import { spawnPrinceIfDue } from './prince.js';
 
 const DYING_TICKS = Math.round(DYING_TIME / DT);
 
@@ -86,6 +87,7 @@ export class Game {
     this.rerolls = 0; // level-up rerolls bought from merchants (§14)
     this.princesses = []; // §14.4, at most one
     this.princessTimer = PRINCESS_INTERVAL_TICKS; // spawner steps until the next princess is due
+    this.princeNext = PRINCE_FIRST; // s: when the next prince is due (§14.5)
     this.spawner = createSpawner();
     this.grid = new Grid();
     this.kills = 0;
@@ -185,12 +187,13 @@ export class Game {
   stepDragon() { moveDragon(this); }
   // 3. §7.1
   stepTether() { stepTether(this); }
-  // 4. §9 enemies, then §14.2 braziers, then §14.3 the merchant, then §14.4 the princess.
+  // 4. §9 enemies, then §14.2 braziers, then §14.3 the merchant, then §14.4 the princess, then §14.5 the prince.
   stepSpawner() {
     stepSpawner(this);
     stepBraziers(this);
     spawnMerchantIfDue(this);
     spawnPrincessIfDue(this);
+    spawnPrinceIfDue(this);
   }
   // 5. Special timers (mage cast, summon anim), AI, move, separation, despawn, slime fusion (§8).
   stepEnemies() {
@@ -263,6 +266,7 @@ export class Game {
       braziers: this.braziers, pickups: this.pickups, brazierTimer: this.brazierTimer, lastBomb: this.lastBomb, lastFusion: this.lastFusion,
       merchants: this.merchants, merchantTimer: this.merchantTimer, shop: this.shop, rerolls: this.rerolls,
       princesses: this.princesses, princessTimer: this.princessTimer,
+      princeNext: this.princeNext,
       weapons: this.weapons, buffs: this.buffs,
     };
   }

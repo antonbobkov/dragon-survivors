@@ -36,7 +36,7 @@ Early and mid game is about **control**: which threat to answer, with which tool
 | Terrain | No | Open field only. |
 | Merchant | Yes | Every 90 s from 1:30 he crosses the field: stand by him to spend banked XP on a reroll, a card of your choice or a heal, or rob him (tanky, runs) for a chest with a free pick. |
 | Princess | Yes | Every 120 s from 2:00 she walks from the view edge to the tower and the horde turns on her: escort her in for +25 max tower HP and a full heal. |
-| Prince | Proposed | Mechanics are the owner's call (decision D-10). |
+| Prince | Yes | A rival dragon-slayer every 100 s from 2:15: he walks at the dragon and steals the gems around it; kill him first (40 HP, resists physical) and he drops all he stole plus 5 as one gem. |
 | Ninja frog, fireball lob | No | Post-demo. |
 
 ## The run
@@ -51,7 +51,7 @@ Early and mid game is about **control**: which threat to answer, with which tool
 
 - **Player:** `dragon` walk (2 frames, 20px, mirrored to face left); `dragon_fly` (16-direction fly sheet, 25px) is not used.
 - **Tower:** `castle` (30px) plus its destruction animation for the lose moment.
-- **Enemies:** `knight`, `skelly`, `slime` + `megaslime`, `mage` (walk, die, spell), `ghostnight` (24 frames: knight, burn, ghost), `golem` (64px, 7-frame walk, 21-frame death). All 16px except golem and megaslime. `trader` (the merchant) and `princess` are in; `prince` exists for later.
+- **Enemies:** `knight`, `skelly`, `slime` + `megaslime`, `mage` (walk, die, spell), `ghostnight` (24 frames: knight, burn, ghost), `golem` (64px, 7-frame walk, 21-frame death). All 16px except golem and megaslime. `trader` (the merchant), `princess` and `prince` are in.
 - **New art (this repo, `art/`):** anything the pack lacks is drawn new in the pack's style (horses, mounted knights, small slimes, claws, bite, saw blade, braziers, pickups, new icons).
 - **Weapons and FX:** `fireball` (8px), `fireball_big`, `laser_big` + `laserball`, `explosion`, `laser_explosion`, `burn`.
 - **Upgrade icons:** the `bonus` set already has icons for laser, explode, split, ring, speed, big, pershot and more. Level-up cards reuse them.

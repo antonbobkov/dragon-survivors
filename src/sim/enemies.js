@@ -5,7 +5,7 @@ import {
   ENEMIES, TOWER_RADIUS, CONTACT_INSET, SEPARATION_MAX_NEIGHBOURS, DESPAWN_DIST, DT, MAX_ENEMIES,
   SLIME_CHILDREN, SLIME_GENS, SLIME_FUSE_COUNT, SLIME_FUSE_SIZE, SLIME_FUSE_RADIUS, SLIME_FUSE_INTERVAL, MEGASLIME_HP_FACTOR,
   MAGE_CAST_INTERVAL, MAGE_CAST_TIME, MAGE_SUMMON_COUNT, MAGE_SUMMON_RING, MAGE_NO_CAST_DIST,
-  GHOST_BURN_TIME, GOLEM_HP, TIERS, tierOf, tierHp,
+  GHOST_BURN_TIME, GOLEM_HP, TIERS, tierOf, tierHp, untiered,
 } from './content.js';
 import { advanceAnim, setAnim, spawnEffect } from './effects.js';
 import { dropGem } from './gems.js';
@@ -13,6 +13,7 @@ import { initialOrbTimer, stepMageOrb } from './enemyShots.js';
 import { initGolem, golemSpecial, golemHit, golemFootstep } from './golem.js';
 import { merchantHit } from './merchant.js';
 import { lureOf } from './princess.js';
+import { initPrince, princeSpecial, walkPrince, princeDeath } from './prince.js';
 
 const MAGE_INTERVAL_TICKS = Math.round(MAGE_CAST_INTERVAL / DT);
 const MAGE_CAST_TICKS = Math.round(MAGE_CAST_TIME / DT);
@@ -23,13 +24,13 @@ const FUSE_INTERVAL_TICKS = Math.round(SLIME_FUSE_INTERVAL / DT);
 const SUMMON_ANGLES = Array.from({ length: MAGE_SUMMON_COUNT }, (_, i) => ((i + 0.5) / MAGE_SUMMON_COUNT) * 2 * Math.PI);
 
 // `tier` (§8.6, default 1) scales HP and radius here (`maxHp` keeps the HP it starts with); DPS,
-// XP and speed are read through tierOf(e) where they are used. The golem is always tier 1. A
-// fused type (the megaslime) has no HP of its own: the fusion sets it, `maxHp` with it, and its
-// gem (`xp`); made otherwise it has 1 HP.
+// XP and speed are read through tierOf(e) where they are used. The golem and the prince are
+// always tier 1. A fused type (the megaslime) has no HP of its own: the fusion sets it, `maxHp`
+// with it, and its gem (`xp`); made otherwise it has 1 HP.
 export function createEnemy(game, type, x, y, tier = 1) {
   const def = ENEMIES[type];
   if (!def) throw new Error(`unknown enemy type "${type}"`);
-  if (def.unkillable) tier = 1;
+  if (untiered(def)) tier = 1;
   if (!TIERS[tier]) throw new Error(`unknown enemy tier "${tier}"`);
   const e = {
     id: game.nextId++, type, tier, x, y, r: def.r * TIERS[tier].r, hp: def.hp === null ? 1 : tierHp(def.hp, tier), gen: 0,
@@ -46,6 +47,7 @@ export function createEnemy(game, type, x, y, tier = 1) {
   }
   if (def.unkillable) { e.hp = GOLEM_HP; e.unkillable = true; initGolem(e); }
   if (def.procImmune) e.procImmune = true;
+  if (def.rival) initPrince(e); // §14.5 his sack and theft timer
   e.maxHp = e.hp; // the HP it was created with (§4.1), read by the bite's execute (§10.8)
   game.enemies.push(e);
   if (!game.seen.includes(type)) game.seen.push(type); // §17.1 bestiary
@@ -72,6 +74,7 @@ export function enemySpecial(game, e) {
     return casting;
   }
   if (e.unkillable) return golemSpecial(game, e); // §8.10 poise, stagger, shove timer
+  if (ENEMIES[e.type].rival) return princeSpecial(game, e); // §14.5 theft
   const def = ENEMIES[e.type];
   if (def.summon && e.anim === def.summon) {
     if (advanceAnim(e, false)) setAnim(e, def.walk);
@@ -135,6 +138,7 @@ export function onEnemyDeath(game, e) {
     spawnEffect(game, ENEMIES.ghostKnight.die, e.x, e.y, { flip: e.flip, alpha: e.alpha, life: GHOST_BURN_TICKS, tier: e.tier });
     return true;
   }
+  if (ENEMIES[e.type].rival) princeDeath(game); // §14.5 his sound; the generic die plays
   return false;
 }
 
@@ -248,6 +252,7 @@ export function stepEnemies(game) {
       advanceAnim(e, true);
       continue;
     }
+    if (def.rival) { walkPrince(game, e); continue; } // §14.5: at the dragon, never lured
     // §14.4 a princess within PRINCESS_LURE draws it off the tower (never the golem).
     const p = e.unkillable ? null : lureOf(game, e);
     const tx = p ? p.x : tower.x, ty = p ? p.y : tower.y;
@@ -270,14 +275,16 @@ export function stepEnemies(game) {
   game.grid.build(list);
   separate(game);
 
-  // Despawn far from the tower, refunding the spawn budget (not for a stampede's horses, §8.8)
+  // Despawn far from the tower, refunding the spawn budget (not for a stampede's horses, §8.8,
+  // nor the prince, §14.5, who is not a budget spawn either)
   let n = 0;
   const d2 = DESPAWN_DIST * DESPAWN_DIST;
   for (let i = 0; i < list.length; i++) {
     const e = list[i];
     const dx = e.x - tower.x, dy = e.y - tower.y;
     if (dx * dx + dy * dy > d2 && !e.unkillable) {
-      if (!ENEMIES[e.type].stampede) game.spawner.budget += 1;
+      const def = ENEMIES[e.type];
+      if (!def.stampede && !def.rival) game.spawner.budget += 1;
       continue;
     }
     list[n++] = e;

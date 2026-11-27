@@ -66,6 +66,8 @@
     { "name": "princess.walk", "list": "princess/princess.txt" },
     { "name": "princess.die", "list": "princess/die.txt" },
     { "name": "princess.sparkle", "art": "effects/sparkle.txt" },
+    { "name": "prince.walk", "list": "princess/prince.txt" },
+    { "name": "prince.die", "list": "princess/prince_die.txt" },
     { "name": "icon.leftclaw", "art": "icons/leftclaw.txt" },
     { "name": "icon.rightclaw", "art": "icons/rightclaw.txt" },
     { "name": "icon.dualclaw", "art": "icons/dualclaw.txt" },
