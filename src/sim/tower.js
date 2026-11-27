@@ -2,6 +2,7 @@
 import {
   TOWER_HP, TOWER_START, TETHER_LENGTH, TOWER_FOLLOW_SPEED, TOWER_REST_DIST, TOWER_RADIUS, TOWER_QUERY_MARGIN, DT, ENEMIES, tierOf,
 } from './content.js';
+import { golemShove } from './golem.js';
 
 // Distances within this of the rest distance count as at rest, so rounding never makes
 // the tower creep (and its carriers flicker) while the dragon stands still.
@@ -42,9 +43,10 @@ export function stepTether(game) {
 }
 
 const scratch = [];
+const shoved = [];
 
 // Step 8 (last part): every enemy overlapping the tower deals contactDps × DT, the type's DPS
-// times its tier's (§8.6).
+// times its tier's (§8.6); then an overlapping golem may shove the tower (§8.10).
 export function collideTower(game) {
   const t = game.tower;
   const cands = game.grid.nearby(t.x, t.y, TOWER_RADIUS + TOWER_QUERY_MARGIN, scratch);
@@ -53,7 +55,13 @@ export function collideTower(game) {
     if (e.hp <= 0) continue;
     const rr = e.r + TOWER_RADIUS;
     const dx = e.x - t.x, dy = e.y - t.y;
-    if (dx * dx + dy * dy < rr * rr) dmg += ENEMIES[e.type].dps * tierOf(e).dps * DT;
+    if (dx * dx + dy * dy < rr * rr) {
+      dmg += ENEMIES[e.type].dps * tierOf(e).dps * DT;
+      if (e.unkillable) shoved.push(e);
+    }
   }
   if (dmg > 0) t.hp = Math.max(0, t.hp - dmg);
+  // §8.10 the golem shoves the tower once per second, after the contact damage of this tick.
+  for (const e of shoved) golemShove(game, e);
+  shoved.length = 0;
 }

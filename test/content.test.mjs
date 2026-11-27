@@ -38,8 +38,19 @@ test('content: dragon and tower constants match §6 and §7', () => {
   }
 });
 
+test('content: the golem constants match §8.10', () => {
+  const consts = Object.fromEntries(tableAfter('### 8.10').map((r) => [r[0].replace(/`/g, ''), num(r[1])]));
+  const names = ['GOLEM_POISE', 'GOLEM_POISE_DECAY', 'GOLEM_STAGGER_DIST', 'GOLEM_STAGGER_TIME', 'GOLEM_STAGGER_HOLD', 'GOLEM_SHOVE_DIST', 'GOLEM_SHOVE_INTERVAL', 'GOLEM_STEP_RANGE'];
+  assert.deepEqual(Object.keys(consts).sort(), [...names].sort());
+  for (const name of names) assert.equal(C[name], consts[name], name);
+  assert.deepEqual(C.GOLEM_STEP_FRAMES, [3, 6]);
+  assert.ok(specText.includes('frame 3 or 6 of `golem.walk`'));
+  assert.ok(C.GOLEM_STEP_FRAMES.every((f) => f < ANIMS['golem.walk'].ticks.length));
+});
+
 test('content: inline constants match the spec text', () => {
-  for (const name of ['MAX_ENEMIES', 'DESPAWN_DIST', 'MAGE_CAST_INTERVAL', 'MAX_GEMS', 'GEM_COLLECT_RADIUS', 'REPAIR_OFFER_BELOW', 'GOLEM_KNOCKBACK', 'EXPLODE_KNOCK']) assert.equal(C[name], specConst(name), name);
+  for (const name of ['MAX_ENEMIES', 'DESPAWN_DIST', 'MAGE_CAST_INTERVAL', 'MAX_GEMS', 'GEM_COLLECT_RADIUS', 'REPAIR_OFFER_BELOW', 'EXPLODE_KNOCK']) assert.equal(C[name], specConst(name), name);
+  assert.equal(C.GOLEM_KNOCKBACK, undefined, 'the golem has poise, not a fixed knockback (§8.10)');
   assert.equal(C.DT, 1 / 60);
   assert.equal(C.GRID_CELL, 64);
   assert.equal(C.SPAWN_RING_RADIUS, 560);

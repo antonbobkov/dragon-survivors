@@ -42,7 +42,7 @@ export function damageTaken(amount, r, power = 1) {
 }
 
 // §8.7 knockback: the px a hit of effective knock `knock` (the weapon's knock × Force) pushes
-// an enemy type: knock / mass. 0 for a type without a mass (the golem, which has its own rule).
+// an enemy type: knock / mass. 0 for a type without a mass (the golem, whose hits build poise).
 export function knockDistance(enemyType, knock) {
   const def = ENEMIES[enemyType];
   const mass = def && def.mass;
@@ -67,17 +67,17 @@ export function knockBack(e, knock, source) {
 // centre), `knock` the hit's knock after Force (§8.7, default 0). Applies the resistance and
 // the armoury, takes the result off the enemy's HP, then knocks a survivor back from
 // `source`, and returns the damage (not capped at the HP left). A killing hit pushes nothing.
-// An unkillable enemy (the golem) takes nothing and returns 0; it ignores `knock` and keeps
-// its own knockback rule (§8.4). Deaths are resolved in the deaths step from `hp <= 0`.
+// An unkillable enemy (the golem) takes nothing and returns 0; `knock` builds its poise
+// instead of pushing it (§8.10). Deaths are resolved in the deaths step from `hp <= 0`.
 export function dealDamage(game, e, amount, type, source, knock = 0) {
   if (e.unkillable) {
-    onEnemyHit(game, e, source);
+    onEnemyHit(game, e, knock);
     return 0;
   }
   const meta = game.meta;
   const dmg = damageTaken(amount, effectiveResist(e.type, type, meta), meta ? meta.power[type] : 1);
   e.hp -= dmg;
-  onEnemyHit(game, e, source);
+  onEnemyHit(game, e, knock);
   if (e.hp > 0) knockBack(e, knock, source);
   return dmg;
 }

@@ -4,11 +4,12 @@ import {
   ENEMIES, TOWER_RADIUS, CONTACT_INSET, SEPARATION_MAX_NEIGHBOURS, DESPAWN_DIST, DT, MAX_ENEMIES,
   SLIME_CHILDREN, SLIME_GENS, SLIME_FUSE_COUNT, SLIME_FUSE_SIZE, SLIME_FUSE_RADIUS, SLIME_FUSE_INTERVAL, MEGASLIME_HP_FACTOR,
   MAGE_CAST_INTERVAL, MAGE_CAST_TIME, MAGE_SUMMON_COUNT, MAGE_SUMMON_RING, MAGE_NO_CAST_DIST,
-  GHOST_BURN_TIME, GOLEM_KNOCKBACK, GOLEM_HP, TIERS, tierOf, tierHp,
+  GHOST_BURN_TIME, GOLEM_HP, TIERS, tierOf, tierHp,
 } from './content.js';
 import { advanceAnim, setAnim, spawnEffect } from './effects.js';
 import { dropGem } from './gems.js';
 import { initialOrbTimer, stepMageOrb } from './enemyShots.js';
+import { initGolem, golemSpecial, golemHit, golemFootstep } from './golem.js';
 
 const MAGE_INTERVAL_TICKS = Math.round(MAGE_CAST_INTERVAL / DT);
 const MAGE_CAST_TICKS = Math.round(MAGE_CAST_TIME / DT);
@@ -40,7 +41,7 @@ export function createEnemy(game, type, x, y, tier = 1) {
     if (d > 0) { ux /= d; uy /= d; } else { ux = 0; uy = 1; }
     e.dx = ux; e.dy = uy; e.flip = ux < 0;
   }
-  if (def.unkillable) { e.hp = GOLEM_HP; e.unkillable = true; }
+  if (def.unkillable) { e.hp = GOLEM_HP; e.unkillable = true; initGolem(e); }
   if (def.procImmune) e.procImmune = true;
   e.maxHp = e.hp; // the HP it was created with (§4.1), read by the bite's execute (§10.8)
   game.enemies.push(e);
@@ -67,6 +68,7 @@ export function enemySpecial(game, e) {
     stepMageOrb(game, e, casting); // §8.5
     return casting;
   }
+  if (e.unkillable) return golemSpecial(game, e); // §8.10 poise, stagger, shove timer
   const def = ENEMIES[e.type];
   if (def.summon && e.anim === def.summon) {
     if (advanceAnim(e, false)) setAnim(e, def.walk);
@@ -109,18 +111,10 @@ function summonSkeletons(game, e) {
   }
 }
 
-// Called on every damaging hit, after the damage. `source` is the projectile (or later the
-// ring fireball or explosion), read only for its position. An unkillable enemy gets its
-// HP back; the golem is pushed GOLEM_KNOCKBACK px away from the source.
-export function onEnemyHit(game, e, source) {
-  if (!e.unkillable) return;
-  e.hp = GOLEM_HP;
-  let dx = e.x - source.x, dy = e.y - source.y;
-  const d = Math.sqrt(dx * dx + dy * dy);
-  if (d > 0) { dx /= d; dy /= d; } else { dx = 0; dy = 1; }
-  e.x += dx * GOLEM_KNOCKBACK;
-  e.y += dy * GOLEM_KNOCKBACK;
-  game.sound('hit_golem');
+// Called on every hit, after the damage, with the hit's knock after Force. An unkillable
+// enemy (the golem) keeps its HP and builds poise (§8.10).
+export function onEnemyHit(game, e, knock = 0) {
+  if (e.unkillable) golemHit(game, e, knock);
 }
 
 // Step 9, for each dead enemy after kills/gem. Returns true when the death was handled
@@ -261,6 +255,7 @@ export function stepEnemies(game) {
       else if (vx > 0) e.flip = false;
     }
     advanceAnim(e, true);
+    if (e.unkillable) golemFootstep(game, e); // §8.10, a shake within range of the dragon
   }
 
   // Separation

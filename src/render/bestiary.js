@@ -1,7 +1,7 @@
 // Bestiary (§17.1): every enemy type with its sprite, stats, resistances and the tiers met
 // (§8.6); types not met this run as silhouettes. One legend line gives the tier multipliers. Pure helpers (layout, rows, bar styles) are tested under node;
 // drawBestiary reads the game and never writes it.
-import { ENEMIES, ENEMY_TYPES, DAMAGE_TYPES, DAMAGE_TYPE_NAMES, TICK_HZ, TIERS, TIER_IDS, GOLEM_KNOCKBACK, MEGASLIME_HP_FACTOR } from '../sim/content.js';
+import { ENEMIES, ENEMY_TYPES, DAMAGE_TYPES, DAMAGE_TYPE_NAMES, TICK_HZ, TIERS, TIER_IDS, GOLEM_POISE, GOLEM_STAGGER_DIST, MEGASLIME_HP_FACTOR } from '../sim/content.js';
 import { effectiveResist } from '../sim/damage.js';
 import { VIEW_W, VIEW_H } from '../viewport.js';
 import { shadowText, BIG_FONT } from './hud.js';
@@ -75,8 +75,8 @@ export function bestiaryRows(game) {
       stats: seen ? [
         hpXpText(def),
         `SPD ${def.speed}  DPS ${def.dps}`,
-        // §8.7: mass divides knockback; the golem keeps its fixed push per hit.
-        def.mass ? `MASS ${def.mass}` : `KNOCKBACK ${GOLEM_KNOCKBACK}`,
+        // §8.7: mass divides knockback; the golem has none: hits build its poise (§8.10).
+        def.mass ? `MASS ${def.mass}` : `POISE ${GOLEM_POISE} · staggers ${GOLEM_STAGGER_DIST} px`,
       ] : [],
       resists: seen && !def.unkillable ? DAMAGE_TYPES.map((t) => {
         const r = effectiveResist(type, t, game.meta);

@@ -234,7 +234,7 @@ export function spinRing(game, w, mods) {
 
 // Step 8: every ring fireball hits every live enemy it overlaps that is off its rehit
 // timer, with fire damage (§12.1) and the ring's knock × Force away from the ball (§8.7).
-// No procs and no hit effect; the golem is knocked back by its own rule.
+// No procs and no hit effect; the golem takes the knock as poise (§8.10).
 export function collideRing(game) {
   let mods = null;
   for (const w of game.weapons) {

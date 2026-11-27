@@ -37,7 +37,7 @@ export const SLIME_GENS = [
 ];
 
 // §8 Enemies. hp Infinity = cannot die. xp 0 = no gem. `mass` divides knockback (§8.7); the
-// golem has none: it keeps its own knockback rule (GOLEM_KNOCKBACK). `scale` (default 2, the
+// golem has none: hits build its poise instead (§8.10). `scale` (default 2, the
 // standard) is the screen scale of a type drawn bigger (§5, §8.6). `stampede` marks the horse:
 // it comes only in stampedes and runs straight (§8.8), never from the spawn budget. `gens` are
 // the slime's generations (SLIME_GENS, §8.4). `fused` marks the megaslime: it comes only from a
@@ -111,8 +111,17 @@ export const MAGE_ORB_DAMAGE = 5; // tower HP per hit
 export const MAGE_ORB_ANIM = 'orb.green';
 export const MAGE_ORB_SOUND = 'slime_poke';
 export const GHOST_BURN_TIME = 0.5;
-export const GOLEM_KNOCKBACK = 1;
 export const GOLEM_HP = 1e9; // finite stand-in for hp ∞ in state; restored after every hit
+// §8.10 the golem's poise and stagger, its tower shove and its footsteps (src/sim/golem.js).
+export const GOLEM_POISE = 60; // poise (the sum of hits' knock after Force) at which it staggers
+export const GOLEM_POISE_DECAY = 10; // poise lost per second while not hit
+export const GOLEM_STAGGER_DIST = 40; // px a stagger pushes it straight away from the dragon
+export const GOLEM_STAGGER_TIME = 0.3; // s the push takes (eased out)
+export const GOLEM_STAGGER_HOLD = 0.5; // s it then stands still
+export const GOLEM_SHOVE_DIST = 30; // px it shoves the tower away from itself
+export const GOLEM_SHOVE_INTERVAL = 1; // s between shoves while it touches the tower
+export const GOLEM_STEP_RANGE = 400; // px from the dragon within which a footstep shakes the screen
+export const GOLEM_STEP_FRAMES = [3, 6]; // golem.walk frames where a foot lands (the body at its lowest)
 
 // §8.1–8.3
 export const SEPARATION_MAX_NEIGHBOURS = 6;

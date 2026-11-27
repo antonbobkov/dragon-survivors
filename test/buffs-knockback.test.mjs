@@ -8,7 +8,7 @@ import { createWeapon, collideRing } from '../src/sim/weapons.js';
 import { spawnProjectile, resolveHit } from '../src/sim/projectiles.js';
 import { dealDamage, knockDistance } from '../src/sim/damage.js';
 import {
-  DT, WEAPONS, ENEMIES, EXPLODE_RADIUS, EXPLODE_KNOCK, GOLEM_KNOCKBACK, GOLEM_HP, BUFF_IDS,
+  DT, WEAPONS, ENEMIES, EXPLODE_RADIUS, EXPLODE_KNOCK, GOLEM_POISE, GOLEM_HP, BUFF_IDS,
 } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }];
@@ -129,7 +129,7 @@ test('knockback: split children inherit the parent\'s knock', () => {
   for (const k of kids) assert.equal(k.knock, 6);
 });
 
-test('knockback: the golem keeps GOLEM_KNOCKBACK whatever the knock and Force', () => {
+test('knockback: a hit never moves the golem; its knock after Force builds poise (§8.10)', () => {
   const g = still();
   g.buffs = [{ id: 'force', level: 3 }];
   g.weapons = [createWeapon('ring', 5)];
@@ -137,9 +137,12 @@ test('knockback: the golem keeps GOLEM_KNOCKBACK whatever the knock and Force', 
   g.weapons[0].balls = [{ x: 150, y: 0 }];
   g.grid.build(g.enemies);
   collideRing(g);
-  assert.ok(near(m.x, 200 + GOLEM_KNOCKBACK) && near(m.y, 0));
+  assert.deepEqual([m.x, m.y], [200, 0]);
+  assert.ok(near(m.poise, 8 * 2.5), `ring knock 8 × Force L3: ${m.poise}`);
   dealDamage(g, m, 5, 'arcane', { x: 0, y: 0 }, 1000);
-  assert.ok(near(m.x, 200 + 2 * GOLEM_KNOCKBACK));
+  assert.deepEqual([m.x, m.y], [200, 0], 'the stagger pushes it later, in the enemies step');
+  assert.ok(m.stagger > 0 && m.poise === 0, 'past GOLEM_POISE: staggers, poise reset');
+  assert.ok(GOLEM_POISE > 20);
   assert.equal(m.hp, GOLEM_HP);
 });
 

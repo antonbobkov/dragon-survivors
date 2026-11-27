@@ -126,7 +126,7 @@ export function slashTargets(game, s, x, y) {
 // Step 8, after the ring: every slash whose delay has run out strikes from the dragon's centre,
 // once: each target takes the slash's damage as physical damage (§12.1) and is pushed its knock
 // away from the dragon (§8.7), then every brazier the slash overlaps breaks (§14.2). No procs.
-// The golem is hit and knocked by its own rule.
+// The golem is hit; the knock builds its poise (§8.10).
 export function collideSlashes(game) {
   const d = game.dragon;
   for (const s of game.slashes) {

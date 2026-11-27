@@ -12,7 +12,7 @@ import {
   BESTIARY, RESIST_COLORS, bestiaryLayout, resistStyle, bestiaryRows, animFrameAt, spriteFit, drawBestiary,
 } from '../src/render/bestiary.js';
 import { CONTROLS } from '../src/render/screens.js';
-import { ENEMY_TYPES, ENEMIES, GOLEM_KNOCKBACK } from '../src/sim/content.js';
+import { ENEMY_TYPES, ENEMIES, GOLEM_POISE, GOLEM_STAGGER_DIST } from '../src/sim/content.js';
 import { VIEW_W, VIEW_H } from '../src/viewport.js';
 
 const atlasJson = JSON.parse(readFileSync(new URL('../assets/atlas.json', import.meta.url), 'utf8'));
@@ -85,7 +85,8 @@ test('rows: met types show name, stats and resistances; others are ???; the gole
   assert.equal(golem.unkillable, true);
   assert.deepEqual(golem.resists, []);
   assert.match(golem.stats[0], /^HP ∞/);
-  assert.equal(golem.stats[2], `KNOCKBACK ${GOLEM_KNOCKBACK}`, 'the golem has no mass: its fixed push per hit');
+  assert.equal(golem.stats[2], `POISE ${GOLEM_POISE} · staggers ${GOLEM_STAGGER_DIST} px`, 'the golem has no mass: its poise (§8.10)');
+  assert.equal(golem.stats[2], 'POISE 60 · staggers 40 px');
   assert.equal(ghost.stats[2], 'MASS 0.6');
 });
 

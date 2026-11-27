@@ -6,6 +6,7 @@ import { Accumulator, SPEEDS } from './loop.js';
 import { cardAt, inRect, ARMOURY_BUTTON } from './render/screens.js';
 import { armouryNav, armouryItemAt, cellItem, ITEMS, RESET, BACK } from './render/armoury.js';
 import { createStore, metaFromRanks, goldFor, addGold, buy, refundAll, totalSpent } from './armoury.js';
+import { Shake } from './render/shake.js';
 
 // §19: F5 jumps the clock to 4:50.
 export const DEBUG_JUMP_TO = 290;
@@ -16,7 +17,8 @@ export class App {
   // Promise }. debug: §19 tools (the page has ?debug=1; makeGame must then build the Game
   // with { debug: true }); now() -> ms, for tick timing. store: { load() -> purse,
   // save(purse) } (armoury.js createStore); the default keeps the purse in memory only.
-  constructor({ makeGame, fixedSeed = null, randomSeed, audio, debug = false, now = () => 0, store = createStore(null) }) {
+  // shake: screen shake on (§5; the page's ?shake=0 turns it off).
+  constructor({ makeGame, fixedSeed = null, randomSeed, audio, debug = false, now = () => 0, store = createStore(null), shake = true }) {
     this.makeGame = makeGame;
     this.debug = debug;
     this.now = now;
@@ -26,6 +28,7 @@ export class App {
     this.randomSeed = randomSeed;
     this.audio = audio;
     this.acc = new Accumulator();
+    this.shake = new Shake(shake); // fed by the sim's shake events, read by the renderer (§5)
     this.store = store;
     this.purse = store.load(); // { gold, ranks } (§13.1)
     this.armourySel = 0; // highlighted armoury item
@@ -243,7 +246,10 @@ export class App {
       this.pending.confirm = false;
       this.pending.pick = -1;
       this.game.tick(intent);
-      for (const ev of this.game.events) if (ev.type === 'sound') this.audio.play(ev.name);
+      for (const ev of this.game.events) {
+        if (ev.type === 'sound') this.audio.play(ev.name);
+        else if (ev.type === 'shake') this.shake.add(ev.kind, nowMs);
+      }
     }
     if (n > 0) {
       const ms = (this.now() - t0) / n;
