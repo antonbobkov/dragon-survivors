@@ -1,6 +1,6 @@
 # T-023: Bite and saw blade
 
-**Source:** [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §4; owner notes 2 (weapons: "bite attack", "saw blade in straight line from the tower") · **Model:** Opus · **Depends on:** T-017, T-018, T-019, T-022 — all merged
+**Source:** [strategy-depth design](../../../reports/designs/2026-11-26-strategy-depth-design.md) §4; owner notes 2 (weapons: "bite attack", "saw blade in straight line from the tower") · **Model:** Opus · **Depends on:** T-017, T-018, T-019, T-022 — all merged
 
 ## Why
 
