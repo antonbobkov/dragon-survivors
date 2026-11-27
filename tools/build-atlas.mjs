@@ -12,41 +12,18 @@ import { encodePng } from './lib/png.mjs';
 import { parseArt, parseHex, parsePalette, toHex } from './lib/art.mjs';
 import { outlineFrame, swapFrame, tintFrame } from './lib/variants.mjs';
 import { REPO_ROOT, argValue, loadManifest, resolveSourceRoot } from './lib/source.mjs';
+import { DEFAULT_TICKS, FANCY_TICK_SCALE, parseSequence } from './lib/sequence.mjs';
+
+export { DEFAULT_TICKS, FANCY_TICK_SCALE, parseSequence };
 
 export const ATLAS_WIDTH = 512;
 export const PADDING = 1;
-/** Plain lists: 6 sim ticks (60 Hz) per frame. FANCY durations are in 30 Hz ticks, so they are doubled. */
-export const DEFAULT_TICKS = 6;
-export const FANCY_TICK_SCALE = 2;
 /** Text pixel art lives here; its frame keys start with ART_PREFIX so they never meet a BMP path. */
 export const ART_ROOT = join(REPO_ROOT, 'art');
 export const ART_PREFIX = 'art/';
 export const PALETTE_FILE = 'palette.txt';
 /** Starts every variant suffix of a frame key (`#rg`, `#tint=...`), so no source path may contain it. */
 export const KEY_SEPARATOR = '#';
-
-/**
- * Parse a sequence .txt. Tokens are whitespace separated (CRLF, blank lines, trailing spaces and a
- * missing final newline all vanish). A leading FANCY token means `name N` pairs.
- * Returns [{ file, ticks }] with file relative to the .txt.
- */
-export function parseSequence(text) {
-  const tokens = text.split(/\s+/).filter(Boolean);
-  const fancy = tokens[0] === 'FANCY';
-  if (fancy) tokens.shift();
-  const out = [];
-  if (fancy) {
-    if (tokens.length % 2 !== 0) throw new Error('FANCY sequence has an odd number of tokens');
-    for (let i = 0; i < tokens.length; i += 2) {
-      const n = Number(tokens[i + 1]);
-      if (!Number.isInteger(n) || n < 1) throw new Error(`FANCY duration "${tokens[i + 1]}" for ${tokens[i]} is not a positive integer`);
-      out.push({ file: tokens[i], ticks: n * FANCY_TICK_SCALE });
-    }
-  } else {
-    for (const file of tokens) out.push({ file, ticks: DEFAULT_TICKS });
-  }
-  return out;
-}
 
 /**
  * Shelf packer. rects: [{ key, w, h }]. Items go on shelves tallest first; every item reserves

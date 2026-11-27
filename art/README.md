@@ -98,7 +98,7 @@ What the pack's sprites look like (print any of them with `node tools/bmp-to-art
 
 1. Draw or edit the text file (start from a pack sprite with `node tools/bmp-to-art.mjs <anim or bmp>` if it helps).
 2. `npm run build:assets` (needs the pack at `sourceRoot`, `--source` or `DRAGONGAME_ASSETS`).
-3. `npm run serve` and open <http://localhost:8000/tools/art-preview.html>: every anim, animating, at 2×, 3× and 4× on grass and on black. Type a name prefix (`icon.`, or `@t` for the enemy tiers) in the filter; tick "all frames" for a frame strip.
+3. `npm run serve` and open <http://localhost:8000/pixel/> (the [pixel viewer](../pixel/README.md): one sprite at a time, any scale, tiers and custom variants; it can also open this folder directly and re-read it after an edit) or <http://localhost:8000/tools/art-preview.html>: every anim, animating, at 2×, 3× and 4× on grass and on black. Type a name prefix (`icon.`, or `@t` for the enemy tiers) in the filter; tick "all frames" for a frame strip.
 4. Iterate until it reads at 2× next to the pack's sprites. Commit the art file, the manifest line and the rebuilt `assets/` and `src/sim/anims.js` together. Never commit screenshots.
 
 ## What is here
