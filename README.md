@@ -31,6 +31,7 @@ With `?debug=1`: collision circles and a stats overlay, F1–F4 grant fireball /
 | `npm test` | `npm test` |
 | `npm run gate` | both; must be green before `main` moves |
 | `npm run measure` | headless balance instrument ([tools/measure.mjs](tools/measure.mjs)) |
+| `npm run dps` | damage calculator: floor and ceiling vs pressure per minute ([tools/dps.md](tools/dps.md)); `node tools/dps.mjs --check` checks its models against the sim |
 | `npm run build:assets` | rebuild `assets/` from the dragongame pack (path in `tools/manifest.json`) |
 
 ## Documents
