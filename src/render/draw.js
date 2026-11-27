@@ -1,7 +1,7 @@
 // World rendering (§5): background, tether ring, entities in draw order, effects.
 // Reads the game and never writes it.
 import { mulberry32 } from '../sim/rng.js';
-import { TETHER_LENGTH, WEAPONS, TICK_HZ, PICKUP_BLINK, tierAnim, screenScale } from '../sim/content.js';
+import { TETHER_LENGTH, WEAPONS, TICK_HZ, PICKUP_BLINK, tierAnim, screenScale, CLAW_CONE_ANIMS } from '../sim/content.js';
 import { VIEW_W, VIEW_H, cameraOffset } from '../viewport.js';
 
 export const SPRITE_SCALE = 2;
@@ -116,6 +116,50 @@ export function minionSprites(game) {
   }));
 }
 
+// §10.5–10.6 claw slash effects. Each is drawn at the dragon's current centre (the claws are
+// the dragon's), at a whole screen scale: the integer nearest the slash's size over the
+// sprite's (rectangle width over the swipe's width, cone reach over the cone's), halves
+// rounding down, at least 1. The hitbox is the slash's own size (?debug=1 draws it).
+export function slashScale(size, spritePx) {
+  return Math.max(1, Math.round(size / spritePx - 1e-9));
+}
+
+// The apex of each cone sprite in source px: claw.cone points right (0°) from its left middle,
+// claw.cone22 at 22.5°, claw.cone45 at 45° (down-right on screen) from its top-left corner.
+export const CONE_APEX = { 'claw.cone': { x: 0, y: 20 }, 'claw.cone22': { x: 0, y: 6 }, 'claw.cone45': { x: 0, y: 0 } };
+
+// A cone pointing along (dx, dy) is drawn in the nearest of 16 directions (22.5° steps,
+// clockwise on screen from right): a quarter turn `quarter` (0–3) of one of the three cone
+// sprites, the 22.5° one mirrored across the diagonal (`transpose`) for 67.5°.
+export function coneSprite(dx, dy) {
+  const i = ((Math.round(Math.atan2(dy, dx) / (Math.PI / 8)) % 16) + 16) % 16;
+  const b = i % 4;
+  return { anim: CLAW_CONE_ANIMS[b === 3 ? 1 : b], quarter: Math.floor(i / 4), transpose: b === 3 };
+}
+const QUARTERS = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // [cos, sin] of 0°, 90°, 180°, 270°
+
+export function drawSlash(ctx, atlas, s, x, y) {
+  if (s.shape === 'rect') {
+    const r = frameRect(atlas, s.anim, s.frame);
+    if (!r) return;
+    const k = slashScale(s.w, r.w);
+    drawAnim(ctx, atlas, s.anim, s.frame, x + s.side * (r.w * k) / 2, y, { flip: s.side < 0, scale: k / SPRITE_SCALE });
+    return;
+  }
+  const c = coneSprite(s.dx, s.dy);
+  const r = frameRect(atlas, c.anim, s.frame);
+  if (!r) return;
+  const k = slashScale(s.reach, r.w);
+  const a = CONE_APEX[c.anim] || { x: 0, y: r.h / 2 };
+  const [cos, sin] = QUARTERS[c.quarter];
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.transform(cos, sin, -sin, cos, 0, 0);
+  if (c.transpose) ctx.transform(0, 1, 1, 0, 0, 0);
+  ctx.drawImage(atlas.image, r.x, r.y, r.w, r.h, -a.x * k, -a.y * k, r.w * k, r.h * k);
+  ctx.restore();
+}
+
 // §14.2 a pickup blinks in the last PICKUP_BLINK seconds of its life: hidden on every other
 // BLINK_TICKS-tick step of its remaining life.
 export const BLINK_TICKS = 8;
@@ -124,10 +168,13 @@ export function pickupVisible(p) {
 }
 
 // §14.2 the bomb's screen flash: white over the world, FLASH.alpha on the first frame after
-// the bomb, fading to nothing over FLASH.ticks ticks. Derived from `game.lastBomb`.
+// the bomb, fading to nothing over FLASH.ticks ticks. Derived from `game.lastBomb`. Shown only
+// while the world runs (phase 'play', no level-up offers): the tick count stops otherwise, and
+// the flash would freeze on screen.
 export const FLASH = { alpha: 0.6, ticks: 24, color: '#ffffff' };
 export function bombFlashAlpha(game) {
   if (typeof game.lastBomb !== 'number') return 0;
+  if (game.phase !== 'play' || (game.offers && game.offers.length > 0)) return 0;
   const age = game.tickCount - game.lastBomb; // 1 on the frame after the bomb's tick
   if (age < 1 || age > FLASH.ticks) return 0;
   return FLASH.alpha * (1 - (age - 1) / FLASH.ticks);
@@ -175,8 +222,8 @@ export function createRenderer({ atlas, makeCanvas }) {
   }
 
   // Draw order (§5): background, gems, tower, mini towers, braziers, pickups, enemies by y,
-  // ring fireballs, projectiles, enemy shots (mage orbs), dragon, effects, the bomb flash.
-  // The HUD and screens draw on top.
+  // ring fireballs, projectiles, enemy shots (mage orbs), dragon, claw slashes, effects, the
+  // bomb flash. The HUD and screens draw on top.
   function drawWorld(ctx, game) {
     ctx.imageSmoothingEnabled = false;
     const o = cameraOffset(game.dragon);
@@ -242,6 +289,8 @@ export function createRenderer({ atlas, makeCanvas }) {
 
     const d = game.dragon;
     drawAnim(ctx, atlas, d.anim, d.frame, d.x + o.x, d.y + o.y, { flip: d.flip });
+
+    for (const s of game.slashes || []) if (s.struck) drawSlash(ctx, atlas, s, d.x + o.x, d.y + o.y);
 
     for (const fx of game.effects) {
       const s = tierSprite(atlas, fx);

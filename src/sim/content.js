@@ -132,10 +132,14 @@ export const DAMAGE_TYPE_NAMES = { fire: 'Fire', arcane: 'Arcane', physical: 'Ph
 export const RESIST_MIN = -0.5; // the floor of a resistance, after the armoury's shred
 
 // §10 Weapons. levels[0] is level 1. `type` is the damage type of every hit (§12.1), `knock`
-// the px a hit pushes an enemy of mass 1 (§8.7).
+// the px a hit pushes an enemy of mass 1 (§8.7). A weapon's top level is its number of
+// levels: WEAPON_MAX_LEVEL for every weapon but an evolution, which has one (§10.7).
+// WEAPON_IDS is every weapon, in card-pool order (§14.1); evolutions are never offered as
+// new weapons, only through EVOLUTIONS.
 export const WEAPON_SLOTS = 4;
 export const WEAPON_MAX_LEVEL = 5;
-export const WEAPON_IDS = ['fireball', 'laser', 'miniTower', 'ring'];
+export const WEAPON_IDS = ['fireball', 'laser', 'miniTower', 'ring', 'leftClaw', 'rightClaw', 'dualClaw'];
+export const weaponMaxLevel = (id) => WEAPONS[id].levels.length;
 export const WEAPONS = {
   fireball: {
     name: 'Fireball', aimed: true, type: 'fire', knock: 4,
@@ -187,7 +191,50 @@ export const WEAPONS = {
       { count: 5, orbit: 80, spin: 260, damage: 4, rehit: 0.3 },
     ],
   },
+  // §10.5–10.7 claws: physical slashes from the dragon. A level with `width` slashes rectangles
+  // (`sides` 1: the side the dragon faces; 2: both, the other `sideDelay` s later); a level with
+  // `reach` slashes a cone of `angle` degrees in the aim direction, hitting the `maxTargets`
+  // nearest enemies in it. Amount repeats each side's rectangle `repeatDelay` s apart and adds
+  // to maxTargets.
+  leftClaw: {
+    name: 'Left claw', aimed: false, type: 'physical', knock: 14, sideDelay: 0.15, repeatDelay: 0.1,
+    levels: [
+      { cooldown: 1.3, damage: 2, width: 110, height: 36, sides: 1 },
+      { cooldown: 1.2, damage: 3, width: 115, height: 38, sides: 1 },
+      { cooldown: 1.1, damage: 3, width: 125, height: 40, sides: 2 },
+      { cooldown: 1.0, damage: 4, width: 130, height: 42, sides: 2 },
+      { cooldown: 0.9, damage: 5, width: 140, height: 44, sides: 2 },
+    ],
+  },
+  rightClaw: {
+    name: 'Right claw', aimed: true, type: 'physical', knock: 22,
+    levels: [
+      { cooldown: 1.1, damage: 4, angle: 60, reach: 80, maxTargets: 1 },
+      { cooldown: 1.0, damage: 5, angle: 60, reach: 85, maxTargets: 1 },
+      { cooldown: 0.9, damage: 6, angle: 65, reach: 90, maxTargets: 2 },
+      { cooldown: 0.8, damage: 8, angle: 70, reach: 95, maxTargets: 2 },
+      { cooldown: 0.7, damage: 9, angle: 75, reach: 100, maxTargets: 3 },
+    ],
+  },
+  dualClaw: {
+    name: 'Dual claw', aimed: true, type: 'physical', knock: 22, sideDelay: 0, repeatDelay: 0.1, evolution: true,
+    levels: [
+      { cooldown: 0.7, damage: 9, width: 140, height: 44, sides: 2, angle: 75, reach: 100, maxTargets: 3 },
+    ],
+  },
 };
+
+// §10.7 Evolutions: owning every weapon of `requires` at its top level puts `result` in the
+// level-up pool (CARD_WEIGHTS.evolve); picking it replaces them with `result`.
+export const EVOLUTIONS = [
+  { result: 'dualClaw', requires: ['leftClaw', 'rightClaw'] },
+];
+
+// §10.5–10.6 claw slash effects and sound. A rectangle draws CLAW_RECT_ANIM from the dragon's
+// centre sideways, a cone one of CLAW_CONE_ANIMS (16 directions, §5) from the dragon.
+export const CLAW_RECT_ANIM = 'claw.swipe';
+export const CLAW_CONE_ANIMS = ['claw.cone', 'claw.cone22', 'claw.cone45']; // 0°, 22.5°, 45°
+export const CLAW_SOUND = 'screech';
 
 // §11 Buffs. levels[0] is level 1. Stat values are fractions (+20% = 0.2), Amount's are extra
 // projectiles, chances are probabilities. A chance buff's `affinity` maps a damage type to the
@@ -232,7 +279,7 @@ export const xpToNext = (level) => 3 + 3 * level;
 // A full build is offered Repair only while tower HP is below this fraction of max HP.
 export const REPAIR_OFFER_BELOW = 0.5;
 export const CARD_COUNT = 3;
-export const CARD_WEIGHTS = { newWeapon: 3, upgradeWeapon: 4, newBuff: 3, upgradeBuff: 3, repair: 1 };
+export const CARD_WEIGHTS = { newWeapon: 3, upgradeWeapon: 4, evolve: 10, newBuff: 3, upgradeBuff: 3, repair: 1 };
 
 // §14.2 Braziers and pickups. Distances in px, times in s.
 export const VIEW_HALF_W = 480; // §5: half the 960×600 view around the dragon (the camera centre)
@@ -282,6 +329,7 @@ export const ATLAS_NAMES = [
   'icon.laser', 'icon.explode', 'icon.split', 'icon.ring', 'icon.speed', 'icon.big', 'icon.multi', 'icon.nuke',
   'icon.might', 'icon.haste', 'icon.duration', 'icon.force', 'icon.amount',
   'brazier.burn', 'brazier.break', 'pickup.heart', 'pickup.magnet', 'pickup.bomb',
+  'icon.leftclaw', 'icon.rightclaw', 'icon.dualclaw', 'claw.swipe', 'claw.cone', 'claw.cone22', 'claw.cone45',
 ];
 // §8.6 the generated tier variants of every tiered enemy anim (tiers 2–4).
 ATLAS_NAMES.push(...TIERED_ANIMS.flatMap((a) => TIER_IDS.filter((t) => t > 1).map((t) => tierAnim(a, t))));
@@ -290,5 +338,5 @@ ATLAS_NAMES.push(...TIERED_ANIMS.flatMap((a) => TIER_IDS.filter((t) => t > 1).ma
 export const SOUND_NAMES = [
   'shoot01', 'laser01', 'explosion01', 'explosion02', 'death01', 'death02', 'pickup', 'powerup',
   'hit_golem', 'megaslime_hit', 'slime_poke', 'destroy_castle_sound', 'start_game', 'ohno', 'win_level_2',
-  'dropping', 'powerup02', 'powerup03',
+  'dropping', 'powerup02', 'powerup03', 'screech',
 ];

@@ -109,7 +109,7 @@ test('gems: past MAX_GEMS the oldest merges into the gem nearest to it (ties: lo
 
 test('level-up: the pool respects slots and level caps; a full build offers only Repair, below half HP', () => {
   const g = still();
-  g.weapons = WEAPON_IDS.map((id) => createWeapon(id, id === 'ring' ? 5 : 2));
+  g.weapons = WEAPON_IDS.slice(0, 4).map((id) => createWeapon(id, id === 'ring' ? 5 : 2));
   g.buffs = ['might', 'haste', 'area', 'velocity'].map((id) => ({ id, level: id === 'area' ? 3 : 1 }));
   const pool = cardPool(g);
   assert.deepEqual(pool.map((p) => [p.card.kind, p.card.id, p.card.level, p.weight]), [
@@ -129,15 +129,16 @@ test('level-up: offers are 3 distinct cards drawn by weight, one rng draw each, 
   const g = still();
   g.weapons = [createWeapon('fireball', 1)];
   const c = countingRng(g, [0]);
-  // pool: fireball L2 (4), laser, miniTower, ring (3 each), 10 new buffs (3 each), repair (1)
+  // pool: fireball L2 (4), laser, miniTower, ring, leftClaw, rightClaw (3 each), 10 new buffs
+  // (3 each), repair (1): 50
   assert.deepEqual(rollOffers(g).map((x) => `${x.id}${x.level}`), ['fireball2', 'laser1', 'miniTower1']);
   assert.equal(c.n, 3);
   g.rng = () => 0.9999;
   assert.deepEqual(rollOffers(g).map((x) => x.id), ['repair', 'pierce', 'split']);
-  // 0.1 × 44 = 4.4 passes fireball (4): laser; 0.1 × 41 = 4.1 passes fireball: miniTower;
-  // 0.1 × 38 = 3.8 < 4: fireball
+  // 0.1 × 50 = 5 passes fireball (4): laser; 0.1 × 47 = 4.7 passes fireball: miniTower;
+  // 0.1 × 44 = 4.4 passes fireball: ring
   g.rng = () => 0.1;
-  assert.deepEqual(rollOffers(g).map((x) => x.id), ['laser', 'miniTower', 'fireball']);
+  assert.deepEqual(rollOffers(g).map((x) => x.id), ['laser', 'miniTower', 'ring']);
 });
 
 test('level-up: the world is frozen while offers are open; a valid pick applies the card', () => {
@@ -207,12 +208,13 @@ test('level-up: a level-up queued on the tick the tower falls is dropped', () =>
 
 test('level-up: card text for every card is one short line with a known icon', () => {
   const cards = [{ kind: 'repair', id: 'repair', level: 1 }];
-  for (const id of WEAPON_IDS) for (let l = 1; l <= 5; l++) cards.push({ kind: 'weapon', id, level: l });
+  for (const id of WEAPON_IDS.filter((x) => !WEAPONS[x].evolution)) for (let l = 1; l <= 5; l++) cards.push({ kind: 'weapon', id, level: l });
+  cards.push({ kind: 'evolve', id: 'dualClaw', level: 1 });
   for (const id of BUFF_IDS) for (let l = 1; l <= 3; l++) cards.push({ kind: 'buff', id, level: l });
   for (const c of cards) {
     const info = cardInfo(c);
     assert.ok(info.name && info.text && info.text.length <= 44, JSON.stringify(info));
-    assert.equal(info.tag, c.kind === 'repair' ? '' : c.level === 1 ? 'NEW' : `L${c.level}`);
+    assert.equal(info.tag, c.kind === 'repair' ? '' : c.kind === 'evolve' ? 'EVOLVE' : c.level === 1 ? 'NEW' : `L${c.level}`);
     assert.ok(info.icon.anim && info.icon.scale > 0);
   }
   assert.equal(cardInfo({ kind: 'weapon', id: 'miniTower', level: 1 }).name, 'Mini Tower');

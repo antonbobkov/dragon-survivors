@@ -60,7 +60,7 @@ test('knockback: a source at the enemy centre pushes along (0, 1); a killing hit
 });
 
 test('knockback: every weapon has its knock, projectiles carry knock × Force from firing', () => {
-  assert.deepEqual(Object.fromEntries(Object.entries(WEAPONS).map(([id, w]) => [id, w.knock])), { fireball: 4, laser: 2, miniTower: 4, ring: 8 });
+  assert.deepEqual(Object.fromEntries(Object.entries(WEAPONS).map(([id, w]) => [id, w.knock])), { fireball: 4, laser: 2, miniTower: 4, ring: 8, leftClaw: 14, rightClaw: 22, dualClaw: 22 });
   assert.equal(EXPLODE_KNOCK, 10);
   for (const [force, mul] of [[0, 1], [1, 1.5], [2, 2], [3, 2.5]]) {
     const buffs = force ? [{ id: 'force', level: force }] : [];

@@ -144,13 +144,14 @@ test('content: tier table matches §8.6', () => {
 });
 
 test('content: weapon tables match §10', () => {
-  const sections = { fireball: '### 10.1', laser: '### 10.2', miniTower: '### 10.3', ring: '### 10.4' };
+  const sections = { fireball: '### 10.1', laser: '### 10.2', miniTower: '### 10.3', ring: '### 10.4', leftClaw: '### 10.5', rightClaw: '### 10.6', dualClaw: '### 10.7' };
   for (const [id, heading] of Object.entries(sections)) {
     const i = SPEC.findIndex((l) => l.startsWith(heading));
     let h = i; while (!SPEC[h].startsWith('|')) h++;
     const header = SPEC[h].split('|').slice(1, -1).map((c) => c.trim());
     const rows = tableAfter(heading);
-    assert.equal(rows.length, 5, id);
+    assert.equal(rows.length, C.WEAPONS[id].evolution ? 1 : C.WEAPON_MAX_LEVEL, id);
+    assert.equal(C.weaponMaxLevel(id), rows.length, `${id} top level`);
     rows.forEach((row, lvl) => {
       assert.equal(num(row[0]), lvl + 1);
       header.slice(1).forEach((col, j) => assert.equal(C.WEAPONS[id].levels[lvl][col], num(row[j + 1]), `${id} L${lvl + 1} ${col}`));
@@ -159,7 +160,7 @@ test('content: weapon tables match §10', () => {
   }
   assert.deepEqual(C.WEAPON_IDS, Object.keys(C.WEAPONS));
   // knock per weapon (§10 intro, §8.7)
-  const knockNames = { Fireball: 'fireball', Laser: 'laser', 'Mini tower (its shots)': 'miniTower', Ring: 'ring' };
+  const knockNames = { Fireball: 'fireball', Laser: 'laser', 'Mini tower (its shots)': 'miniTower', Ring: 'ring', 'Left claw': 'leftClaw', 'Right claw': 'rightClaw', 'Dual claw': 'dualClaw' };
   const knocks = tableAfter('## 10. Weapons');
   assert.equal(knocks.length, C.WEAPON_IDS.length);
   for (const [name, k] of knocks) assert.equal(C.WEAPONS[knockNames[name]].knock, num(k), `${name} knock`);
