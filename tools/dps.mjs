@@ -60,10 +60,12 @@
 //
 // RESISTANCES, TIERS, OVERKILL. Raw damage per hit is ceil(base × Might) (buffDamage), then
 // the damage function's ceil(× (1 − r)) per enemy type (damageTaken). The calculator's DPS is
-// "effective": HP removed, i.e. for each body (a type at a tier; slimes split into their
-// generations, a ghost knight into its ghost, a mage adds its summoned skeletons) a hit
-// removes hp / ceil(hp / damage), so overkill is lost (the bite's execute shortens the hits
-// to kill). Hits land on bodies in proportion to their presence (spawn rate × HP).
+// "effective": HP removed. Bodies (a type at a tier; slimes split into their generations, a
+// ghost knight into its ghost, a mage adds its summoned skeletons) arrive at their spawn rates
+// and each one that dies takes exactly its hits to kill k = ceil(hp / damage) (the bite's
+// execute shortens it), so hits land on bodies in proportion to arrival rate × k and a hit
+// removes Σ rate·hp / Σ rate·k: overkill is lost, and a build's DPS / pressure is the share
+// of the arrivals its hits can kill.
 //
 // PER MINUTE. Pressure = Σ spawn rate × body HP (tiers' HP multipliers included; stampede
 // horses at their average rate). The crowd near the dragon is N = max(--min-near, spawn rate
@@ -282,7 +284,7 @@ function dragonShot(P, F, range, lat) {
 const SINGLE_R = 12; // a lone target's radius (a knight)
 const SINGLE_D = 60; // its distance from the dragon (inside every melee reach)
 
-function fireballFan(L, mods) {
+export function fireballFan(L, mods) {
   const def = WEAPONS.fireball;
   const n = L.count + mods.amount;
   const step = L.count > 1 ? L.spread / (L.count - 1) : def.spreadStep;
@@ -312,7 +314,7 @@ const fireballModel = {
   },
 };
 
-function laserOffsets(L, mods) {
+export function laserOffsets(L, mods) {
   const n = L.count + mods.amount;
   return Array.from({ length: n }, (_, i) => Math.abs(WEAPONS.laser.offset * (n - 1 - 2 * i)));
 }
@@ -658,16 +660,24 @@ export function hitsToKill(hp, damage, r, execute = false) {
   return n;
 }
 
-// HP a hit removes from a body, averaged over the field's mix (overkill lost).
+// HP a hit removes, on average over the field's mix (overkill lost). Bodies arrive at their
+// spawn rates (mix weights `w`) and each one that dies takes exactly its hits to kill, so in
+// steady state the hits land on body kinds in proportion to arrival rate × hits to kill, and a
+// hit removes Σ w·hp / Σ w·k. Bodies this damage cannot hurt are left out of both sums (their
+// HP is left to other weapons). A mix of bodies that never die (the check's dummies) takes the
+// raw damage.
 export function effectivePerHit(F, damage, type, execute = false) {
-  let s = 0;
+  let hp = 0, hits = 0, raw = 0, rawW = 0;
   for (const b of F.mix) {
     const r = ENEMIES[b.type].resist[type] || 0;
-    if (!Number.isFinite(b.hp)) { s += b.w * damageTaken(damage, r); continue; }
+    if (!Number.isFinite(b.hp)) { raw += b.w * damageTaken(damage, r); rawW += b.w; continue; }
     const k = hitsToKill(b.hp, damage, r, execute);
-    s += Number.isFinite(k) ? (b.w * b.hp) / k : 0;
+    if (!Number.isFinite(k)) continue;
+    hp += b.w * b.hp;
+    hits += b.w * k;
   }
-  return s;
+  if (rawW > 0) return raw / rawW;
+  return hits > 0 ? hp / hits : 0;
 }
 
 // Effective DPS of a build in field F (HP removed per second).
@@ -753,9 +763,12 @@ export function minuteAt(t, opts = {}, timeline = TIMELINE) {
   const o = { ...DEFAULTS, ...opts };
   const { rate, bodies } = bodiesAt(t, o, timeline);
   const pressure = bodies.reduce((a, b) => a + b.rate * b.hp, 0);
+  // the mix: bodies by arrival rate (hits spread over them by rate × hits to kill)
+  const arrivals = bodies.reduce((a, b) => a + b.rate, 0) || 1;
+  const mix = bodies.map((b) => ({ type: b.type, tier: b.tier, hp: b.hp, w: b.rate / arrivals }));
+  // the crowd's mean radius, by presence (spawn rate × HP: a body lingers about as long as its HP)
   const presence = bodies.map((b) => b.rate * b.hp);
   const tot = presence.reduce((a, b) => a + b, 0) || 1;
-  const mix = bodies.map((b, i) => ({ type: b.type, tier: b.tier, hp: b.hp, w: presence[i] / tot }));
   const r = bodies.reduce((a, b, i) => a + (presence[i] / tot) * b.r, 0) || ENEMIES.knight.r;
   const near = o.near !== undefined ? o.near : Math.max(o.minNear, rate * o.viewTime);
   const F = { rho: near / (Math.PI * o.radius * o.radius), r, R: o.radius, mix, near };
@@ -943,7 +956,8 @@ const median = (xs) => { const s = [...xs].sort((a, b) => a - b); const n = s.le
 // One row of the per-minute table.
 export function minuteRow(t, opts = {}) {
   const o = { ...DEFAULTS, ...opts };
-  const m = minuteAt(t, o);
+  const timeline = o.timeline || TIMELINE;
+  const m = minuteAt(t, o, timeline);
   const level = levelAt(t, o.levels || LEVEL_CURVE);
   const picks = Math.max(0, level - 1);
   const cache = new Map();
@@ -953,13 +967,14 @@ export function minuteRow(t, opts = {}) {
     naive.push({ b, dps: buildDps(b, m.F, cache).dps });
   }
   naive.sort((a, b) => a.dps - b.dps);
-  const floor = naive[Math.floor((naive.length - 1) / 2)];
+  // the median DPS (an even count: the mean of the two middle builds); `b` is the upper-middle build
+  const floor = { dps: median(naive.map((x) => x.dps)), b: naive[Math.floor(naive.length / 2)].b };
   let ceil = ceilingBuild(picks, m.F, o.beam, cache);
   const maxed = bestMaxedBuild(picks, m.F, cache);
   if (maxed && maxed.dps > ceil.dps + 1e-9) ceil = { ...maxed, exhaustive: true };
   const ceilPer = buildDps(ceil.b, m.F, cache).per;
   const flag = ceil.dps < m.pressure ? 'unwinnable' : floor.dps > o.trivial * m.pressure ? 'trivial' : '';
-  return { ...m, level, xpLevel: xpBoundLevel(t, o), picks, floor, ceil, ceilPer, floorMedian: median(naive.map((x) => x.dps)), flag };
+  return { ...m, level, xpLevel: xpBoundLevel(t, o, timeline), picks, floor, ceil, ceilPer, naive, flag };
 }
 
 // ---- report ---------------------------------------------------------------------------
@@ -972,8 +987,8 @@ export function assumptionsText(o) {
   return [
     `- Crowd near the dragon: ${o.near !== undefined ? `${o.near} enemies` : `max(${o.minNear}, spawn rate × ${o.viewTime} s) enemies`} as a Poisson field in a disk of ${o.radius} px around it; enemies stand still; the tower ${TOWER_REST_DIST} px from the dragon.`,
     `- Aimed weapons and mini-tower shots aim at the enemy nearest their origin (Poisson nearest-neighbour distance).`,
-    `- Mix: hits land on bodies (a type at a tier; slime generations, the ghost of a ghost knight and ${o.mageSummons} cast of ${MAGE_SUMMON_COUNT} skeletons per mage counted) in proportion to spawn rate × HP; overkill is lost (HP / hits to kill).`,
-    `- Levels: ${o.levels ? 'given' : 'LEVEL_CURVE (median level of naive bots still standing, seeds 1..48)'}; floor = median effective DPS of ${o.seeds} naive builds (card 0 of the real pool); ceiling = the best build the same number of level-ups can buy, as if every card were offered (a beam search of width ${o.beam} over picks spent, and an exhaustive search of builds with every item at its top level, marked exhaustive when it wins). DPS is effective: HP removed per second, resistances and overkill included.`,
+    `- Mix: hits land on bodies (a type at a tier; slime generations, the ghost of a ghost knight and ${o.mageSummons} cast of ${MAGE_SUMMON_COUNT} skeletons per mage counted) in proportion to arrival rate × hits to kill (each body that dies takes exactly its hits to kill); overkill is lost.`,
+    `- Levels: ${o.levels ? 'given' : 'LEVEL_CURVE (median level of naive bots still standing, seeds 1..48)'}; floor = median effective DPS of ${o.seeds} naive builds (card 0 of the real pool; an even count: the mean of the middle two); ceiling = the best build the same number of level-ups can buy, as if every card were offered (a beam search of width ${o.beam} over picks spent, and an exhaustive search of builds with every item at its top level, marked exhaustive when it wins). DPS is effective: HP removed per second, resistances and overkill included.`,
     `- Not modelled: knockback, mage orbs, braziers and pickups, the golem (not a target), movement of the dragon and the crowd.`,
   ].join('\n');
 }
@@ -1138,22 +1153,24 @@ export function runCheck(c, opts = {}) {
   return { ...c, measured, model, err: model > 0 ? measured / model - 1 : (measured > 0 ? Infinity : 0) };
 }
 
-export function checkTable(results) {
+export function checkTable(results, tolerance = CHECK_TOLERANCE) {
   const out = ['| Weapon | L | Buffs | Field | Dummy | Model DPS | Measured DPS | Error | OK |', '|---|---|---|---|---|---|---|---|---|'];
-  for (const r of results) out.push(`| ${r.weapon} | ${r.level} | ${r.set} | ${r.density} | ${r.dummy} | ${f2(r.model)} | ${f2(r.measured)} | ${(r.err * 100).toFixed(1)}% | ${Math.abs(r.err) <= CHECK_TOLERANCE ? 'yes' : '**NO**'} |`);
+  for (const r of results) out.push(`| ${r.weapon} | ${r.level} | ${r.set} | ${r.density} | ${r.dummy} | ${f2(r.model)} | ${f2(r.measured)} | ${(r.err * 100).toFixed(1)}% | ${Math.abs(r.err) <= tolerance ? 'yes' : '**NO**'} |`);
   return out.join('\n');
 }
 
 // ---- CLI ------------------------------------------------------------------------------
 
 function parseArgs(argv) {
-  const o = { ...DEFAULTS, check: false, weapon: null, seconds: CHECK_RUN.seconds, reshuffle: CHECK_RUN.reshuffle, settle: CHECK_RUN.settle, seed: 1 };
+  const o = { ...DEFAULTS, check: false, weapon: null, seconds: CHECK_RUN.seconds, warm: CHECK_RUN.warm, reshuffle: CHECK_RUN.reshuffle, settle: CHECK_RUN.settle, seed: 1, tolerance: CHECK_TOLERANCE };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i], v = argv[i + 1];
     const num = () => { i++; const x = Number(v); if (!Number.isFinite(x)) throw new Error(`bad value for ${a}: ${v}`); return x; };
     if (a === '--check') o.check = true;
     else if (a === '--weapon') { o.weapon = v; i++; }
     else if (a === '--seconds') o.seconds = num();
+    else if (a === '--warm') o.warm = num();
+    else if (a === '--tolerance') o.tolerance = num();
     else if (a === '--seed') o.seed = num();
     else if (a === '--reshuffle') o.reshuffle = num();
     else if (a === '--settle') o.settle = num();
@@ -1175,24 +1192,31 @@ function parseArgs(argv) {
   return o;
 }
 
+// Every weapon in `ids` must have a damage model: the same error in both modes, before any work.
+export function requireModels(ids) {
+  for (const id of ids) if (!MODELS[id]) throw new Error(`no damage model for weapon "${id}"`);
+}
+
 export function main(argv) {
   const o = parseArgs(argv);
   if (o.help) {
-    console.log('node tools/dps.mjs [--near N | --view-time S] [--min-near N] [--radius PX] [--levels L1,..,L10] [--seeds N] [--beam N] [--trivial X]\nnode tools/dps.mjs --check [--weapon ID] [--seconds S] [--seed N]');
+    console.log('node tools/dps.mjs [--near N | --view-time S] [--min-near N] [--radius PX] [--levels L1,..,L10] [--seeds N] [--beam N] [--trivial X]\nnode tools/dps.mjs --check [--weapon ID] [--seconds S] [--warm S] [--reshuffle S] [--settle S] [--seed N] [--tolerance X]');
     return 0;
   }
   const start = process.hrtime.bigint();
   if (o.check) {
     const cases = checkCases().filter((c) => !o.weapon || c.weapon === o.weapon);
     if (!cases.length) throw new Error(`no check cases for weapon "${o.weapon}"`);
-    const results = cases.map((c) => runCheck(c, { seconds: o.seconds, seed: o.seed, reshuffle: o.reshuffle, settle: o.settle }));
-    console.log(`Model vs real sim: dummies (HP 1e9, held in place) in a ${CHECK_RUN.radius} px disk around a still dragon that aims at the nearest; crowd 1 per ${1 / CHECK_RHO.crowd} px², sparse 1 per ${1 / CHECK_RHO.sparse} px². Dummies redrawn every ${o.reshuffle * 0.5}–${o.reshuffle * 1.5} s (random), the first ${o.settle} s of each layout not counted; ${o.seconds} s counted per case after ${CHECK_RUN.warm} s warm-up; seed ${o.seed}. Tolerance ±${CHECK_TOLERANCE * 100}%.\n`);
-    console.log(checkTable(results));
-    const bad = results.filter((r) => !(Math.abs(r.err) <= CHECK_TOLERANCE));
-    console.log(`\n${results.length - bad.length}/${results.length} within ±${CHECK_TOLERANCE * 100}% (${(Number(process.hrtime.bigint() - start) / 1e9).toFixed(1)} s wall)`);
+    requireModels([...new Set(cases.map((c) => c.weapon))]);
+    const results = cases.map((c) => runCheck(c, { seconds: o.seconds, warm: o.warm, seed: o.seed, reshuffle: o.reshuffle, settle: o.settle }));
+    console.log(`Model vs real sim: dummies (HP 1e9, held in place) in a ${CHECK_RUN.radius} px disk around a still dragon that aims at the nearest; crowd 1 per ${1 / CHECK_RHO.crowd} px², sparse 1 per ${1 / CHECK_RHO.sparse} px². Dummies redrawn every ${o.reshuffle * 0.5}–${o.reshuffle * 1.5} s (random), the first ${o.settle} s of each layout not counted; ${o.seconds} s counted per case after ${o.warm} s warm-up; seed ${o.seed}. Tolerance ±${o.tolerance * 100}%.\n`);
+    console.log(checkTable(results, o.tolerance));
+    const bad = results.filter((r) => !(Math.abs(r.err) <= o.tolerance));
+    console.log(`\n${results.length - bad.length}/${results.length} within ±${o.tolerance * 100}% (${(Number(process.hrtime.bigint() - start) / 1e9).toFixed(1)} s wall)`);
     if (bad.length) console.log(`Off: ${bad.map((r) => `${r.weapon} L${r.level} ${r.set} ${r.density} ${r.dummy} (${(r.err * 100).toFixed(1)}%)`).join('; ')}`);
     return bad.length ? 1 : 0;
   }
+  requireModels(WEAPON_IDS);
   const rows = MINUTES.map((t) => minuteRow(t, o));
   console.log('## Assumptions\n');
   console.log(assumptionsText(o));
