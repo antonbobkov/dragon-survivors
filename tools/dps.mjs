@@ -8,7 +8,8 @@
 // Default mode prints, as Markdown: the assumptions; per minute (0:30 … 5:00) the incoming
 // HP per second (pressure), the floor (median DPS of naive builds at the measured level) and
 // the ceiling (best allocation of the same level-ups: a layered beam search plus an exhaustive
-// search of full builds) with their ratio to the pressure; a per-stage summary; the weapons
+// search of builds with every item at its top level) with their ratio to the pressure; a
+// per-stage summary; the weapons
 // ranked per role; hits to kill. --check measures every weapon in the real sim against dummies
 // and exits 1 when a model is off by more than 15%.
 //
@@ -244,6 +245,20 @@ export function nearestQuantiles(F, limit = F.R) {
   });
 }
 
+// Results of the expensive model parts, by their exact inputs (the search asks for the same
+// shot, ring or blade under many builds).
+const MEMO = new Map();
+export function memo(key, fn) {
+  let v = MEMO.get(key);
+  if (v === undefined) { v = fn(); MEMO.set(key, v); }
+  return v;
+}
+const fieldKey = (F) => `${F.rho}|${F.r}|${F.R}`;
+function projectileHitsMemo(P, F, seg) {
+  return memo(`proj|${P.r}|${P.exR}|${P.explode}|${P.split}|${P.pierce}|${fieldKey(F)}|${seg.d}|${seg.psi}|${seg.rem}|${seg.gen}|${seg.aim}|${seg.empty}|${seg.hole}|${seg.startMass}`,
+    () => projectileHits(P, F, seg));
+}
+
 // One shot from the dragon aimed at the nearest enemy, averaged over that enemy's distance.
 // `lat(d)` is the shot's lateral offset from the aim line at distance d: below r_p + r it hits
 // the target, otherwise it flies on as a random shot through the empty disk.
@@ -252,7 +267,7 @@ function dragonShot(P, F, range, lat) {
   for (const { d, w } of nearestQuantiles(F)) {
     if (!Number.isFinite(d)) continue;
     const aimed = lat(d) < P.r + F.r;
-    const h = projectileHits(P, F, { d: 0, psi: 0, rem: range, gen: 0, aim: aimed ? d : null, empty: aimed ? 0 : d, hole: d });
+    const h = projectileHitsMemo(P, F, { d: 0, psi: 0, rem: range, gen: 0, aim: aimed ? d : null, empty: aimed ? 0 : d, hole: d });
     out.direct += w * h.direct;
     out.explode += w * h.explode;
   }
@@ -362,7 +377,7 @@ const miniTowerModel = {
     const h = { direct: 0, explode: 0 };
     for (const { d, w } of nearestQuantiles(F, WEAPONS.miniTower.targetRadius)) {
       if (!Number.isFinite(d)) continue;
-      const x = projectileHits(P, F, { d: MINI_DIST, psi: Math.PI / 2, rem: shot.range, gen: 0, aim: d });
+      const x = projectileHitsMemo(P, F, { d: MINI_DIST, psi: Math.PI / 2, rem: shot.range, gen: 0, aim: d });
       h.direct += w * x.direct;
       h.explode += w * x.explode;
     }
@@ -406,13 +421,16 @@ const ringModel = {
     const s = def.r + F.r;
     const rehit = Math.round(L.rehit / DT);
     const K = 24;
-    let hits = 0;
-    for (let j = 0; j < K; j++) {
-      const delta = -s + (2 * s * (j + 0.5)) / K;
-      if (O + delta <= 0) continue;
-      const rate = ringRate(n, O, L.spin, rehit, s, delta, 0.7 + j * 2.39996);
-      hits += rate * 2 * Math.PI * (O + delta) * (2 * s / K);
-    }
+    const hits = memo(`ring|${n}|${O}|${L.spin}|${rehit}|${s}`, () => {
+      let sum = 0;
+      for (let j = 0; j < K; j++) {
+        const delta = -s + (2 * s * (j + 0.5)) / K;
+        if (O + delta <= 0) continue;
+        const rate = ringRate(n, O, L.spin, rehit, s, delta, 0.7 + j * 2.39996);
+        sum += rate * 2 * Math.PI * (O + delta) * (2 * s / K);
+      }
+      return sum;
+    });
     return [{ rate: F.rho * hits, base: L.damage, type: def.type }];
   },
   single(level, mods) {
@@ -478,7 +496,7 @@ function clawModelFor(id) {
         // both sides: a fixed region; one side: the side the dragon faces, toward its aim
         hits += L.sides === 2
           ? 2 * (1 + mods.amount) * F.rho * rectArea(w, h, F.r)
-          : (1 + mods.amount) * facingRectHits(w, h, F.r, F.rho);
+          : (1 + mods.amount) * memo(`rect|${w}|${h}|${F.r}|${F.rho}`, () => facingRectHits(w, h, F.r, F.rho));
       }
       if (L.reach) {
         const R = L.reach * mods.area;
@@ -559,17 +577,22 @@ function sawBlade(level, mods) {
 const sawModel = {
   uses: ['haste', 'area', 'velocity', 'duration', 'amount'],
   crowd(level, mods, F) {
-    const { L, r, path, range } = sawBlade(level, mods);
-    const s = r + F.r;
-    const h = 2; // px grid
-    let hits = 0;
-    for (let ey = h / 2; ey < s; ey += h) {
-      for (let ex = -s + h / 2; ex < range + s; ex += h) {
-        // the field is centred on the dragon, the path starts at the tower TOWER_REST_DIST behind it
-        if (Number.isFinite(F.R) && Math.hypot(ey, ex - TOWER_REST_DIST) > F.R) continue;
-        hits += 2 * sawHitsAt(path, ex, ey, s) * h * h;
+    const L = WEAPONS.saw.levels[level - 1];
+    // enemy-area-weighted hits of one blade (× rho below)
+    const hits = memo(`saw|${level}|${mods.area}|${mods.speed}|${mods.duration}|${F.r}|${F.R}`, () => {
+      const { r, path, range } = sawBlade(level, mods);
+      const s = r + F.r;
+      const h = 2; // px grid
+      let sum = 0;
+      for (let ey = h / 2; ey < s; ey += h) {
+        for (let ex = -s + h / 2; ex < range + s; ex += h) {
+          // the field is centred on the dragon, the path starts at the tower TOWER_REST_DIST behind it
+          if (Number.isFinite(F.R) && Math.hypot(ey, ex - TOWER_REST_DIST) > F.R) continue;
+          sum += 2 * sawHitsAt(path, ex, ey, s) * h * h;
+        }
       }
-    }
+      return sum;
+    });
     const blades = L.count + mods.amount;
     return [{ rate: (F.rho * hits * blades) / (L.cooldown * mods.cooldown), base: L.damage, type: WEAPONS.saw.type }];
   },
@@ -858,27 +881,51 @@ export function picksOf(b) {
   return n + b.buffs.reduce((a, x) => a + x.level, 0);
 }
 
-// The small exhaustive check: every full build (the fireball and three more weapons at their
-// top level, four buffs at L3) that `picks` level-ups can buy, the best by effective DPS.
-export function bestFullBuild(picks, F, cache = new Map()) {
+// Every subset of `xs` with at most `k` members.
+function subsets(xs, k, from = 0, acc = [], out = []) {
+  out.push(acc.slice());
+  if (acc.length === k) return out;
+  for (let i = from; i < xs.length; i++) { acc.push(xs[i]); subsets(xs, k, i + 1, acc, out); acc.pop(); }
+  return out;
+}
+
+// The exhaustive check: every build whose items all stand at their top level (the fireball at
+// 1 or 5, up to three more weapons, an evolution in place of its weapons, up to four buffs at
+// L3) that `picks` level-ups can buy; the best `polish` of them then spend the picks left one
+// at a time on the best next card. Items that pay off only together (Explode, Split, Pierce
+// and Area on fireballs) are found here even when no single pick toward them pays.
+export function bestMaxedBuild(picks, F, cache = new Map(), polish = 8) {
   const others = WEAPON_IDS.filter((id) => id !== 'fireball');
-  let best = null;
-  const combos = (xs, k, from = 0, acc = [], out = []) => {
-    if (acc.length === k) { out.push(acc.slice()); return out; }
-    for (let i = from; i < xs.length; i++) { acc.push(xs[i]); combos(xs, k, i + 1, acc, out); acc.pop(); }
-    return out;
-  };
-  const buffSets = combos(BUFF_IDS, BUFF_SLOTS);
-  for (const ws of combos(others, WEAPON_SLOTS - 1)) {
+  const buffSets = subsets(BUFF_IDS, BUFF_SLOTS);
+  const found = [];
+  for (const ws of subsets(others, WEAPON_SLOTS - 1)) {
     // an evolution excludes the weapons it was made from
     if (EVOLUTIONS.some((e) => ws.includes(e.result) && e.requires.some((id) => ws.includes(id)))) continue;
-    const weapons = [{ id: 'fireball', level: weaponMaxLevel('fireball') }, ...ws.map((id) => ({ id, level: weaponMaxLevel(id) }))];
-    for (const bs of buffSets) {
-      const b = { weapons, buffs: bs.map((id) => ({ id, level: BUFF_MAX_LEVEL })) };
-      if (picksOf(b) > picks) continue;
-      const dps = buildDps(b, F, cache).dps;
-      if (!best || dps > best.dps) best = { b, dps };
+    for (const fb of [1, weaponMaxLevel('fireball')]) {
+      const weapons = [{ id: 'fireball', level: fb }, ...ws.map((id) => ({ id, level: weaponMaxLevel(id) }))];
+      const wCost = picksOf({ weapons, buffs: [] });
+      if (wCost > picks) continue;
+      for (const bs of buffSets) {
+        if (wCost + bs.length * BUFF_MAX_LEVEL > picks) continue;
+        const b = { weapons, buffs: bs.map((id) => ({ id, level: BUFF_MAX_LEVEL })) };
+        found.push({ b, dps: buildDps(b, F, cache).dps });
+      }
     }
+  }
+  found.sort((a, b) => b.dps - a.dps);
+  let best = null;
+  for (let s of found.slice(0, polish)) {
+    for (let left = picks - picksOf(s.b); left > 0; left--) {
+      let next = null;
+      for (const n of nextBuilds(s.b)) {
+        if (picksOf(n) > picks) continue;
+        const d = buildDps(n, F, cache).dps;
+        if (!next || d > next.dps) next = { b: n, dps: d };
+      }
+      if (!next || next.dps < s.dps) break;
+      s = next;
+    }
+    if (!best || s.dps > best.dps) best = s;
   }
   return best;
 }
@@ -908,8 +955,8 @@ export function minuteRow(t, opts = {}) {
   naive.sort((a, b) => a.dps - b.dps);
   const floor = naive[Math.floor((naive.length - 1) / 2)];
   let ceil = ceilingBuild(picks, m.F, o.beam, cache);
-  const full = bestFullBuild(picks, m.F, cache); // null until a full build is affordable
-  if (full && full.dps > ceil.dps) ceil = { ...full, exhaustive: true };
+  const maxed = bestMaxedBuild(picks, m.F, cache);
+  if (maxed && maxed.dps > ceil.dps + 1e-9) ceil = { ...maxed, exhaustive: true };
   const ceilPer = buildDps(ceil.b, m.F, cache).per;
   const flag = ceil.dps < m.pressure ? 'unwinnable' : floor.dps > o.trivial * m.pressure ? 'trivial' : '';
   return { ...m, level, xpLevel: xpBoundLevel(t, o), picks, floor, ceil, ceilPer, floorMedian: median(naive.map((x) => x.dps)), flag };
@@ -926,7 +973,7 @@ export function assumptionsText(o) {
     `- Crowd near the dragon: ${o.near !== undefined ? `${o.near} enemies` : `max(${o.minNear}, spawn rate × ${o.viewTime} s) enemies`} as a Poisson field in a disk of ${o.radius} px around it; enemies stand still; the tower ${TOWER_REST_DIST} px from the dragon.`,
     `- Aimed weapons and mini-tower shots aim at the enemy nearest their origin (Poisson nearest-neighbour distance).`,
     `- Mix: hits land on bodies (a type at a tier; slime generations, the ghost of a ghost knight and ${o.mageSummons} cast of ${MAGE_SUMMON_COUNT} skeletons per mage counted) in proportion to spawn rate × HP; overkill is lost (HP / hits to kill).`,
-    `- Levels: ${o.levels ? 'given' : 'LEVEL_CURVE (median level of naive bots still standing, seeds 1..48)'}; floor = median effective DPS of ${o.seeds} naive builds (card 0 of the real pool); ceiling = beam search (width ${o.beam}) over the same number of level-ups.`,
+    `- Levels: ${o.levels ? 'given' : 'LEVEL_CURVE (median level of naive bots still standing, seeds 1..48)'}; floor = median effective DPS of ${o.seeds} naive builds (card 0 of the real pool); ceiling = the best build the same number of level-ups can buy, as if every card were offered (a beam search of width ${o.beam} over picks spent, and an exhaustive search of builds with every item at its top level, marked exhaustive when it wins). DPS is effective: HP removed per second, resistances and overkill included.`,
     `- Not modelled: knockback, mage orbs, braziers and pickups, the golem (not a target), movement of the dragon and the crowd.`,
   ].join('\n');
 }

@@ -44,7 +44,7 @@ Not modelled: knockback, mage orbs, braziers and pickups, the golem (it takes no
 
 - **Level** at each minute: `LEVEL_CURVE`, the median level of the naive bots still standing (aim+naive and kite+naive, seeds 1..48; thin after 2:30), or `--levels`. The table also prints the level every gem spawned so far would give (an upper bound).
 - **Floor**: the median effective DPS of 64 naive builds after that many level-ups, each drawn with the real card pool taking card 0 (as the naive bot).
-- **Ceiling**: the best build for that minute's field, as if every card were on offer: a beam search over layers of picks spent, stepping by one pick or by taking an item to its top level (so items that pay off only at a high level, like Pierce on fireballs, are found), plus an exhaustive search of every full build the picks can buy. Its build is printed.
+- **Ceiling**: the best build for that minute's field, as if every card were on offer: a beam search over layers of picks spent, stepping by one pick or by taking an item to its top level, and an exhaustive search of every build whose items all stand at their top level (the fireball at 1 or 5) within the picks, the best eight of which spend the picks left greedily. The exhaustive part matters: Explode, Split, Pierce and Area multiply each other on fireballs, and Pierce reaches fireballs only at L3, so no single pick toward that build pays and a beam alone misses it. Its build is printed, `(exhaustive)` when that search won.
 - **Flags**: ceiling below the pressure: `unwinnable`; floor above 3× the pressure: `trivial`.
 
 ## The check

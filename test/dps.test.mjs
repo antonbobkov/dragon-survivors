@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   MODELS, poissonMinMean, lensArea, shotsIn, sawPath, hitsToKill, minuteAt, minuteRow, naiveBuild, nextBuilds,
-  maxMoves, picksOf, bestFullBuild, checkCases, runCheck, CHECK_TOLERANCE, miniTowerShotRate, modsOf, rectArea, coneArea,
+  maxMoves, picksOf, bestMaxedBuild, checkCases, runCheck, CHECK_TOLERANCE, miniTowerShotRate, modsOf, rectArea, coneArea,
   xpBoundLevel, matchupTable,
 } from '../tools/dps.mjs';
 import { WEAPON_IDS, WEAPON_SLOTS, BUFF_SLOTS, DT } from '../src/sim/content.js';
@@ -66,8 +66,9 @@ test('dps: builds and searches respect slots and pick counts', () => {
   for (const m of maxMoves(start)) assert.equal(picksOf(m.b), m.cost);
   assert.equal(picksOf({ weapons: [{ id: 'fireball', level: 5 }, { id: 'dualClaw', level: 1 }], buffs: [{ id: 'might', level: 3 }] }), 4 + 11 + 3);
   const F = minuteAt(240).F;
-  assert.equal(bestFullBuild(30, F), null, 'a full build needs 31 picks');
-  assert.ok(bestFullBuild(31, F).dps > 0);
+  assert.deepEqual(bestMaxedBuild(0, F).b, start, 'no picks: the starting build');
+  const best = bestMaxedBuild(12, F);
+  assert.ok(best.dps > 0 && picksOf(best.b) <= 12);
 });
 
 test('dps: one minute of the report runs, and the ceiling is at least the floor', () => {
