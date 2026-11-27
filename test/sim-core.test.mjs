@@ -322,7 +322,7 @@ test('fireball: fires on the first tick, then every cooldown', () => {
     g.tick({});
     if (g.events.some((e) => e.name === 'shoot01')) fired.push(i);
   }
-  assert.deepEqual(fired.slice(0, 4), [0, 54, 108, 162]);
+  assert.deepEqual(fired.slice(0, 4), [0, 45, 90, 135]);
 });
 
 test('projectiles: expire after travelling their range', () => {

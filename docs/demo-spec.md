@@ -516,11 +516,11 @@ The spawner uses `t` at the start of the tick. The weights are those of the last
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 0:00 | 0.3 | 100 | 0 | 0 | 0 | 0 | 0 | – | – | – | – | – |
 | 0:30 | 0.5 | 70 | 30 | 0 | 0 | 0 | 0 | – | – | – | – | – |
-| 1:00 | 0.6 | 45 | 30 | 25 | 0 | 0 | 0 | – | – | – | – | every 20 s, 5–6 |
-| 2:00 | 2.5 | 40 | 25 | 20 | 15 | 0 | 0 | – | – | – | – | every 30 s, 5–7 |
-| 2:30 | 6.25 | 39 | 25 | 20 | 15 | 0 | 1 | 90 | 10 | 0 | 0 | every 30 s, 5–7 |
-| 3:00 | 10 | 28 | 23 | 17 | 10 | 20 | 2 | 70 | 30 | 0 | 0 | every 30 s, 6–8 |
-| 3:30 | 13 | 28 | 23 | 17 | 10 | 20 | 2 | 65 | 30 | 5 | 0 | every 30 s, 6–8 |
+| 1:00 | 0.6 | 50 | 30 | 20 | 0 | 0 | 0 | – | – | – | – | every 20 s, 5–6 |
+| 2:00 | 2.5 | 42 | 25 | 18 | 15 | 0 | 0 | – | – | – | – | every 30 s, 5–7 |
+| 2:30 | 5.75 | 41 | 25 | 18 | 15 | 0 | 1 | 95 | 5 | 0 | 0 | every 30 s, 5–7 |
+| 3:00 | 9 | 28 | 23 | 17 | 10 | 20 | 2 | 70 | 30 | 0 | 0 | every 30 s, 6–8 |
+| 3:30 | 12.5 | 28 | 23 | 17 | 10 | 20 | 2 | 65 | 30 | 5 | 0 | every 30 s, 6–8 |
 | 4:00 | 16 | 26 | 25 | 18 | 10 | 18 | 3 | 60 | 25 | 15 | 0 | every 15 s, 8–12 |
 | 5:00 | 18 + golem | 26 | 25 | 18 | 10 | 18 | 3 | 55 | 25 | 15 | 5 | every 15 s, 8–12 |
 
@@ -571,10 +571,10 @@ Amount (§11) adds shots and widens the fan by one step per shot: with `n = coun
 
 | Level | cooldown | damage | count | spread | speed | range |
 |---|---|---|---|---|---|---|
-| 1 | 0.9 | 2 | 1 | 0 | 420 | 420 |
-| 2 | 0.8 | 2 | 1 | 0 | 420 | 420 |
-| 3 | 0.8 | 3 | 2 | 15 | 420 | 450 |
-| 4 | 0.7 | 3 | 2 | 15 | 460 | 480 |
+| 1 | 0.75 | 2 | 1 | 0 | 420 | 420 |
+| 2 | 0.7 | 2 | 1 | 0 | 420 | 420 |
+| 3 | 0.7 | 3 | 2 | 15 | 420 | 450 |
+| 4 | 0.65 | 3 | 2 | 15 | 460 | 480 |
 | 5 | 0.6 | 4 | 3 | 20 | 460 | 520 |
 
 Sprite `fireball.anim`, `fireball.big` from level 4. Radius 6 px (8 when big). Sound `shoot01`.
@@ -584,11 +584,11 @@ Fast, long range, lower damage. A laser stops at its first hit like a fireball; 
 
 | Level | cooldown | damage | count | speed | range |
 |---|---|---|---|---|---|
-| 1 | 1.4 | 1 | 1 | 700 | 600 |
-| 2 | 1.3 | 1 | 1 | 700 | 600 |
-| 3 | 1.2 | 2 | 1 | 750 | 650 |
-| 4 | 1.1 | 2 | 2 | 750 | 650 |
-| 5 | 1.0 | 3 | 2 | 800 | 700 |
+| 1 | 1.2 | 3 | 1 | 700 | 600 |
+| 2 | 1.1 | 4 | 1 | 700 | 600 |
+| 3 | 1.0 | 5 | 1 | 750 | 650 |
+| 4 | 1.0 | 6 | 2 | 750 | 650 |
+| 5 | 0.9 | 8 | 2 | 800 | 700 |
 
 `laser.dir` and `laser.bigdir` have 16 frames indexed counter-clockwise on screen starting from up: 0 = up, 4 = left, 8 = down, 12 = right. A laser's `dirFrame`, with `a = Math.atan2(dy, dx)` in screen coordinates (y down), is `(Math.round(-a / (2 * Math.PI) * 16) + 12 + 16) % 16`.
 
@@ -604,8 +604,8 @@ Every `cooldown` seconds the tower lobs a mini tower that lands 80 px toward the
 | 1 | 6 | 8 | 0.8 | 1 |
 | 2 | 6 | 10 | 0.7 | 2 |
 | 3 | 5 | 10 | 0.6 | 2 |
-| 4 | 5 | 12 | 0.5 | 3 |
-| 5 | 4 | 14 | 0.4 | 4 |
+| 4 | 5 | 12 | 0.6 | 3 |
+| 5 | 4 | 14 | 0.55 | 4 |
 
 Sprite `castle` at 1× (30 px, half the real tower). The lob is a 0.5 s arc drawn as the sprite rising and falling 30 px. Mini towers cannot be damaged.
 
@@ -636,11 +636,11 @@ Every `cooldown` the dragon slashes a rectangle `width × height` px on the side
 
 | Level | cooldown | damage | width | height | sides |
 |---|---|---|---|---|---|
-| 1 | 1.3 | 2 | 110 | 36 | 1 |
+| 1 | 1.3 | 3 | 110 | 36 | 1 |
 | 2 | 1.2 | 3 | 115 | 38 | 1 |
-| 3 | 1.1 | 3 | 125 | 40 | 2 |
-| 4 | 1.0 | 4 | 130 | 42 | 2 |
-| 5 | 0.9 | 5 | 140 | 44 | 2 |
+| 3 | 1.1 | 4 | 125 | 40 | 2 |
+| 4 | 1.0 | 5 | 130 | 42 | 2 |
+| 5 | 0.9 | 6 | 140 | 44 | 2 |
 
 *unmeasured*. Sprite `claw.swipe` (§5). Sound `screech`. Might, Haste, Area (both sides of the rectangle), Force and Amount apply; Velocity and Duration do not; no procs (§12).
 
@@ -659,8 +659,8 @@ Every `cooldown` the dragon slashes a cone `angle` degrees wide and `reach` px l
 | 1 | 1.1 | 4 | 60 | 80 | 1 |
 | 2 | 1.0 | 5 | 60 | 85 | 1 |
 | 3 | 0.9 | 6 | 65 | 90 | 2 |
-| 4 | 0.8 | 8 | 70 | 95 | 2 |
-| 5 | 0.7 | 9 | 75 | 100 | 3 |
+| 4 | 0.8 | 9 | 70 | 95 | 2 |
+| 5 | 0.7 | 11 | 75 | 100 | 3 |
 
 *unmeasured*. Sprite `claw.cone` in 16 directions (§5). Sound `screech`. Might, Haste, Area (the reach, not the angle), Force and Amount (+1 `maxTargets` per point) apply; no procs.
 
@@ -686,11 +686,11 @@ Every `cooldown` the dragon bites the nearest live enemy within `reach`: one hea
 
 | Level | cooldown | damage | reach |
 |---|---|---|---|
-| 1 | 1.6 | 8 | 50 |
-| 2 | 1.5 | 10 | 54 |
-| 3 | 1.3 | 13 | 57 |
-| 4 | 1.2 | 15 | 60 |
-| 5 | 1.0 | 18 | 64 |
+| 1 | 1.5 | 8 | 56 |
+| 2 | 1.4 | 10 | 60 |
+| 3 | 1.2 | 13 | 64 |
+| 4 | 1.1 | 15 | 68 |
+| 5 | 0.9 | 18 | 72 |
 
 *unmeasured*, as are `execute = 0.3` and `executeMult = 2`. Sprite `bite.jaws` on the target. Sound `megaslime_hit`. Might, Haste, Area (the reach), Force and Amount (+1 target per point) apply; Velocity and Duration do not; no procs (§12).
 
@@ -708,7 +708,7 @@ Every `cooldown` the tower launches `count` saw blades along the line from the t
 | 2 | 2.75 | 3 | 1 | 11 | 275 | 260 | 0.75 |
 | 3 | 2.5 | 3 | 1 | 12 | 290 | 260 | 0.9 |
 | 4 | 2.25 | 4 | 2 | 13 | 305 | 260 | 1.05 |
-| 5 | 2 | 5 | 2 | 14 | 320 | 260 | 1.2 |
+| 5 | 2 | 6 | 2 | 14 | 320 | 260 | 1.2 |
 
 *unmeasured*, as are `rehit` and `fanStep = 12°`. Sprite `saw.spin`, no sound. Might, Haste, Area (`r`), Velocity (speed and range), Duration (`dwell`), Force and Amount (+1 blade per point) apply; no procs (§12).
 
@@ -727,15 +727,15 @@ Up to **4 buff slots**, levels 1–3. Seven generic buffs reach every weapon whe
 | Buff | Icon | L1 | L2 | L3 | Applies to |
 |---|---|---|---|---|---|
 | Might | `icon.might` | +20% | +40% | +60% | all damage, rounded up |
-| Haste | `icon.haste` | −10% | −20% | −30% | every weapon cooldown and the mini tower's fireRate |
-| Area | `icon.nuke` | +20% | +40% | +60% | projectile radius, explosion radius, ring orbit, claw rectangles and cone reach, bite reach, saw blade radius |
+| Haste | `icon.haste` | −8% | −16% | −24% | every weapon cooldown and the mini tower's fireRate |
+| Area | `icon.nuke` | +15% | +30% | +45% | projectile radius, explosion radius, ring orbit, claw rectangles and cone reach, bite reach, saw blade radius |
 | Velocity | `icon.speed` | +20% | +40% | +60% | projectile speed and range, saw blade speed and range |
 | Duration | `icon.duration` | +25% | +50% | +75% | mini-tower life, pickup life (§14.2), saw blade dwell |
 | Force | `icon.force` | +50% | +100% | +150% | the knock of every hit (§8.7) |
 | Amount | `icon.amount` | +1 | +2 | +3 | fireballs and lasers per volley, ring fireballs, mini towers' maxActive, claw rectangles per side and cone targets, bite targets, saw blades per volley |
-| Explode | `icon.explode` | 20% | 35% | 50% | fire projectiles; at L3 also arcane (lasers explode) |
-| Split | `icon.split` | 20% | 35% | 50% | fire projectiles |
-| Pierce | `icon.laser` | 20% | 35% | 50% | arcane projectiles; at L3 also fire (fireballs pierce) |
+| Explode | `icon.explode` | 15% | 25% | 35% | fire projectiles; at L3 also arcane (lasers explode) |
+| Split | `icon.split` | 15% | 25% | 35% | fire projectiles |
+| Pierce | `icon.laser` | 15% | 25% | 35% | arcane projectiles; at L3 also fire (fireballs pierce) |
 
 *unmeasured*.
 
@@ -878,7 +878,7 @@ Precisely:
 - **Names:** Fireball, Laser, Mini Tower, Ring, Left Claw, Right Claw, Dual Claw, Bite, Saw Blade; Might, Haste, Area, Velocity, Duration, Force, Amount, Explode, Split, Pierce; Repair.
 - **Icons:** weapons as in §17, buffs as in §11, Repair the `castle` at 1×.
 - **Tag:** `NEW` for level 1, `L<n>` for an upgrade, `EVOLVE` for an evolution, none for Repair.
-- **Text:** a new weapon has a short description (Fireball "Aimed fireballs", Laser "Fast long-range aimed laser", Mini Tower "Lobs turrets that shoot your fireball", Ring "Fireballs orbit the dragon", Left Claw "Slashes the side you face", Right Claw "Aimed claw strikes the nearest foes", Bite "Bites the nearest foe; double on the weak", Saw Blade "Tower flings a saw blade past you and back"). A weapon upgrade lists the first three stats that change, in the order damage, count, sides, maxTargets, maxActive, duration, fireRate, cooldown, orbit, spin, rehit, spread, width, height, angle, reach, r, dwell, speed, range, labelled `dmg, count, sides, targets, max, life, rate, cd, orbit, spin, rehit, spread, width, height, angle, reach, size, dwell, speed, range`, as `dmg 1→2, cd 1.3→1.2, speed 700→750`. An evolution card names what it joins: `Evolve: Left + Right Claw → Dual Claw` (the required weapons' names, a last word they share said once). A buff shows its value at the new level (`+40% damage`, `-20% cooldowns`, `+40% shot, blast, ring, claw, bite, saw size`, `+40% shot and saw speed and range`, `+50% life: mini towers, pickups; saw spin`, `+100% knockback`, `+2 shots, ring, towers, slashes, bites, saws`, `35% chance fireballs split in two`). Explode and Pierce name their crossover: below L3 `35% fireballs explode; L3: lasers too` and `35% lasers pierce; L3: fireballs too`, at L3 `50% chance to explode; lasers explode too` and `50% chance to pierce; fireballs pierce too`. Repair shows `Tower +25 HP`.
+- **Text:** a new weapon has a short description (Fireball "Aimed fireballs", Laser "Fast long-range aimed laser", Mini Tower "Lobs turrets that shoot your fireball", Ring "Fireballs orbit the dragon", Left Claw "Slashes the side you face", Right Claw "Aimed claw strikes the nearest foes", Bite "Bites the nearest foe; double on the weak", Saw Blade "Tower flings a saw blade past you and back"). A weapon upgrade lists the first three stats that change, in the order damage, count, sides, maxTargets, maxActive, duration, fireRate, cooldown, orbit, spin, rehit, spread, width, height, angle, reach, r, dwell, speed, range, labelled `dmg, count, sides, targets, max, life, rate, cd, orbit, spin, rehit, spread, width, height, angle, reach, size, dwell, speed, range`, as `dmg 4→5, cd 1.1→1, speed 700→750`. An evolution card names what it joins: `Evolve: Left + Right Claw → Dual Claw` (the required weapons' names, a last word they share said once). A buff shows its value at the new level (`+40% damage`, `-16% cooldowns`, `+30% shot, blast, ring, claw, bite, saw size`, `+40% shot and saw speed and range`, `+50% life: mini towers, pickups; saw spin`, `+100% knockback`, `+2 shots, ring, towers, slashes, bites, saws`, `25% chance fireballs split in two`). Explode and Pierce name their crossover: below L3 `25% fireballs explode; L3: lasers too` and `25% lasers pierce; L3: fireballs too`, at L3 `35% chance to explode; lasers explode too` and `35% chance to pierce; fireballs pierce too`. Repair shows `Tower +25 HP`.
 
 **Level-up screen** (`screens.js`, over a 60% black overlay): the title `LEVEL UP` at y 100, `<n> more to pick` below it when more level-ups wait, then the cards in a centred row, each 260×220 px with a 24 px gap, top at y 170. A card shows its key number (1–3) top left, its tag top right (green `NEW`, orange `EVOLVE`, yellow `L<n>`), the icon at 3× its icon scale, the name, and the effect text in the largest monospace size from 15 px down to 9 px that fits the card. The highlighted card has a yellow border. Below the row a hint names the controls, and while `game.rerolls` is above 0 a 220×36 button `Reroll (n)  R / X` centred 56 px under the cards.
 

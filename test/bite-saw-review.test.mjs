@@ -60,7 +60,7 @@ test('bite: it breaks braziers only when it bites (an enemy in reach), and the c
 
 test('bite: the brazier reach is scaled by Area', () => {
   const reach = level('bite').reach;
-  const d = reach * 1.5 + BRAZIER_RADIUS; // beyond the unscaled reach + 12, inside it at Area L3 (+60%)
+  const d = reach * 1.4 + BRAZIER_RADIUS; // beyond the unscaled reach + 12, inside it at Area L3 (+45%)
   assert.ok(d > reach + BRAZIER_RADIUS);
   const run = (areaLevel) => {
     const g = armed([['bite']], areaLevel ? [{ id: 'area', level: areaLevel }] : []);

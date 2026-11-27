@@ -107,8 +107,8 @@ test('dps: a minute\'s DPS is the share of its bodies the hits can kill × its p
     }
   }
   // The review's 1:30 case (fireball 1, mini tower 1, Might 1, Amount 1): every body dies in
-  // one 3-damage hit, so the build kills hits/s ÷ arrivals/s of the crowd: 0.91 on this
-  // commit's numbers, below the pressure (spread by HP it read 1.11).
+  // one 3-damage hit, so the build kills hits/s ÷ arrivals/s of the crowd (spread by HP it
+  // would read higher). With the rebalanced fireball and Ooze it covers the pressure (1.14).
   const m = minuteAt(90);
   const b = { weapons: [{ id: 'fireball', level: 1 }, { id: 'miniTower', level: 1 }], buffs: [{ id: 'might', level: 1 }, { id: 'amount', level: 1 }] };
   const mods = modsOf(b);
@@ -117,7 +117,7 @@ test('dps: a minute\'s DPS is the share of its bodies the hits can kill × its p
   const arrivals = m.bodies.reduce((a, x) => a + x.rate, 0);
   const ratio = buildDps(b, m.F).dps / m.pressure;
   near(ratio, hits / arrivals, 1e-9);
-  assert.ok(ratio < 1, `${ratio}`);
+  assert.ok(ratio > 1, `${ratio}`);
 });
 
 test('dps: pressure and the field count every body, tier and stampede', () => {

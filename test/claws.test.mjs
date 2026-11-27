@@ -49,9 +49,9 @@ const beforeHits = (g) => {
 test('claws: data matches the work-file numbers; physical; evolution table', () => {
   assert.deepEqual(WEAPON_IDS.slice(4, 7), ['leftClaw', 'rightClaw', 'dualClaw']);
   assert.deepEqual(WEAPONS.leftClaw.levels.map((l) => [l.cooldown, l.damage, l.width, l.height, l.sides]),
-    [[1.3, 2, 110, 36, 1], [1.2, 3, 115, 38, 1], [1.1, 3, 125, 40, 2], [1.0, 4, 130, 42, 2], [0.9, 5, 140, 44, 2]]);
+    [[1.3, 3, 110, 36, 1], [1.2, 3, 115, 38, 1], [1.1, 4, 125, 40, 2], [1.0, 5, 130, 42, 2], [0.9, 6, 140, 44, 2]]);
   assert.deepEqual(WEAPONS.rightClaw.levels.map((l) => [l.cooldown, l.damage, l.angle, l.reach, l.maxTargets]),
-    [[1.1, 4, 60, 80, 1], [1.0, 5, 60, 85, 1], [0.9, 6, 65, 90, 2], [0.8, 8, 70, 95, 2], [0.7, 9, 75, 100, 3]]);
+    [[1.1, 4, 60, 80, 1], [1.0, 5, 60, 85, 1], [0.9, 6, 65, 90, 2], [0.8, 9, 70, 95, 2], [0.7, 11, 75, 100, 3]]);
   assert.deepEqual(WEAPONS.dualClaw.levels, [{ cooldown: 0.7, damage: 9, width: 140, height: 44, sides: 2, angle: 75, reach: 100, maxTargets: 3 }]);
   for (const id of ['leftClaw', 'rightClaw', 'dualClaw']) assert.equal(WEAPONS[id].type, 'physical', id);
   assert.deepEqual([WEAPONS.leftClaw.knock, WEAPONS.rightClaw.knock, WEAPONS.dualClaw.knock], [14, 22, 22]);
@@ -115,15 +115,15 @@ test('left claw: cooldown, Might, Haste, Area and Amount', () => {
   }
   assert.deepEqual(strikes.slice(0, 3), [1, 79, 157], 'every 1.3 s = 78 ticks');
   const buffed = armed('leftClaw', 1, [{ id: 'might', level: 1 }, { id: 'haste', level: 3 }, { id: 'area', level: 2 }, { id: 'amount', level: 2 }]);
-  const e = dummy(buffed, 'knight', 150, 0); // inside 110 × 1.4 = 154
+  const e = dummy(buffed, 'knight', 150, 0); // inside 110 × 1.3 = 143 + its radius 12
   tick(buffed);
   const s = buffed.slashes;
   assert.equal(s.length, 3, 'one rectangle + 2 Amount repeats');
   assert.deepEqual(s.map((x) => x.delay), [0, 6, 12], 'Amount repeats 6 and 12 ticks after');
-  assert.ok(near(s[0].w, 154) && near(s[0].h, 36 * 1.4));
-  assert.equal(s[0].damage, 3, 'ceil(2 × 1.2)');
-  assert.equal(lost(e), 3, 'ceil(3 × 0.75): the knight resists physical 0.25');
-  assert.ok(near(buffed.weapons[0].timer, 1.3 * 0.7 - DT), 'Haste −30%');
+  assert.ok(near(s[0].w, 143) && near(s[0].h, 36 * 1.3));
+  assert.equal(s[0].damage, 4, 'ceil(3 × 1.2)');
+  assert.equal(lost(e), 3, 'ceil(4 × 0.75): the knight resists physical 0.25');
+  assert.ok(near(buffed.weapons[0].timer, 1.3 * 0.76 - DT), 'Haste −24%');
 });
 
 // ---- right claw: cone -------------------------------------------------------------
@@ -161,7 +161,7 @@ test('right claw: the maxTargets nearest in the aimed cone, ties to the lower id
   // Amount adds targets; Area the reach (not the angle)
   const k = armed('rightClaw', 1, [{ id: 'amount', level: 2 }, { id: 'area', level: 1 }]);
   tick(k, aim);
-  assert.deepEqual([k.slashes[0].maxTargets, k.slashes[0].reach, k.slashes[0].angle], [3, 96, 60]);
+  assert.deepEqual([k.slashes[0].maxTargets, k.slashes[0].reach, k.slashes[0].angle], [3, 92, 60]);
   // no enemy: the slash still strikes and the cooldown runs
   const e = armed('rightClaw');
   tick(e, aim);
@@ -273,7 +273,7 @@ test('evolution: offered (weight 10) only with both claws at L5, never as a weap
   assert.deepEqual(h.weapons.map((w) => `${w.id}:${w.level}`), ['dualClaw:1']);
   const info = cardInfo({ kind: 'evolve', id: 'dualClaw', level: 1 });
   assert.deepEqual([info.name, info.tag, info.text, info.icon.anim], ['Dual Claw', 'EVOLVE', 'Evolve: Left + Right Claw → Dual Claw', 'icon.dualclaw']);
-  assert.equal(cardInfo({ kind: 'weapon', id: 'leftClaw', level: 3 }).text, 'sides 1→2, cd 1.2→1.1, width 115→125');
+  assert.equal(cardInfo({ kind: 'weapon', id: 'leftClaw', level: 3 }).text, 'dmg 3→4, sides 1→2, cd 1.2→1.1');
   assert.equal(cardInfo({ kind: 'weapon', id: 'rightClaw', level: 3 }).text, 'dmg 5→6, targets 1→2, cd 1→0.9');
   assert.equal(cardInfo({ kind: 'weapon', id: 'rightClaw', level: 1 }).text, 'Aimed claw strikes the nearest foes');
 });
