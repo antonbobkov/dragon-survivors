@@ -836,7 +836,7 @@ Out-of-game upgrades, bought between runs with gold. The ranks' effects are *unm
 ## 14. XP, gems, level-up
 
 - Each enemy drops a gem worth its `XP` value times its tier's XP multiplier (§8.6) at its death position; a megaslime's gem is worth its `xp`, the sum of the gems of the slimes it fused (§8.9), and a prince's his bounty plus the XP in his sack (§14.5). Gems are static. A gem within `DRAGON_PICKUP_RADIUS` moves toward the dragon at 500 px/s and is collected on contact. Sound `pickup`. Gems never expire. `MAX_GEMS = 600`; when exceeded, the oldest gem's value is merged into the gem nearest to it.
-- XP to next level: `xpToNext(level) = 2 + 2 × level` (level 1 needs 4, level 10 needs 22). Measured: with it the greedy bots reach 5:00 in about 60% of runs and the careless ones fall mostly in 1:30–3:00 (§20).
+- XP to next level: `xpToNext(level) = 2 + 2 × level` (level 1 needs 4, level 10 needs 22). Measured with the bots (§20): careful ones reach 5:00 in about two runs of three, careless ones fall mostly between 1:30 and 3:00.
 - On level-up the sim increments `game.pendingLevelUps`. The loop sees it and shows the level-up screen. Several pending level-ups are shown one after the other. A robbed merchant's chest adds a pending level-up without a level (§14.3).
 
 Gems precisely:
@@ -945,7 +945,7 @@ Every 90 s a merchant crosses the field. Stand by him to **trade**: spend the XP
 | Any card | 10 XP | a card of the player's choice from the level-up pool (§14.1) without Repair, applied as a level-up card |
 | Heal | 8 XP | tower +`SHOP_HEAL`, capped at max HP |
 
-Stats and prices *unmeasured*.
+Stats *unmeasured*. Prices measured with the bots (§20): the card is affordable at the first merchant in nearly every run of a careful player, at about two thirds of the level it would otherwise buy.
 
 - **Not an enemy.** A merchant lives in `game.merchants`: enemies ignore him (no targeting, separation or contact), he is not in the grid, the cap, `game.seen` or the bestiary, has no tier, and his death is not a kill and drops no gem. At most one is about at a time.
 - **Timer.** `game.merchantTimer` starts at 5400 and goes down by one every spawner step (step 4, after the braziers); when it reaches 0 it restarts at 5400 and, unless a merchant is still about, one appears. So the first is due on tick 5400 (1:30) and then every 90 s of play; a due one while another is about is skipped and draws nothing. The timer counts steps, not `t`, so a debug jump (§19) neither skips nor adds merchants.

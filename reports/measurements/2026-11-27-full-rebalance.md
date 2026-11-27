@@ -1,6 +1,6 @@
 # The full rebalance: calculator and bots, baseline to after
 
-Date: 2026-11-27 · Task: T-029 · Instruments: [`tools/dps.mjs`](../../tools/dps.mjs) (the corrected calculator, [how it works](../../tools/dps.md)) and [`tools/measure.mjs`](../../tools/measure.mjs) (bots, extended here) · Code: main at `7a39e18` plus T-029 · Frozen: a re-measure is a new dated report. Follows [damage calculator 2](2026-11-26-damage-calculator-2.md) and [the play-test 1 rebalance](2026-11-06-playtest1-rebalance.md).
+Date: 2026-11-27 · Task: T-029 · Instruments: [`tools/dps.mjs`](../../tools/dps.mjs) (the corrected calculator, [how it works](../../tools/dps.md)) and [`tools/measure.mjs`](../../tools/measure.mjs) (bots, extended here) · Code: main at `7a39e18` plus T-029 (later merged with main at `372ced5`, test-only changes) · Frozen: a re-measure is a new dated report. Follows [damage calculator 2](2026-11-26-damage-calculator-2.md) and [the play-test 1 rebalance](2026-11-06-playtest1-rebalance.md).
 
 ## Summary
 
@@ -17,7 +17,7 @@ Date: 2026-11-27 · Task: T-029 · Instruments: [`tools/dps.mjs`](../../tools/dp
 | First armoury rank after 1–2 runs, a track in ~10–15 | rank 1: 1 run; a track 1,100 gold ≈ 17 runs at the old bots' ~65 gold | rank 1 150 gold, a track 2,250: bots pay ~180 a run on average | yes |
 | "Any card" affordable at the first merchant | never (25 XP > a level) | 43–46 of 48 greedy runs | yes |
 
-Twenty-one levers moved in two rounds (listed below with every old → new value). No rule changed, no mechanic was added, the owner's numbers (enemy speeds, `DRAGON_SPEED`, `TETHER_LENGTH`) are untouched, and the three fun features stand (split children still split; fusion and the comet tail are untouched).
+Twenty-one levers moved in two rounds (listed below with every old → new value). No rule changed and no mechanic was added (the rank cost keeps its shape of a price per rank, now linear instead of quadratic; debug runs paying no gold is the decision the notes asked for), the owner's numbers (enemy speeds, `DRAGON_SPEED`, `TETHER_LENGTH`) are untouched, and the three fun features stand (split children still split; fusion and the comet tail are untouched).
 
 ## Method
 
