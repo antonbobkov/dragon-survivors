@@ -8,7 +8,7 @@ import { App } from './app.js';
 import { VIEW_W, VIEW_H, fitScale, dragonScreen } from './viewport.js';
 import { createRenderer } from './render/draw.js';
 import { drawHud, shadowText } from './render/hud.js';
-import { drawTitle, drawPause, drawGameOver, drawLevelUp } from './render/screens.js';
+import { drawTitle, drawPause, drawGameOver, drawLevelUp, drawShop } from './render/screens.js';
 import { drawBestiary } from './render/bestiary.js';
 import { drawArmoury } from './render/armoury.js';
 import { createStore } from './armoury.js';
@@ -87,6 +87,7 @@ async function boot() {
     else if (app.screen === 'paused') drawPause(ctx);
     else if (game.phase === 'over') drawGameOver(ctx, game, app.goldLine());
     else if (app.levelUpOpen()) drawLevelUp(ctx, game, atlas, app.cardSel);
+    else if (app.shopOpen()) drawShop(ctx, game, atlas, app.shopSel);
   });
 }
 

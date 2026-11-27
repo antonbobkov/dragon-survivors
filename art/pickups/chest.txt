@@ -1,0 +1,22 @@
+# pickup.chest: a free level-up pick, dropped by a robbed merchant. A wooden chest under a
+# domed lid, two silver bands and a yellow lock, lit from the top left. The wood is
+# gold.dark with brown shade (brown alone sinks into the grass, as on the horse).
+key
+  y yellow
+  g gold
+  o gold.dark
+  b brown
+  r brown.dark
+  s silver
+  k grey
+frame
+..gggggggg..
+.gsoooooosb.
+gosoooooosob
+rrsrryyrrsrr
+gosooyyoosob
+gosoorgoosob
+gosoooooosob
+osobbbbbbkbb
+bkbbbbbbbkbr
+.rrrrrrrrrr.

@@ -34,7 +34,8 @@ Early and mid game is about **control**: which threat to answer, with which tool
 | Heals | Yes | Braziers (the VS candlestick) drop hearts, magnets and bombs. |
 | Out-of-game upgrades | Yes | Armoury: per-damage-type power and resistance shred, bought with gold earned per run. |
 | Terrain | No | Open field only. |
-| Merchants, princess, prince | Proposed | Mechanics are the owner's call (decisions D-8–D-10). |
+| Merchant | Yes | Every 90 s from 1:30 he crosses the field: stand by him to spend banked XP on a reroll, a card of your choice or a heal, or rob him (tanky, runs) for a chest with a free pick. |
+| Princess, prince | Proposed | Mechanics are the owner's call (decisions D-9–D-10). |
 | Ninja frog, fireball lob | No | Post-demo. |
 
 ## The run

@@ -1,0 +1,17 @@
+# icon.reroll (a reroll of the level-up cards): a white die showing three, silver shade on
+# the right and bottom, over the bonus tray.
+key
+  w white
+  s silver
+  k charcoal
+  Y gold
+frame
+.wwwwwws.
+.wkwwwws.
+.wwwwwws.
+.wwwkwws.
+.wwwwwws.
+.wwwwwks.
+..ssssss.
+YY.....YY
+.YYYYYYY.

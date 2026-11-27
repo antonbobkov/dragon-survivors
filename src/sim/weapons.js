@@ -7,6 +7,7 @@ import { dealDamage } from './damage.js';
 import { clawVolley, tickSlashes } from './claws.js';
 import { tickBite, collideBite } from './bite.js';
 import { sawVolley } from './saw.js';
+import { merchantsHit } from './merchant.js';
 
 const EPS = 1e-9;
 const DEG = Math.PI / 180;
@@ -255,6 +256,13 @@ export function collideRing(game) {
         if (dx * dx + dy * dy >= rr * rr) continue;
         dealDamage(game, e, damage, WEAPONS.ring.type, b, knock);
         w.rehit[e.id] = game.tickCount + rehitTicks;
+      }
+      // §14.3: a merchant the ball overlaps, on the same rehit timer
+      for (const m of merchantsHit(game, (x, y, mr) => (x - b.x) ** 2 + (y - b.y) ** 2 < (mr + r) ** 2)) {
+        const until = w.rehit[m.id];
+        if (until !== undefined && until > game.tickCount) continue;
+        dealDamage(game, m, damage, WEAPONS.ring.type, b, knock);
+        w.rehit[m.id] = game.tickCount + rehitTicks;
       }
     }
   }

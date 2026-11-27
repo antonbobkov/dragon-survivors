@@ -366,6 +366,32 @@ export const HEART_HP = 20;
 export const BOMB_DAMAGE = 60;
 export const BOMB_TYPE = 'fire';
 export const BOMB_EFFECT_SCALE = 2; // explosion.big at 2 × the standard 2×
+// The chest a robbed merchant drops (§14.3): collected like the brazier pickups, never drawn by
+// a brazier (not in PICKUP_KINDS).
+export const CHEST = { name: 'Chest', anim: 'pickup.chest', sound: 'win_level_2' };
+
+// §14.3 the merchant. Times in s, distances in px. Every MERCHANT_INTERVAL s from the first
+// interval one crosses the field on a straight line passing within MERCHANT_LINE_OFFSET px of
+// the tower; standing within TRADE_RADIUS of him for TRADE_TIME opens his shop, any player hit
+// makes him flee for MERCHANT_FLEE_TIME and he never trades again.
+export const MERCHANT_INTERVAL = 90;
+export const MERCHANT_LINE_OFFSET = 200;
+export const MERCHANT_FLEE_TIME = 3;
+export const TRADE_RADIUS = 40;
+export const TRADE_TIME = 1.5;
+// Not an enemy: no grid, cap, bestiary, gem or kill. `resist` and `mass` are read by the
+// damage function as an enemy type's are (§12.1, §8.7).
+export const CHARACTERS = {
+  merchant: {
+    name: 'Merchant', hp: 80, speed: 50, fleeSpeed: 90, r: 12, mass: 3,
+    resist: { fire: 0.5, arcane: 0.5, physical: 0.5 },
+    walk: 'merchant.walk', die: 'merchant.die', bubble: 'merchant.bubble', dieSound: 'death02',
+  },
+};
+// The shop's three offers, prices in banked XP (`game.xp`, never a level).
+export const SHOP_ITEMS = ['reroll', 'card', 'heal'];
+export const SHOP_PRICES = { reroll: 10, card: 25, heal: 15 };
+export const SHOP_HEAL = 30;
 
 // §15 Grid
 export const GRID_CELL = 64;
@@ -391,6 +417,7 @@ export const ATLAS_NAMES = [
   'brazier.burn', 'brazier.break', 'pickup.heart', 'pickup.magnet', 'pickup.bomb',
   'icon.leftclaw', 'icon.rightclaw', 'icon.dualclaw', 'claw.swipe', 'claw.cone', 'claw.cone22', 'claw.cone45',
   'icon.bite', 'icon.saw', 'bite.jaws', 'saw.spin',
+  'merchant.walk', 'merchant.die', 'merchant.bubble', 'pickup.chest', 'icon.reroll',
 ];
 // §8.6 the generated tier variants of every tiered enemy anim (tiers 2–4).
 ATLAS_NAMES.push(...TIERED_ANIMS.flatMap((a) => TIER_IDS.filter((t) => t > 1).map((t) => tierAnim(a, t))));

@@ -4,12 +4,13 @@ import {
   DT, DESPAWN_DIST, GEM_COLLECT_RADIUS, WEAPONS, VIEW_HALF_W, VIEW_HALF_H,
   BRAZIER_INTERVAL, BRAZIER_MIN_DIST, BRAZIER_MAX_DIST, BRAZIER_SPACING, MAX_BRAZIERS, BRAZIER_TRIES,
   BRAZIER_RADIUS, BRAZIER_SPRITE, BRAZIER_ANIM, BRAZIER_BREAK_ANIM, BRAZIER_SOUND,
-  PICKUP_LIFE, PICKUP_KINDS, PICKUPS, HEART_HP, BOMB_DAMAGE, BOMB_TYPE, BOMB_EFFECT_SCALE, EXPLOSION_ANIM,
+  PICKUP_LIFE, PICKUP_KINDS, PICKUPS, HEART_HP, BOMB_DAMAGE, BOMB_TYPE, BOMB_EFFECT_SCALE, EXPLOSION_ANIM, CHEST,
 } from './content.js';
 import { advanceAnim, spawnEffect } from './effects.js';
 import { dealDamage } from './damage.js';
 import { buffMods } from './weapons.js';
 import { pickType } from './spawner.js';
+import { openOffers } from './levelup.js';
 
 export const BRAZIER_INTERVAL_TICKS = Math.round(BRAZIER_INTERVAL / DT);
 const SPRITE_SCALE = 2; // §5
@@ -136,7 +137,16 @@ export function collidePickups(game) {
   for (const p of taken) applyPickup(game, p.kind);
 }
 
+// A chest (a robbed merchant's, §14.3) is a free level-up pick: one more pending level-up
+// without a level, its offers rolled now unless offers are already open.
 export function applyPickup(game, kind) {
+  if (kind === 'chest') {
+    const idle = game.pendingLevelUps === 0;
+    game.pendingLevelUps++;
+    if (idle) openOffers(game);
+    game.sound(CHEST.sound);
+    return;
+  }
   if (kind === 'heart') {
     const t = game.tower;
     t.hp = Math.min(t.maxHp, t.hp + HEART_HP);
