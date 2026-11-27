@@ -25,9 +25,8 @@ const SUMMON_ANGLES = Array.from({ length: MAGE_SUMMON_COUNT }, (_, i) => ((i + 
 
 // `tier` (§8.6, default 1) scales HP and radius here (`maxHp` keeps the HP it starts with); DPS,
 // XP and speed are read through tierOf(e) where they are used. The golem and the prince are
-// always tier 1. A
-// fused type (the megaslime) has no HP of its own: the fusion sets it, `maxHp` with it, and its
-// gem (`xp`); made otherwise it has 1 HP.
+// always tier 1. A fused type (the megaslime) has no HP of its own: the fusion sets it, `maxHp`
+// with it, and its gem (`xp`); made otherwise it has 1 HP.
 export function createEnemy(game, type, x, y, tier = 1) {
   const def = ENEMIES[type];
   if (!def) throw new Error(`unknown enemy type "${type}"`);
