@@ -86,7 +86,7 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 1. Apply intent: dragon velocity and aim direction.
 2. Move the dragon.
 3. Tower: follow the dragon, then the tether (§7.1).
-4. Spawner: add enemies for this tick (§9), then braziers: flicker, drop far ones, place a new one when due (§14.2).
+4. Spawner: add enemies for this tick (§9), then a horse stampede when one is due (§8.8), then braziers: flicker, drop far ones, place a new one when due (§14.2).
 5. Enemies: special timers (mage cast, mage orb, summon anim), AI target, move, separation, despawn.
 6. Weapons: advance cooldowns, fire, spin the ring, run mini towers.
 7. Projectiles, then enemy shots (mage orbs): move, expire by range.
@@ -149,6 +149,8 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 | `explosion.laser`, `explosion.laserbig` | `explosion/laser_explosion0000..0005.bmp`, `explosion/laser_explosion_even_bigger_good_with_sparks0000..0005.bmp` | 45px, 64px. `explosion.laser` is an arcane explosion (a laser with Explode L3, §12); `explosion.laserbig` is unused in the demo but imported for later |
 | `burn` | `burn/burn.txt` | 16px, reserved |
 | `brazier.burn`, `brazier.break` | `art/world/brazier.txt`, `art/world/brazier-break.txt` | drawn for this game (§3.4), 12×16: an iron brazier on a stand with the pack's red, gold, yellow and cream fire, 3 flicker frames of 8 ticks; the break is 4 frames (5, 5, 6, 40 ticks): the fire flares into sparks, the bowl splits and falls under a white puff, the halves lie by the stand (§14.2) |
+| `horse.walk`, `horse.die` | `art/enemies/horse.txt`, `art/enemies/horse-die.txt` | drawn for this game (§3.4), 20×14, facing right: a chestnut (`gold.dark`) horse with a `gold` lit back and a `brown.dark` mane, tail and hooves. The walk is a 2-frame gallop (legs stretched, then gathered); the die is 5 frames (6, 6, 6, 6, 12 ticks): struck with red spatter, the forelegs buckle, it falls on its side, the hide burns to cream bones like the pack's knight (§8.8) |
+| `mounted.walk`, `mounted.die` | `art/enemies/mounted-knight.txt`, `art/enemies/mounted-knight-die.txt` | drawn for this game, 22×22, facing right: the pack's knight (charcoal helm, silver visor, grey mail, blue shield with a yellow cross) on the chestnut horse under a blue saddle cloth with a yellow hem, a cream lance held up with a red pennant that flaps between the 2 gallop frames. The die is 6 frames (6 ticks each, the last 12): struck, the horse stumbles and the lance tips, the rider is thrown off the back, both fall, then burn to bones, the shield going dark as the knight's does |
 | `pickup.heart`, `pickup.magnet`, `pickup.bomb` | `art/pickups/heart.txt`, `art/pickups/magnet.txt`, `art/pickups/bomb.txt` | drawn for this game, 9×8, 9×7 and 9×9: a red heart with a cream glint, a red horseshoe magnet with steel tips, an iron bomb under a steel cap whose fuse spark flickers (2 frames of 8 ticks) (§14.2) |
 | `icon.laser`, `icon.explode`, `icon.split`, `icon.ring`, `icon.speed`, `icon.big`, `icon.multi`, `icon.nuke` | `bonus/bonuslaser1.bmp`, `bonus/bonusexplosion1.bmp`, `bonus/bonussplit1.bmp`, `bonus/bonusring1.bmp`, `bonus/bonusspeed1.bmp`, `bonus/bonusbig1.bmp`, `bonus/bonusmulti1.bmp`, `bonus/bonusnuke1.bmp` | level-up card icons, roughly 9px. `icon.big` and `icon.multi` are unused in the demo (Might and Haste have their own icons) but imported for later |
 | `icon.might`, `icon.haste`, `icon.duration`, `icon.force`, `icon.amount` | `art/icons/might.txt`, `art/icons/haste.txt`, `art/icons/duration.txt`, `art/icons/force.txt`, `art/icons/amount.txt` | drawn for this game (§3.4), 9×9, the pack's bonus tray under a sword, a lightning bolt, an hourglass, a war hammer and three fireballs. Icons of the buffs Might, Haste, Duration, Force and Amount (§11) |
@@ -204,14 +206,14 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 - **Events:** `game.events` is cleared at the start of every tick. Systems push `{ type: 'sound', name }`, at most one per sound name per tick; the browser plays them. Events are output, not state.
 - **Ids:** every enemy, projectile, enemy shot, effect, gem, mini tower, brazier and pickup gets its `id` from one counter, `game.nextId`.
 - **Start:** the dragon at (0, 0), the tower at (0, `TOWER_REST_DIST`) = (0, 40), below the dragon and at rest (§7.1), so nothing moves before the first input.
-- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.offers` (`[]`, the level-up cards on show, §14), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`, entries `{ id, level }` in the order gained), `game.gems` (`[]`), `game.miniTowers` (`[]`), `game.enemyShots` (`[]`, mage orbs, §8.5), `game.braziers` and `game.pickups` (`[]`, §14.2), `game.brazierTimer` (1500, spawner steps until the next brazier attempt), `game.lastBomb` (`null`, the `tickCount` of the tick the last bomb pickup went off, read by the renderer's flash), `game.spawner` (`{ budget, spawned, golem }`, `golem` true once the golem has spawned), `game.seen` (`[]`, the enemy types met this run in the order first met: a type is added when the first enemy of that type is created, by the spawner, a summon, a slime split, a rising ghost or the golem; read by the bestiary, §17.1), `game.seenTiers` (`{}`, per enemy type the tiers of it met this run, ascending, added as enemies are created, §8.6; read by the bestiary). `game.score()` = `floor(t) + kills`.
+- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.offers` (`[]`, the level-up cards on show, §14), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`, entries `{ id, level }` in the order gained), `game.gems` (`[]`), `game.miniTowers` (`[]`), `game.enemyShots` (`[]`, mage orbs, §8.5), `game.braziers` and `game.pickups` (`[]`, §14.2), `game.brazierTimer` (1500, spawner steps until the next brazier attempt), `game.lastBomb` (`null`, the `tickCount` of the tick the last bomb pickup went off, read by the renderer's flash), `game.spawner` (`{ budget, spawned, golem, stampedes, nextStampede }`: `spawned` counts budget spawns, `golem` is true once the golem has spawned, `stampedes` counts the horse stampedes so far and `nextStampede` (s, starts at 0) is when the next one is due, §8.8), `game.seen` (`[]`, the enemy types met this run in the order first met: a type is added when the first enemy of that type is created, by the spawner, a summon, a slime split, a rising ghost or the golem; read by the bestiary, §17.1), `game.seenTiers` (`{}`, per enemy type the tiers of it met this run, ascending, added as enemies are created, §8.6; read by the bestiary). `game.score()` = `floor(t) + kills`.
 
 | Entity | Fields |
 |---|---|
 | every drawable | `x, y, anim, frame, frameTicks` |
 | `game.dragon` | `aimX, aimY` (unit fire direction), `moveX, moveY`, `aimed` (an aim has ever been given), `flip` (facing left, §6.3); `anim` is `dragon.walk` |
 | `game.tower` | `hp, maxHp`, `moved` (the tower moved this tick, §7.1); `anim` is `castle` |
-| `game.enemies[]` | `id, type, tier, r, hp, gen, flip, alpha`. `tier` is 1–4 (§8.6). `type` is a key of `ENEMIES` in `content.js`: `knight`, `skeleton`, `slime`, `mage`, `ghostKnight`, `ghost`, `golem`. Mages also have `castTimer` (§8.4) and `orbTimer` (§8.5); the golem has `unkillable` and `procImmune` set to true and `hp = GOLEM_HP = 1e9`, a finite stand-in for ∞ |
+| `game.enemies[]` | `id, type, tier, r, hp, gen, flip, alpha`. `tier` is 1–4 (§8.6). `type` is a key of `ENEMIES` in `content.js`: `knight`, `skeleton`, `slime`, `mage`, `ghostKnight`, `ghost`, `horse`, `mountedKnight`, `golem`. Mages also have `castTimer` (§8.4) and `orbTimer` (§8.5); horses have `dx, dy`, the unit direction of their run (§8.8); the golem has `unkillable` and `procImmune` set to true and `hp = GOLEM_HP = 1e9`, a finite stand-in for ∞ |
 | `game.projectiles[]` | `id, kind, type, dx, dy` (unit), `speed, r, damage, knock, range, travelled, hits` (ids of enemies hit, at most 8), `gen, dirFrame` (for 16-direction sprites). `kind` is `fireball` (mini-tower shots included, §10.3) or `laser`; `type` is its damage type (§12.1); `knock` its knock after Force (§8.7) |
 | `game.enemyShots[]` | `id, kind, dx, dy` (unit), `speed, r, damage, range, travelled`. `kind` is `orb` (§8.5). Kept apart from `game.projectiles`: no player weapon touches them |
 | `game.effects[]` | `id, scale, alpha, flip, tier, hold, life, done`. `scale` multiplies the standard 2× sprite scale; `tier` is the tier of the enemy whose death it shows (1 for every other effect), drawn as in §8.6; `life` (ticks, usually 0) is a minimum length: the effect holds its last frame until `life` ticks have passed |
@@ -229,12 +231,12 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 ## 5. World, camera, rendering
 
 - **Internal resolution:** 960×600, matching the original. The canvas is scaled to fit the window with CSS (`image-rendering: pixelated`), keeping the aspect ratio: the scale is `min(windowW / 960, windowH / 600)`, rounded down to an integer when it is at least 1, fractional below 1. The page background is near-black and the canvas is centred.
-- **Sprite scale:** every sprite is drawn at **2×** source size (a 16px knight is 32px on screen), except silver and gold enemies and their death effects at **3×** (§8.6); screen scales are always whole numbers. World coordinates are internal screen pixels, so all radii below are in those units.
+- **Sprite scale:** every sprite is drawn at **2×** source size (a 16px knight is 32px on screen), except silver and gold enemies and their death effects at **3×** (§8.6), and the mounted knight, drawn bigger: **3×** (its 22px art is 66px on screen), **4×** at silver and gold (§8.6); screen scales are always whole numbers. Horses are 20×14 art at 2× (40×28 px). World coordinates are internal screen pixels, so all radii below are in those units.
 - **World:** unbounded plane. No terrain in the demo. The camera is centred on the dragon: a world point is drawn at `world + offset` with `offset = (round(480 − dragon.x), round(300 − dragon.y))`, an integer so sprites do not shimmer. Sprites are drawn centred on the entity position, at integer screen pixels.
 - **Background:** a 64×64 grass tile generated once at startup into an offscreen canvas (dark green base, 28 lighter or darker 2×2 px speckles), tiled with the camera offset. The speckles come from the tile's own `mulberry32` with a fixed seed, never from `game.rng`, so drawing cannot change a run. A faint darker ring (2 px, black at 18% alpha) of radius `TETHER_LENGTH` around the tower makes the tether rule readable.
 - **Gem:** drawn procedurally as a 6×6 px diamond, a blue edge around a pale cyan core, at 2× (12 px on screen), centred on the gem.
 - **Draw order:** background, gems, tower, mini towers, braziers, pickups (a blinking one only on its shown steps, §14.2), enemies sorted by y, ring fireballs, projectiles, enemy shots (mage orbs), dragon, effects, the bomb flash (§14.2), HUD, then any screen (title, pause, game over) over a 60% black overlay. Enemies are sorted by y then id in a copy owned by the renderer; the game's enemy list is never reordered, because its order is part of the sim.
-- **Sprites:** `scale` and `alpha` of effects and enemies apply as given (`scale` multiplies the 2×). An enemy or effect of tier 2–4 draws its anim's tier sprite `<anim>@t<tier>` (the plain anim if the atlas has no such sprite) at the tier's screen scale over the standard 2× (tiers 3 and 4: 1.5, times an effect's `scale`), with the same `frame`; `flip` mirrors around the sprite's centre. Projectiles whose anim is a 16-direction sheet (`laser.dir`, `laser.bigdir`) draw frame `dirFrame`; others draw `frame`. Enemy shots draw `frame` of their anim. The dragon draws `frame` of `dragon.walk`, mirrored when `flip`. Ring fireballs draw the ring weapon's `frame` at each of its `balls`. A mini tower in flight is drawn on the straight line from `(fromX, fromY)` to `(x, y)` at progress `p = 1 − lobTicks / 30`, raised by `sin(p × π) × 30` px; a landed one at `(x, y)`.
+- **Sprites:** `scale` and `alpha` of effects and enemies apply as given (`scale` multiplies the 2×). An enemy or effect of tier 2–4 draws its anim's tier sprite `<anim>@t<tier>` (the plain anim if the atlas has no such sprite), with the same `frame`. Every enemy and effect is drawn at the screen scale of its anim and tier (§8.6; times an effect's `scale`): its type's scale (2, or 3 for the mounted knight's anims) times the tier's screen scale over 2, rounded down to a whole number; `flip` mirrors around the sprite's centre. Projectiles whose anim is a 16-direction sheet (`laser.dir`, `laser.bigdir`) draw frame `dirFrame`; others draw `frame`. Enemy shots draw `frame` of their anim. The dragon draws `frame` of `dragon.walk`, mirrored when `flip`. Ring fireballs draw the ring weapon's `frame` at each of its `balls`. A mini tower in flight is drawn on the straight line from `(fromX, fromY)` to `(x, y)` at progress `p = 1 − lobTicks / 30`, raised by `sin(p × π) × 30` px; a landed one at `(x, y)`.
 - **Facing:** enemies flip horizontally when moving left (`ctx.scale(-1, 1)`). The dragon flips the same way when facing left (§6.3).
 - `draw.js` reads the game state and never writes it. Animation indices live in the entity (`anim`, `frame`, `frameTicks`) and advance during the tick, so rendering is stateless.
 
@@ -299,7 +301,7 @@ Draw the castle with a 4 px HP bar above it: 40 px wide, 4 px above the sprite's
 
 ## 8. Enemies
 
-All enemies target the **tower**: desired velocity = `normalize(tower − self) × speed`. Each enemy is a circle. They play `walk` while alive and `die` on death; a dying enemy becomes an effect and stops colliding.
+All enemies target the **tower**: desired velocity = `normalize(tower − self) × speed`; the horse alone runs straight instead (§8.8). Each enemy is a circle. They play `walk` while alive and `die` on death; a dying enemy becomes an effect and stops colliding.
 
 An enemy whose HP drops to 0 or below stops being hit at once and is removed in the deaths step: `kills` goes up by one, sound `death01` plays, it drops its gem, and a non-colliding effect plays its `die` anim at its position with the same `flip` and `alpha`. The specials below replace the effect where they say so. The ghost's `die` anim is `ghost.die`.
 
@@ -313,6 +315,8 @@ An enemy whose HP drops to 0 or below stops being hit at once and is removed in 
 | Mage | 4 | 20 | 12 | 5 | 5 | 1 | 0 | 0.5 | −0.25 | `mage` | every `MAGE_CAST_INTERVAL = 8 s` since spawn it stops for 1 s (`spell` anim) and spawns 4 skeletons in a 40 px ring around itself, each playing `skelly.summon` once before walking. Will not cast within 80 px of the tower (§8.4). Fires a green orb at the dragon every 3 s while within 320 px of it (§8.5). |
 | Ghost knight | 10 | 27.5 | 12 | 10 | 2 | 1 | 0 | 0 | 0.25 | `ghost.knight` | on death plays `ghost.burn` once (0.5 s, not collidable), then becomes a **Ghost** (§8.4). |
 | Ghost | 2 | 36 | 10 | 8 | 1 | 0.6 | 0.25 | −0.5 | 0.75 | `ghost.ghost` | drawn at 60% alpha. Dies normally. |
+| Horse | 2 | 120 | 10 | 4 | 1 | 0.5 | 0 | 0 | 0 | `horse` | comes only in **stampedes** (§8.8), never from the spawn budget: runs in a straight line through where the tower was and on past it, faster than the dragon, so it is zoned, not chased. Despawned without a refund. |
+| Mounted knight | 30 | 60 | 16 | 15 | 8 | 2 | 0.25 | −0.25 | 0.5 | `mounted` | walks at the tower like a knight. Drawn bigger: 3× (§5). Armoured: wants arcane. |
 | Mega golem | ∞ | 75 | 56 | 40 | none | none | 0 | 0 | 0 | `golem` | §13. Takes no damage. Every hit pushes it `GOLEM_KNOCKBACK = 1` px away from the hitter, whatever the weapon. Immune to procs. |
 
 All numbers *unmeasured*. Fire, Arcane and Physical are the type's resistances to those damage types (§12.1): below 0 a weakness (−0.5 takes ×1.5), above 0 a resistance (0.5 takes half), 1 immune. A slime's row holds for both generations. The golem has no resistances; it takes no damage from any type. The table is tier 1; tiers scale HP, speed, radius, DPS and XP (§8.6). Mass divides the knockback of every hit (§8.7): below 1 an enemy is light and flies further, above 1 heavy; the golem has no mass and keeps its own rule (§8.4).
@@ -326,7 +330,7 @@ All enemies move first, then separation runs once over the enemy list in order, 
 `MAX_ENEMIES = 400`. The spawner does not spawn above the cap, and a mage summons only as many skeletons as fit under it. Enemies that continue one that just died (the two slime children, the ghost after a burn) and the golem are always added, so the count can pass the cap by those; the spawner then waits until it is below again. The golem counts toward the cap like any enemy. The cap exists for performance, not design. While the cap is reached the budget does not bank up: it is clamped to at most 1, so freeing slots never releases a burst.
 
 ### 8.3 Despawn
-An enemy farther than `DESPAWN_DIST = 1400 px` from the tower is removed silently and its spawn budget refunded, so kiting cannot starve the horde. The check runs at the end of the enemies step; the refund adds 1 to the budget, so the enemy reappears on the ring on the next spawner step. A despawn is not a kill and drops no gem. The golem is never despawned.
+An enemy farther than `DESPAWN_DIST = 1400 px` from the tower is removed silently and its spawn budget refunded, so kiting cannot starve the horde. The check runs at the end of the enemies step; the refund adds 1 to the budget, so the enemy reappears on the ring on the next spawner step. A despawn is not a kill and drops no gem. The golem is never despawned. A horse is despawned the same way but refunds nothing: stampedes are not budget spawns (§8.8).
 
 ### 8.4 Specials
 
@@ -366,9 +370,9 @@ Any enemy but the golem comes in four tiers: one sprite serves the whole run, an
 | 3 | silver | cold pale blue | 1 px pale steel | 3 | ×6 | ×1.5 | ×4 | ×0.9 | ×1.5 |
 | 4 | gold | gold | 1 px gold | 3 | ×15 | ×2 | ×8 | ×0.8 | ×1.5 |
 
-- **State.** Every enemy has `tier` (1–4), set when it is created and never changed. The spawner draws it from the timeline's tier weights (§9); a summoned skeleton has its mage's tier, a slime child its parent's, and a ghost the tier of the ghost knight it rose from (§8.4). The golem is always tier 1, whatever it is created with.
+- **State.** Every enemy has `tier` (1–4), set when it is created and never changed. The spawner draws it from the timeline's tier weights (§9), once per stampede for all its horses (§8.8); a summoned skeleton has its mage's tier, a slime child its parent's, and a ghost the tier of the ghost knight it rose from (§8.4). The golem is always tier 1, whatever it is created with.
 - **Multipliers** apply to the type's §8 numbers (a slime child's HP 1 and radius 8 included): HP is `ceil(HP × multiplier)` (a bronze knight has 8; every hit deals whole damage, §12.1, so rounding up kills on the same hit as the exact product), the speed and the radius are multiplied as they are, contact DPS is multiplied where it is dealt (§7.2), and the gem is worth the type's XP times the tier's (§14). Resistances, mage orbs (§8.5) and every timer are the same at every tier.
-- **Sprites.** The tier sprites are generated from the plain ones at build time (§3.3, §3.5): each tier's tint (luminance-preserving, so the shading survives), then a 1 px outline in the tier's colour, which also fills thin sprites' gaps. `<anim>@t<tier>` exists for every anim of every enemy type but the golem, with the plain anim's frame durations, so `frame` and `frameTicks` mean the same at every tier. The sim keeps the plain anim names in `anim`; the renderer draws the tier's sprite at the tier's screen scale (§5), always a whole multiple of the source pixels. Death effects (`die`, `slime.split`, `ghost.burn`) carry the dying enemy's tier and are drawn the same way.
+- **Sprites.** The tier sprites are generated from the plain ones at build time (§3.3, §3.5): each tier's tint (luminance-preserving, so the shading survives), then a 1 px outline in the tier's colour, which also fills thin sprites' gaps. `<anim>@t<tier>` exists for every anim of every enemy type but the golem, with the plain anim's frame durations, so `frame` and `frameTicks` mean the same at every tier. The sim keeps the plain anim names in `anim`; the renderer draws the tier's sprite at the tier's screen scale (§5), always a whole multiple of the source pixels. The table's screen scale is that of a standard 2× type; a type drawn bigger scales by the same ratio, rounded down to a whole number: the mounted knight is 3× at tiers 1 and 2 and 4× (not 4.5×) at tiers 3 and 4, so its silver and gold still read as bigger. Death effects (`die`, `slime.split`, `ghost.burn`) carry the dying enemy's tier and are drawn the same way.
 - **The bestiary** shows the tiers met per type and the multipliers (§17.1).
 
 ### 8.7 Knockback
@@ -383,6 +387,22 @@ Hits push enemies back, so a build can hold a crowd off the tower. Every weapon 
 - The golem has no mass and ignores knock: every hit moves it `GOLEM_KNOCKBACK` px (§8.4).
 - Knockback draws no random numbers. Every knock and mass is *unmeasured*.
 
+### 8.8 Horse stampedes
+
+Horses are the one threat you cannot chase: faster than the dragon, they come in a line from one side and run straight through where the tower was. The answer is to move the tower out of the line, or to hold a wall of fire across it.
+
+| Constant | Value |
+|---|---|
+| `STAMPEDE_SPACING` | 24 px between neighbouring horses in the line *unmeasured* |
+| Schedule and size | the timeline's Stampede column (§9) *unmeasured* |
+
+- **Schedule.** A timeline row may have a stampede: one every `every` s, each of `min`–`max` horses. `game.spawner.nextStampede` starts at 0. In the spawner step, after the budget spawns (§9), if the current row (the one whose weights apply) has a stampede and `t ≥ nextStampede`, one stampede spawns, `stampedes` goes up by one and `nextStampede` moves on by the row's `every` until it is above `t`. So the first stampede comes on the first tick of the first row that has them, the next ones every `every` s on a fixed grid, and a debug jump (§19) skips the ones in between instead of releasing them at once. A row without a stampede spawns none; a timeline without any draws no extra random number.
+- **Draws,** from `game.rng`, in this order: the horse count `n = min + floor(rng × (max − min + 1))`; the tier from the row's tier weights (§8.6), **only when the row has tier weights** (one draw per stampede: all its horses share it); the angle `a = rng × 2π`.
+- **Line.** Its centre `c` is on the spawn ring, `dragon + 560 px × (cos a, sin a)`, just outside the view. The run direction `u` is the unit vector from `c` to the tower's position at that moment (`(0, 1)` if they coincide). Horse `i` (0 to `n − 1`) appears at `c + (i − (n − 1) / 2) × STAMPEDE_SPACING × (−u.y, u.x)`: a line across the run, centred on the line through the tower. The horses are created in that order while the enemies are under the cap (§8.2); the rest of the line is not spawned. A horse's `flip` is `u.x < 0`, and its `dx, dy` are `u`.
+- **Run.** In the enemies step a horse moves `speed × DT` (its tier's speed, §8.6) along `(dx, dy)`, never turning and never stopping: not at the tower, which it crosses, nor after it. It has no special and draws nothing. Separation (§8.1) and knockback (§8.7) push it like any enemy but never change its direction. While it overlaps the tower it deals its contact DPS (§7.2), so a line crossing the tower costs it a few HP per horse that hits.
+- **End.** A horse farther than `DESPAWN_DIST` from the tower is removed like any despawn (§8.3) but refunds no budget. Killed, it dies like any enemy (`horse.die`, its gem, a kill).
+- A horse created otherwise (a test) runs toward the tower as it is when created.
+
 ---
 
 ## 9. Spawning and the timeline
@@ -393,19 +413,33 @@ Enemies spawn on a ring just outside the view: pick a random angle and place the
 
 The spawner uses `t` at the start of the tick. The weights are those of the last row with `row.t <= t`. Each spawn draws, from `game.rng`, its type from the weights, then its tier from the row's tier weights (§8.6) **only when the row has tier weights**, then its angle. A row without tier weights spawns tier 1 and draws no tier, so a timeline without tier weights draws exactly as it would without tiers; a row whose tier weights are all 0 draws one and spawns tier 1. A draw picks the first entry (types in column order, tiers 1 to 4) whose weight exceeds what is left of `rng × total weight`. The camera centre is the dragon's position.
 
-| Time | Rate (enemies/s) | Knight | Skeleton | Slime | Mage | Ghost knight | Plain | Bronze | Silver | Gold |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 0:00 | 0.3 | 100 | 0 | 0 | 0 | 0 | – | – | – | – |
-| 0:30 | 0.5 | 70 | 30 | 0 | 0 | 0 | – | – | – | – |
-| 1:00 | 0.6 | 50 | 30 | 20 | 0 | 0 | – | – | – | – |
-| 2:00 | 2.5 | 40 | 25 | 25 | 10 | 0 | – | – | – | – |
-| 2:30 | 6.25 | 40 | 25 | 25 | 10 | 0 | 90 | 10 | 0 | 0 |
-| 3:00 | 10 | 30 | 25 | 20 | 10 | 15 | 85 | 15 | 0 | 0 |
-| 3:30 | 13 | 30 | 25 | 20 | 10 | 15 | 80 | 15 | 5 | 0 |
-| 4:00 | 16 | 25 | 25 | 20 | 10 | 20 | 75 | 17 | 8 | 0 |
-| 5:00 | 18 + golem | 25 | 25 | 20 | 10 | 20 | 65 | 20 | 10 | 5 |
+| Time | Rate (enemies/s) | Knight | Skeleton | Slime | Mage | Ghost knight | Mounted knight | Plain | Bronze | Silver | Gold | Stampede |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0:00 | 0.3 | 100 | 0 | 0 | 0 | 0 | 0 | – | – | – | – | – |
+| 0:30 | 0.5 | 70 | 30 | 0 | 0 | 0 | 0 | – | – | – | – | – |
+| 1:00 | 0.6 | 20 | 15 | 65 | 0 | 0 | 0 | – | – | – | – | every 20 s, 5–6 |
+| 2:00 | 2.5 | 20 | 30 | 20 | 30 | 0 | 0 | – | – | – | – | every 30 s, 5–7 |
+| 2:30 | 6.25 | 15 | 30 | 15 | 25 | 0 | 15 | 90 | 10 | 0 | 0 | every 30 s, 5–7 |
+| 3:00 | 10 | 15 | 15 | 10 | 10 | 40 | 10 | 70 | 30 | 0 | 0 | every 30 s, 6–8 |
+| 3:30 | 13 | 15 | 15 | 10 | 10 | 40 | 10 | 65 | 30 | 5 | 0 | every 30 s, 6–8 |
+| 4:00 | 16 | 20 | 20 | 15 | 10 | 15 | 20 | 60 | 25 | 15 | 0 | every 15 s, 8–12 |
+| 5:00 | 18 + golem | 20 | 20 | 15 | 10 | 15 | 20 | 55 | 25 | 15 | 5 | every 15 s, 8–12 |
 
-*unmeasured*. Plain, Bronze, Silver and Gold are the tier weights; `–` means the row has none. The 2:30 and 3:30 rows start tiers: their rates are the ones interpolated between their neighbours and their type weights are the row before's, so they change only the tiers. At 5:00 the mega golem spawns on the ring on the far side of the tower from the dragon and `ohno` plays: in the clock step of the first tick where `t >= 300` (the `t` of the timeline row marked `golem`; a timeline without such a row has no golem), once per run, at `dragon + 560 px × normalize(tower − dragon)`, or straight below the dragon if dragon and tower coincide. It ignores the cap. The timeline keeps running after 5:00 (rate stays at 18) until the tower falls.
+*unmeasured*. Plain, Bronze, Silver and Gold are the tier weights; `–` means the row has none. Stampede is the row's horse stampedes (§8.8): one every so many seconds, each of that many horses; `–` means none. Horses are not in the type weights: they come only in stampedes. The 2:30 and 3:30 rows sit inside a stage: their rates are the ones interpolated between their neighbours, so the rate curve is the same as without them; 2:30 starts tiers and brings mounted knights, 3:30 changes only the tiers. With this table the stampedes come at 1:00, 1:20, 1:40, 2:00, 2:30, 3:00, 3:30, 4:00, then every 15 s. At 5:00 the mega golem spawns on the ring on the far side of the tower from the dragon and `ohno` plays: in the clock step of the first tick where `t >= 300` (the `t` of the timeline row marked `golem`; a timeline without such a row has no golem), once per run, at `dragon + 560 px × normalize(tower − dragon)`, or straight below the dragon if dragon and tower coincide. It ignores the cap. The timeline keeps running after 5:00 (rate stays at 18) until the tower falls.
+
+### 9.1 Stages
+
+The 5:00 run is five stages, each led by a threat that wants a different answer. A stage starts at a timeline row that names it (`stage` in `content.js`); stages are numbered from 1 in table order, and a banner shows at each start (§17). The golem at 5:00 is not a stage: it arrives with its own sound.
+
+| Stage | Starts | Lead threat | Wants |
+|---|---|---|---|
+| 1 Muster | 0:00 | knights, skeletons | anything; physical shreds skeletons |
+| 2 Ooze | 1:00 | slimes, the first horse stampedes | fire AOE, zoning |
+| 3 Arcana | 2:00 | mages and their summons; mounted knights from 2:30 | single target, dodging, arcane against plate |
+| 4 Haunt | 3:00 | ghost knights, then their ghosts; bronze tiers | arcane |
+| 5 Siege | 4:00 | everything mixed, mounted knights, silver tiers, big stampedes | the build |
+
+*unmeasured*. Stages are a label on the timeline: they change nothing in the sim beyond the rows' own weights, tiers and stampedes.
 
 ---
 
@@ -754,6 +788,7 @@ Top centre: run timer `m:ss`. Top left: tower HP bar in red with the number. Bot
 | Icons | one 34 px slot per owned weapon (in slot order), a 16 px gap, then one per buff; the row is centred, icons at y 50 |
 | Level pips | under each icon at y 72: one 4×4 px pip per level (5 for weapons, 3 for buffs), yellow up to the current level, dark after |
 | XP bar | 14 px high across the bottom, blue fill proportional to `xp / xpToNext(level)`; `LV n` just above its left end |
+| Stage banner | `Stage n: Name` (§9.1) in 32 px gold (`#ffd23f`) text, centred at y 92 under the icons, while the phase is `'play'` and `t` is less than `BANNER_TIME = 2` s past the start of the current stage; it fades out over the last `BANNER_FADE = 0.5` s (alpha = time left / 0.5). Driven by `t` and the timeline alone, so it needs no sim state; a debug jump past a stage's first 2 s shows no banner for it |
 
 Text is 16 px monospace (32 px for screen titles) with a 2 px black drop shadow. All HUD numbers *unmeasured*.
 
@@ -817,7 +852,8 @@ Precisely:
 - **Braziers and pickups:** the first brazier on tick 1500 and one per 25 s up to the cap; placement bounds, spacing, the outside-the-view rule, the fallback and the draw order (scripted rng); far braziers dropped; breaking by a projectile (not used up), a ring fireball and an explosion, and by the dragon's own fireball in a full tick; the pickup weights by stubbed rng; collection radius and no homing; the heart's cap, the magnet's homing, the bomb through resistances and the armoury, its view rectangle, golem untouched and kills in the same tick; lifetime and blink; determinism and the snapshot; the renderer's order, blink and flash; the edge-marker maths and the HUD drawing without writing; the art's sizes and frames.
 - **Mage:** a mage starts casting 8 s after it spawns and has spawned 4 skeletons 1 s later, unless within 80 px of the tower.
 - **Mage orbs:** a mage fires only within `MAGE_ORB_RANGE` of the dragon and never while casting, every 3 s from its spawn offset; an orb flies straight at where the dragon was; a hit removes it and takes `MAGE_ORB_DAMAGE` from the tower; a dodged orb expires after 400 px; a game without mages draws no extra random numbers.
-- **Timeline:** at t = 300 s the golem exists; at t = 0 only knights spawn.
+- **Timeline:** at t = 300 s the golem exists; at t = 0 only knights spawn; the rate curve; each stage's row weights led by its threat; the stages and the banner's timing and fade.
+- **Horses and mounted knights:** a horse runs in a straight line (no homing, through and past the tower), deals contact damage while crossing the tower and is despawned at `DESPAWN_DIST` without a refund; a stampede's schedule on the default table, its line geometry and size, its draw order (count, tier only with tier weights, angle), the cap, a debug jump skipping stampedes; determinism and the snapshot; the mounted knight's stats, resistances, mass and its 3×/4× screen scale; the new art's sizes and frames, and every new anim's tier variants; the bestiary fitting 9 types.
 - **Soak:** run 5 minutes with a scripted dragon that circles the tower, on the default timeline with every rate from 3:00 on raised to at least 30/s. Assert no exceptions, the spawner never spawns above the cap (§8.2), and the tower eventually dies. The test holds the tower at full HP until the golem has spawned, so the run reaches 5:00 whatever the balance; the horde reaches the cap on the way (asserted), and the golem then ends the run. It stays in the default suite (a few seconds).
 - **Atlas:** `build-atlas.mjs` run on the manifest produces every name the game asks for. `content.js` lists its required atlas names and the test cross-checks them.
 - **Art:** the art parser (frames, key by name or hex, transparency, durations, every error with its file and line), the palette file and tool, the off-palette warning, the variants on synthetic frames (tint keeps luminance and its order, outline grows by 2 px and borders opaque pixels edge-on only, op order swap → tint → outline, frame-key suffixes), art and `from` entries built into an atlas, and the committed atlas holding every art file pixel for pixel. Every file under `art/` parses with no warning and is used by the manifest. None of these needs the pack.
@@ -839,7 +875,7 @@ Each milestone is playable on its own.
 
 ## 22. Out of scope
 
-Unchanged from the design: meta progression beyond the armoury (§13.1), multiple stages, evolutions, terrain, mobile, music, controller rumble, merchants, royals, fireball lob, claw.
+Unchanged from the design: meta progression beyond the armoury (§13.1), multiple levels or maps (the stages of §9.1 are parts of the one run), evolutions, terrain, mobile, music, controller rumble, merchants, royals, fireball lob, claw.
 
 ## 23. Open decisions
 

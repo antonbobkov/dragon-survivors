@@ -50,7 +50,11 @@
     { "name": "brazier.break", "art": "world/brazier-break.txt" },
     { "name": "pickup.heart", "art": "pickups/heart.txt" },
     { "name": "pickup.magnet", "art": "pickups/magnet.txt" },
-    { "name": "pickup.bomb", "art": "pickups/bomb.txt" }
+    { "name": "pickup.bomb", "art": "pickups/bomb.txt" },
+    { "name": "horse.walk", "art": "enemies/horse.txt" },
+    { "name": "horse.die", "art": "enemies/horse-die.txt" },
+    { "name": "mounted.walk", "art": "enemies/mounted-knight.txt" },
+    { "name": "mounted.die", "art": "enemies/mounted-knight-die.txt" }
   ],
   "tiers": {
     "anims": [
@@ -58,7 +62,9 @@
       "skelly.walk", "skelly.die", "skelly.summon",
       "slime.walk", "slime.die", "slime.split",
       "mage.walk", "mage.die", "mage.spell",
-      "ghost.knight", "ghost.burn", "ghost.ghost", "ghost.die"
+      "ghost.knight", "ghost.burn", "ghost.ghost", "ghost.die",
+      "horse.walk", "horse.die",
+      "mounted.walk", "mounted.die"
     ],
     "variants": [
       { "tier": 2, "tint": "#c86428", "tintStrength": 0.6, "outline": "#d8702c" },

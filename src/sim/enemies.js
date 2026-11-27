@@ -30,6 +30,13 @@ export function createEnemy(game, type, x, y, tier = 1) {
     anim: def.walk, frame: 0, frameTicks: 0,
   };
   if (type === 'mage') { e.castTimer = 0; e.orbTimer = initialOrbTimer(game); }
+  if (def.stampede) { // §8.8 its run: toward the tower as it is now, unless the stampede sets it
+    const tw = game.tower;
+    let ux = tw.x - x, uy = tw.y - y;
+    const d = Math.sqrt(ux * ux + uy * uy);
+    if (d > 0) { ux /= d; uy /= d; } else { ux = 0; uy = 1; }
+    e.dx = ux; e.dy = uy; e.flip = ux < 0;
+  }
   if (def.unkillable) { e.hp = GOLEM_HP; e.unkillable = true; }
   if (def.procImmune) e.procImmune = true;
   game.enemies.push(e);
@@ -167,6 +174,13 @@ export function stepEnemies(game) {
     const e = list[i];
     if (enemySpecial(game, e)) continue;
     const def = ENEMIES[e.type];
+    if (def.stampede) { // §8.8: straight on along its run, through the tower and past it
+      const step = def.speed * tierOf(e).speed * DT;
+      e.x += e.dx * step;
+      e.y += e.dy * step;
+      advanceAnim(e, true);
+      continue;
+    }
     const dx = tower.x - e.x, dy = tower.y - e.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const stop = e.r + TOWER_RADIUS - CONTACT_INSET;
@@ -185,13 +199,16 @@ export function stepEnemies(game) {
   game.grid.build(list);
   separate(game);
 
-  // Despawn far from the tower, refunding the spawn budget
+  // Despawn far from the tower, refunding the spawn budget (not for a stampede's horses, §8.8)
   let n = 0;
   const d2 = DESPAWN_DIST * DESPAWN_DIST;
   for (let i = 0; i < list.length; i++) {
     const e = list[i];
     const dx = e.x - tower.x, dy = e.y - tower.y;
-    if (dx * dx + dy * dy > d2 && !e.unkillable) { game.spawner.budget += 1; continue; }
+    if (dx * dx + dy * dy > d2 && !e.unkillable) {
+      if (!ENEMIES[e.type].stampede) game.spawner.budget += 1;
+      continue;
+    }
     list[n++] = e;
   }
   list.length = n;

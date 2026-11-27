@@ -188,19 +188,20 @@ test('pickTier: weights 1 to 4 in order; tier 1 when all are 0', () => {
   assert.equal(typeof pickTier({ 2: 1 }, 0), 'number');
 });
 
-test('default timeline: tier rows from 2:30 only change tiers; the rate curve is the interpolated one', () => {
+test('default timeline: the 2:30 and 3:30 rows keep the interpolated rate curve; 3:30 only changes tiers', () => {
   const first = TIMELINE.findIndex((r) => r.tiers);
   assert.equal(TIMELINE[first].t, 150, 'bronze from 2:30');
   assert.ok(TIMELINE.slice(first).every((r) => r.tiers), 'every row from the first tier row has tier weights');
   const from = (tier) => TIMELINE.find((r) => r.tiers && r.tiers[tier] > 0).t;
   assert.deepEqual([from(2), from(3), from(4)], [150, 210, 300], 'bronze 2:30, silver 3:30, gold 5:00');
   for (const r of TIMELINE.filter((x) => x.tiers)) assert.deepEqual(Object.keys(r.tiers).map(Number), TIER_IDS, `${r.t}`);
-  // The rows at 2:30 and 3:30 sit on the line between their neighbours and copy the type weights before them.
+  // The rows at 2:30 and 3:30 sit on the line between their neighbours; 3:30 copies the type
+  // weights before it (2:30 also brings mounted knights, §9).
   for (const t of [150, 210]) {
     const i = TIMELINE.findIndex((r) => r.t === t);
     const a = TIMELINE[i - 1], b = TIMELINE[i + 1];
     assert.equal(TIMELINE[i].rate, a.rate + (b.rate - a.rate) * (t - a.t) / (b.t - a.t), `rate at ${t}`);
-    assert.deepEqual(TIMELINE[i].weights, a.weights, `weights at ${t}`);
+    if (t === 210) assert.deepEqual(TIMELINE[i].weights, a.weights, `weights at ${t}`);
     const without = TIMELINE.filter((r) => r.t !== t);
     for (let s = a.t; s <= b.t; s += 7.5) assert.ok(Math.abs(rateAt(TIMELINE, s) - rateAt(without, s)) < 1e-9, `rate at ${s}`);
   }
