@@ -10,7 +10,7 @@ node tools/dps.mjs --check              # every model against the sim (about a m
 node tools/dps.mjs --check --weapon saw # one weapon's cases
 ```
 
-Options: `--near N` (enemies near the dragon, fixed), `--view-time S` (default 6), `--min-near N` (5), `--radius PX` (350), `--seeds N` (naive builds per minute, 64), `--beam N` (search width, 48), `--trivial X` (3), `--levels` (ten levels); with `--check`: `--weapon ID`, `--seconds S` (counted time per case, 300), `--reshuffle S` (3), `--settle S` (1), `--seed N` (1).
+Options: `--near N` (enemies near the dragon, fixed), `--view-time S` (default 6), `--min-near N` (5), `--radius PX` (350), `--seeds N` (naive builds per minute, 64), `--beam N` (search width, 48), `--trivial X` (3), `--levels` (ten levels); with `--check`: `--weapon ID`, `--seconds S` (counted time per case, 300), `--warm S` (warm-up per case, 10), `--reshuffle S` (3), `--settle S` (1), `--seed N` (1), `--tolerance X` (0.15). A weapon without a model stops either mode at once with `no damage model for weapon "ID"`.
 
 Everything is read from `src/sim/content.js` and the sim's own helpers (`buffMods`, `buffDamage`, `procChance`, `fireballShot`, `damageTaken`, the card pool). A new weapon needs only an entry in `MODELS`.
 
@@ -36,14 +36,14 @@ Not modelled: knockback, mage orbs, braziers and pickups, the golem (it takes no
 ## Damage, mix and pressure
 
 - **Raw damage** per hit: `ceil(base × Might)`, then the damage function's `ceil(× (1 − r))` per enemy type. `--check` compares raw damage.
-- **Effective damage** (the report): HP removed. Hits land on bodies (a type at a tier; a slime is its 7 bodies, a ghost knight brings its ghost, a mage one cast of 4 skeletons) in proportion to spawn rate × HP; a hit removes `hp / hits-to-kill`, so overkill is lost; the bite's execute is applied in the hits to kill.
+- **Effective damage** (the report): HP removed. Bodies (a type at a tier; a slime is its 7 bodies, a ghost knight brings its ghost, a mage one cast of 4 skeletons) arrive at their spawn rates, and each one that dies takes exactly its hits to kill `k` (the damage function's rounding and resistance; the bite's execute shortens it). So hits land on bodies in proportion to arrival rate × `k`, and a hit removes `Σ rate·hp / Σ rate·k`: overkill is lost, and DPS / pressure is the share of the arrivals the build's hits can kill. Bodies a damage type cannot hurt are left out of both sums.
 - **Pressure**: Σ spawn rate × body HP at the minute (the timeline's interpolated rate, the row's type and tier weights, stampede horses at their average rate).
-- **Near the dragon**: `max(--min-near, spawn rate × --view-time)` enemies in a disk of `--radius` px: the enemies that arrive in that many seconds.
+- **Near the dragon**: `max(--min-near, spawn rate × --view-time)` enemies in a disk of `--radius` px: the enemies that arrive in that many seconds. Their radius is the bodies' mean weighted by spawn rate × HP (a body lingers about as long as its HP).
 
 ## Floor and ceiling
 
 - **Level** at each minute: `LEVEL_CURVE`, the median level of the naive bots still standing (aim+naive and kite+naive, seeds 1..48; thin after 2:30), or `--levels`. The table also prints the level every gem spawned so far would give (an upper bound).
-- **Floor**: the median effective DPS of 64 naive builds after that many level-ups, each drawn with the real card pool taking card 0 (as the naive bot).
+- **Floor**: the median effective DPS of 64 naive builds after that many level-ups, each drawn with the real card pool taking card 0 (as the naive bot). With an even count the median is the mean of the two middle builds.
 - **Ceiling**: the best build for that minute's field, as if every card were on offer: a beam search over layers of picks spent, stepping by one pick or by taking an item to its top level, and an exhaustive search of every build whose items all stand at their top level (the fireball at 1 or 5) within the picks, the best eight of which spend the picks left greedily. The exhaustive part matters: Explode, Split, Pierce and Area multiply each other on fireballs, and Pierce reaches fireballs only at L3, so no single pick toward that build pays and a beam alone misses it. Its build is printed, `(exhaustive)` when that search won.
 - **Flags**: ceiling below the pressure: `unwinnable`; floor above 3× the pressure: `trivial`.
 
