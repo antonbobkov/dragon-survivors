@@ -1,6 +1,6 @@
 # T-031: Princess (escort)
 
-**Source:** decision D-9 (accepted by the owner), [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §12 · **Model:** Opus · **Depends on:** nothing open
+**Source:** decision D-9 (accepted by the owner), [strategy-depth design](../../../reports/designs/2026-11-26-strategy-depth-design.md) §12 · **Model:** Opus · **Depends on:** nothing open
 
 ## Why
 
