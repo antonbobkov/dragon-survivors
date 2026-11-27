@@ -1,6 +1,6 @@
 # T-022: Claws: left claw, right claw, dual claw evolution
 
-**Source:** [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §4; owner notes 2 (weapons) · **Model:** Opus · **Depends on:** T-017 (art pipeline), T-018 (`dealDamage`, types), T-019 (buffs, knockback) — all merged
+**Source:** [strategy-depth design](../../../reports/designs/2026-11-26-strategy-depth-design.md) §4; owner notes 2 (weapons) · **Model:** Opus · **Depends on:** T-017 (art pipeline), T-018 (`dealDamage`, types), T-019 (buffs, knockback) — all merged
 
 ## Why
 
