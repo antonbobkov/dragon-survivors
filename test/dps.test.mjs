@@ -189,6 +189,11 @@ test('dps: fans, claw rectangles, the cone and bite caps follow their geometry',
   assert.ok(Math.abs(miniTowerShotRate(1, none) - 8 / 6) < 1e-9);
 });
 
+test('dps: a check case longer than 2:15 runs without a prince joining the dummies', () => {
+  const r = runCheck({ weapon: 'ring', level: 1, set: 'none', density: 'sparse', dummy: 'horse' }, { seconds: 2, warm: 140 });
+  assert.ok(Number.isFinite(r.measured));
+});
+
 test('dps: the ring, saw and fireball models match the real sim', () => {
   for (const c of [
     { weapon: 'ring', level: 5, set: 'none', seconds: 40 },

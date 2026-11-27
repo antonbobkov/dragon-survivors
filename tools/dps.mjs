@@ -1114,6 +1114,7 @@ export function runCheck(c, opts = {}) {
   game.buffs = CHECK_BUFFS[c.set].map((b) => ({ ...b }));
   game.tower.hp = game.tower.maxHp = 1e12;
   game.stepEnemies = () => {}; // the dummies do not walk, separate or despawn
+  game.princeNext = Infinity; // no prince (§14.5) joins the dummies at 2:15 of a long case
   const lr = mulberry32(seed * 7919 + 17);
   let homes = [];
   const place = () => {
