@@ -387,7 +387,21 @@ export const CHARACTERS = {
     resist: { fire: 0.5, arcane: 0.5, physical: 0.5 },
     walk: 'merchant.walk', die: 'merchant.die', bubble: 'merchant.bubble', dieSound: 'death02',
   },
+  // §14.4 the princess: never hit by the player, so no resistances or mass.
+  princess: {
+    name: 'Princess', hp: 20, speed: 40, r: 10,
+    walk: 'princess.walk', die: 'princess.die', sparkle: 'princess.sparkle',
+    arriveSound: 'princess_arrive', dieSound: 'princess_capture',
+  },
 };
+// §14.4 the princess. Times in s, distances in px. Every PRINCESS_INTERVAL s from the first
+// interval, while none is about, one appears on the spawn ring and walks to the tower; enemies
+// within PRINCESS_LURE of her walk at her instead. Reaching the tower she raises its max HP by
+// PRINCESS_TOWER_HP and heals it fully; the rescue's sparkle plays at PRINCESS_SPARKLE_SCALE.
+export const PRINCESS_INTERVAL = 120;
+export const PRINCESS_LURE = 160;
+export const PRINCESS_TOWER_HP = 25;
+export const PRINCESS_SPARKLE_SCALE = 2;
 // The shop's three offers, prices in banked XP (`game.xp`, never a level).
 export const SHOP_ITEMS = ['reroll', 'card', 'heal'];
 export const SHOP_PRICES = { reroll: 10, card: 25, heal: 15 };
@@ -418,6 +432,7 @@ export const ATLAS_NAMES = [
   'icon.leftclaw', 'icon.rightclaw', 'icon.dualclaw', 'claw.swipe', 'claw.cone', 'claw.cone22', 'claw.cone45',
   'icon.bite', 'icon.saw', 'bite.jaws', 'saw.spin',
   'merchant.walk', 'merchant.die', 'merchant.bubble', 'pickup.chest', 'icon.reroll',
+  'princess.walk', 'princess.die', 'princess.sparkle',
 ];
 // §8.6 the generated tier variants of every tiered enemy anim (tiers 2–4).
 ATLAS_NAMES.push(...TIERED_ANIMS.flatMap((a) => TIER_IDS.filter((t) => t > 1).map((t) => tierAnim(a, t))));
@@ -426,5 +441,5 @@ ATLAS_NAMES.push(...TIERED_ANIMS.flatMap((a) => TIER_IDS.filter((t) => t > 1).ma
 export const SOUND_NAMES = [
   'shoot01', 'laser01', 'explosion01', 'explosion02', 'death01', 'death02', 'pickup', 'powerup',
   'hit_golem', 'megaslime_hit', 'slime_poke', 'destroy_castle_sound', 'start_game', 'ohno', 'win_level_2',
-  'dropping', 'powerup02', 'powerup03', 'screech',
+  'dropping', 'powerup02', 'powerup03', 'screech', 'princess_arrive', 'princess_capture',
 ];

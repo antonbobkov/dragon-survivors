@@ -63,6 +63,9 @@
     { "name": "merchant.die", "list": "trader/die.txt" },
     { "name": "merchant.bubble", "art": "world/bubble.txt" },
     { "name": "icon.reroll", "art": "icons/reroll.txt" },
+    { "name": "princess.walk", "list": "princess/princess.txt" },
+    { "name": "princess.die", "list": "princess/die.txt" },
+    { "name": "princess.sparkle", "art": "effects/sparkle.txt" },
     { "name": "icon.leftclaw", "art": "icons/leftclaw.txt" },
     { "name": "icon.rightclaw", "art": "icons/rightclaw.txt" },
     { "name": "icon.dualclaw", "art": "icons/dualclaw.txt" },
@@ -96,5 +99,5 @@
       { "tier": 4, "tint": "#ffd000", "tintStrength": 0.7, "outline": "#f8c000" }
     ]
   },
-  "sounds": ["shoot01", "laser01", "explosion01", "explosion02", "death01", "death02", "pickup", "powerup", "hit_golem", "megaslime_hit", "slime_poke", "destroy_castle_sound", "start_game", "ohno", "win_level_2", "dropping", "powerup02", "powerup03", "screech"]
+  "sounds": ["shoot01", "laser01", "explosion01", "explosion02", "death01", "death02", "pickup", "powerup", "hit_golem", "megaslime_hit", "slime_poke", "destroy_castle_sound", "start_game", "ohno", "win_level_2", "dropping", "powerup02", "powerup03", "screech", "princess_arrive", "princess_capture"]
 }

@@ -212,6 +212,24 @@ export function drawMerchant(ctx, atlas, m, x, y) {
   }
 }
 
+// §14.4 a princess at screen point (x, y): her sprite (mirrored when `flip`) and above it a
+// small HP bar, always shown, red on a dark back, PRINCESS_BAR.gap px above the sprite's top.
+export const PRINCESS_BAR = { w: 24, h: 3, gap: 3, back: '#1a1a1a', fill: '#e03a3a' };
+export function princessBarFrac(p) {
+  return p.maxHp > 0 ? Math.max(0, Math.min(1, p.hp / p.maxHp)) : 0;
+}
+export function drawPrincess(ctx, atlas, p, x, y) {
+  drawAnim(ctx, atlas, p.anim, p.frame, x, y, { flip: p.flip });
+  const r = frameRect(atlas, p.anim, p.frame);
+  const B = PRINCESS_BAR;
+  const top = Math.round(y - (r ? r.h : 16) * SPRITE_SCALE / 2) - B.gap - B.h;
+  const left = Math.round(x - B.w / 2);
+  ctx.fillStyle = B.back;
+  ctx.fillRect(left, top, B.w, B.h);
+  ctx.fillStyle = B.fill;
+  ctx.fillRect(left, top, Math.round(B.w * princessBarFrac(p)), B.h);
+}
+
 // Enemies in draw order (by y, then id), as a new array: the game's list is never reordered.
 export function enemyDrawOrder(enemies, out = []) {
   out.length = 0;
@@ -262,7 +280,7 @@ export function createRenderer({ atlas, makeCanvas }) {
   }
 
   // Draw order (§5): background, gems, tower, mini towers, braziers, pickups, merchants, enemies by y,
-  // ring fireballs, saw blades, projectiles, enemy shots (mage orbs), dragon, claw slashes,
+  // princesses (over the horde that surrounds them), ring fireballs, saw blades, projectiles, enemy shots (mage orbs), dragon, claw slashes,
   // effects (the bite's jaws among them), the bomb flash. The HUD and screens draw on top.
   // `shake` ({ x, y } px, optional) offsets the whole world (§5).
   function drawWorld(ctx, game, shake) {
@@ -313,6 +331,8 @@ export function createRenderer({ atlas, makeCanvas }) {
       drawAnim(ctx, atlas, s.anim, e.frame, e.x + o.x, e.y + o.y, { flip: e.flip, alpha: e.alpha, scale: s.scale });
     }
     sorted.length = 0;
+
+    for (const p of game.princesses || []) drawPrincess(ctx, atlas, p, p.x + o.x, p.y + o.y);
 
     for (const w of game.weapons) {
       if (w.id !== 'ring' || !Array.isArray(w.balls)) continue;
