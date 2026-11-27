@@ -1,0 +1,18 @@
+# icon.bite (Bite): red jaws seen from the side, open to the right, two white fangs above
+# interlocking with two below, over the bonus tray.
+key
+  r red
+  d red.dark
+  w white
+  s silver
+  Y gold
+frame
+..rrrrrrr
+.rddddddd
+rd.ww.ww.
+rd..s..s.
+rd...s..s
+rd..ww.ww
+.rddddddd
+YY.....YY
+.YYYYYYY.

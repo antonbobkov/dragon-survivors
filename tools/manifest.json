@@ -57,7 +57,11 @@
     { "name": "claw.swipe", "art": "effects/swipe.txt" },
     { "name": "claw.cone", "art": "effects/cone.txt" },
     { "name": "claw.cone22", "art": "effects/cone22.txt" },
-    { "name": "claw.cone45", "art": "effects/cone45.txt" }
+    { "name": "claw.cone45", "art": "effects/cone45.txt" },
+    { "name": "icon.bite", "art": "icons/bite.txt" },
+    { "name": "icon.saw", "art": "icons/saw.txt" },
+    { "name": "bite.jaws", "art": "effects/jaws.txt" },
+    { "name": "saw.spin", "art": "effects/saw.txt" }
   ],
   "tiers": {
     "anims": [
