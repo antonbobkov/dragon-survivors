@@ -4,4 +4,3 @@ Every open task, one table. Only the orchestrator edits this file. Work files li
 
 | Id | Task | Source | Depends on | Model | Status |
 |---|---|---|---|---|---|
-| T-041 | Pixel viewer at `pixel/` (first step of a pixel art editor) | owner | none | Opus | in progress |
