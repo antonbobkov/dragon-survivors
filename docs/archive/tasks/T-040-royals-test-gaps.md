@@ -1,6 +1,6 @@
 # T-040: Close the princess and prince test gaps found in review
 
-**Source:** [T-031/T-032 review](../../reports/reviews/2026-11-27-T-031-T-032-review.md), finding 4 · **Model:** Sonnet · **Depends on:** —
+**Source:** [T-031/T-032 review](../../../reports/reviews/2026-11-27-T-031-T-032-review.md), finding 4 · **Model:** Sonnet · **Depends on:** —
 
 Tests only (new file `test/royals-review.test.mjs`), so each mutation fails at least one test; restore from a backup copy, never commit a mutation. If T-029 (rebalance) changes a number you rely on, read it from `content.js`.
 
