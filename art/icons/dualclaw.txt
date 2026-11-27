@@ -1,0 +1,17 @@
+# icon.dualclaw (Dual claw): two sets of claw scratches crossed over the bonus tray.
+key
+  w white
+  s silver
+  r red
+  d red.dark
+  Y gold
+frame
+ws.....rd
+.ws...rd.
+..ws.rd..
+...wrd...
+..rdsws..
+.rd...ws.
+rd.....ws
+YY.....YY
+.YYYYYYY.

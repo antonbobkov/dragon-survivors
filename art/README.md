@@ -115,5 +115,10 @@ What the pack's sprites look like (print any of them with `node tools/bmp-to-art
 | `pickups/heart.txt` | `pickup.heart` | 9 × 8 red heart, cream glint, dark red shade |
 | `pickups/magnet.txt` | `pickup.magnet` | 9 × 7 red horseshoe magnet with steel tips |
 | `pickups/bomb.txt` | `pickup.bomb` | 9 × 9 iron bomb, wide grey and silver lit side so it reads on grass, 2-frame fuse spark |
+| `icons/leftclaw.txt` | `icon.leftclaw` | Left claw: three white claw scratches, 2 px gaps so they read as marks, not a striped band |
+| `icons/rightclaw.txt` | `icon.rightclaw` | Right claw: a green dragon hand, three white talons fanned right like its cone |
+| `icons/dualclaw.txt` | `icon.dualclaw` | Dual claw: two scratches crossed, white and red |
+| `effects/swipe.txt` | `claw.swipe` | 56 × 18 rectangle slash: three bowed white and silver streaks from the left edge (the dragon's centre); strike, full, fading far end (3, 4, 5 ticks) |
+| `effects/cone.txt`, `cone22.txt`, `cone45.txt` | `claw.cone`, `claw.cone22`, `claw.cone45` | 40 × 40 cone slash: three white and silver claw arcs fanned around 0°, 22.5° and 45° from the apex (0, 20), (0, 6), (0, 0); near, out, fading (3, 4, 5 ticks). The game turns them by quarter turns and mirrors the 22.5° one across its diagonal for 16 directions, so no pixel leaves the grid |
 
 World objects and pickups are drawn at 2× like everything else; dark objects (the bomb) need a broad lit side in `grey`/`silver`, because `charcoal` alone vanishes on the dark grass.

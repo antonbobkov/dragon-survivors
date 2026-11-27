@@ -50,6 +50,7 @@ dragon-survivors/
     enemyShots.js       mage orbs: firing, movement, hits on the dragon
       spawner.js
       weapons.js          cooldowns, firing, ring, mini tower
+      claws.js            claw slashes: volleys, shapes, strikes (§10.5–10.7)
       projectiles.js      movement, hits, procs
       damage.js           damage types, resistances, the damage function (§12.1)
       effects.js          one-shot animations (explosions, deaths)
@@ -88,12 +89,12 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 3. Tower: follow the dragon, then the tether (§7.1).
 4. Spawner: add enemies for this tick (§9), then braziers: flicker, drop far ones, place a new one when due (§14.2).
 5. Enemies: special timers (mage cast, mage orb, summon anim), AI target, move, separation, despawn.
-6. Weapons: advance cooldowns, fire, spin the ring, run mini towers.
+6. Weapons: count queued claw slashes down, advance cooldowns, fire (claws queue their slashes), spin the ring, run mini towers.
 7. Projectiles, then enemy shots (mage orbs): move, expire by range.
-8. Collisions: player hits vs braziers (projectiles, then ring fireballs), projectile vs enemy (with procs; an explosion also breaks the braziers it overlaps), ring vs enemy, enemy vs tower, enemy shot vs dragon, dragon vs pickups (collect, apply, count lifetimes down, §14.2). Every hit on an enemy goes through the damage function (§12.1).
+8. Collisions: player hits vs braziers (projectiles, then ring fireballs), projectile vs enemy (with procs; an explosion also breaks the braziers it overlaps), ring vs enemy, claw slashes vs enemy (a slash also breaks the braziers it overlaps), enemy vs tower, enemy shot vs dragon, dragon vs pickups (collect, apply, count lifetimes down, §14.2). Every hit on an enemy goes through the damage function (§12.1).
 9. Deaths: play death animations, drop gems, split slimes, start ghost knight burns.
 10. Gems: attract and collect, add XP, queue level-ups and roll the offers.
-11. Effects: advance one-shot animations, remove finished ones; a finished ghost burn becomes a ghost.
+11. Effects: advance one-shot animations, remove finished ones; a finished ghost burn becomes a ghost. Then struck claw slashes advance their effect and finished ones are removed.
 12. Clock: advance `t`, spawn the golem at 5:00, check tower HP for game over.
 
 ---
@@ -152,10 +153,13 @@ Serve with any static server (`python -m http.server` or `npx serve`). The only 
 | `pickup.heart`, `pickup.magnet`, `pickup.bomb` | `art/pickups/heart.txt`, `art/pickups/magnet.txt`, `art/pickups/bomb.txt` | drawn for this game, 9×8, 9×7 and 9×9: a red heart with a cream glint, a red horseshoe magnet with steel tips, an iron bomb under a steel cap whose fuse spark flickers (2 frames of 8 ticks) (§14.2) |
 | `icon.laser`, `icon.explode`, `icon.split`, `icon.ring`, `icon.speed`, `icon.big`, `icon.multi`, `icon.nuke` | `bonus/bonuslaser1.bmp`, `bonus/bonusexplosion1.bmp`, `bonus/bonussplit1.bmp`, `bonus/bonusring1.bmp`, `bonus/bonusspeed1.bmp`, `bonus/bonusbig1.bmp`, `bonus/bonusmulti1.bmp`, `bonus/bonusnuke1.bmp` | level-up card icons, roughly 9px. `icon.big` and `icon.multi` are unused in the demo (Might and Haste have their own icons) but imported for later |
 | `icon.might`, `icon.haste`, `icon.duration`, `icon.force`, `icon.amount` | `art/icons/might.txt`, `art/icons/haste.txt`, `art/icons/duration.txt`, `art/icons/force.txt`, `art/icons/amount.txt` | drawn for this game (§3.4), 9×9, the pack's bonus tray under a sword, a lightning bolt, an hourglass, a war hammer and three fireballs. Icons of the buffs Might, Haste, Duration, Force and Amount (§11) |
+| `icon.leftclaw`, `icon.rightclaw`, `icon.dualclaw` | `art/icons/leftclaw.txt`, `art/icons/rightclaw.txt`, `art/icons/dualclaw.txt` | drawn for this game, 9×9 on the bonus tray: three white claw scratches; a green dragon hand with three white talons fanned to the right; two crossed scratches, white and red. Icons of the left, right and dual claw (§10.5–10.7) |
+| `claw.swipe` | `art/effects/swipe.txt` | drawn for this game, 56×18, 3 frames (3, 4, 5 ticks): three bowed white and silver claw streaks running right from the left edge; strike, full swipe, fading far end. The rectangle slash (§10.5) |
+| `claw.cone`, `claw.cone22`, `claw.cone45` | `art/effects/cone.txt`, `art/effects/cone22.txt`, `art/effects/cone45.txt` | drawn for this game, 40×40, 3 frames (3, 4, 5 ticks): three white and silver claw arcs fanned around 0°, 22.5° and 45° (clockwise on screen from right) from an apex at (0, 20), (0, 6) and (0, 0); near, reaching out, fading. The cone slash (§10.6), turned for 16 directions (§5) |
 | Tier sprites (§8.6) | the manifest's `tiers` block | named `<anim>@t2`, `<anim>@t3` and `<anim>@t4` after every anim of every enemy type except the golem (walk, die, summon, split, spell, burn), recoloured and outlined per tier (§8.6): bronze tint `#c86428` at 0.6 with outline `#d8702c`, silver tint `#b0c8f0` at 0.6 with outline `#a0b4d8`, gold tint `#ffd000` at 0.7 with outline `#f8c000`. 2 px larger than the plain frame each way |
 | `gem` | none, drawn procedurally | 6px diamond, two colours |
 
-Sounds copied as-is from the pack root: `shoot01`, `laser01`, `explosion01`, `explosion02`, `death01`, `death02`, `pickup`, `powerup`, `hit_golem`, `megaslime_hit`, `slime_poke`, `destroy_castle_sound`, `start_game`, `ohno`, `win_level_2`, `dropping`, `powerup02`, `powerup03`.
+Sounds copied as-is from the pack root: `shoot01`, `laser01`, `explosion01`, `explosion02`, `death01`, `death02`, `pickup`, `powerup`, `hit_golem`, `megaslime_hit`, `slime_poke`, `destroy_castle_sound`, `start_game`, `ohno`, `win_level_2`, `dropping`, `powerup02`, `powerup03`, `screech`.
 
 ### 3.4 Text pixel art
 
@@ -202,9 +206,9 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 - **Intent:** exactly the shape in §4. A missing, partial or non-finite field reads as 0, `false` or `-1` (`pick`). A move vector longer than 1 is normalised; a non-zero aim is normalised; `hasAim` is false when the aim is zero. The sim ignores `confirm`; `pick` is read only while level-up offers are open (§14). The loop turns a gamepad A press on the level-up screen into the `pick` of the highlighted card.
 - **Phases:** `game.phase` is `'play' | 'dying' | 'over'`. In the clock step, when tower HP is 0, the phase becomes `'dying'`, a `castle.destroy` effect spawns at the tower and sound `destroy_castle_sound` plays. During `'dying'` only effects advance; the clock, enemies, dragon and weapons are frozen. After 2 s (120 ticks) the phase becomes `'over'`. `tick()` in `'over'` changes nothing except clearing `events`. Title, pause and the level-up screen are the loop's business, not phases.
 - **Events:** `game.events` is cleared at the start of every tick. Systems push `{ type: 'sound', name }`, at most one per sound name per tick; the browser plays them. Events are output, not state.
-- **Ids:** every enemy, projectile, enemy shot, effect, gem, mini tower, brazier and pickup gets its `id` from one counter, `game.nextId`.
+- **Ids:** every enemy, projectile, enemy shot, effect, gem, mini tower, claw slash, brazier and pickup gets its `id` from one counter, `game.nextId`.
 - **Start:** the dragon at (0, 0), the tower at (0, `TOWER_REST_DIST`) = (0, 40), below the dragon and at rest (§7.1), so nothing moves before the first input.
-- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.offers` (`[]`, the level-up cards on show, §14), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`, entries `{ id, level }` in the order gained), `game.gems` (`[]`), `game.miniTowers` (`[]`), `game.enemyShots` (`[]`, mage orbs, §8.5), `game.braziers` and `game.pickups` (`[]`, §14.2), `game.brazierTimer` (1500, spawner steps until the next brazier attempt), `game.lastBomb` (`null`, the `tickCount` of the tick the last bomb pickup went off, read by the renderer's flash), `game.spawner` (`{ budget, spawned, golem }`, `golem` true once the golem has spawned), `game.seen` (`[]`, the enemy types met this run in the order first met: a type is added when the first enemy of that type is created, by the spawner, a summon, a slime split, a rising ghost or the golem; read by the bestiary, §17.1), `game.seenTiers` (`{}`, per enemy type the tiers of it met this run, ascending, added as enemies are created, §8.6; read by the bestiary). `game.score()` = `floor(t) + kills`.
+- **Run counters:** `game.kills` (0), `game.level` (1), `game.xp` (0), `game.pendingLevelUps` (0), `game.offers` (`[]`, the level-up cards on show, §14), `game.weapons` (`[{ id: 'fireball', level: 1, timer: 0 }]`, `timer` = seconds until the weapon next fires), `game.buffs` (`[]`, entries `{ id, level }` in the order gained), `game.gems` (`[]`), `game.miniTowers` (`[]`), `game.slashes` (`[]`, claw slashes, §10.5), `game.enemyShots` (`[]`, mage orbs, §8.5), `game.braziers` and `game.pickups` (`[]`, §14.2), `game.brazierTimer` (1500, spawner steps until the next brazier attempt), `game.lastBomb` (`null`, the `tickCount` of the tick the last bomb pickup went off, read by the renderer's flash), `game.spawner` (`{ budget, spawned, golem }`, `golem` true once the golem has spawned), `game.seen` (`[]`, the enemy types met this run in the order first met: a type is added when the first enemy of that type is created, by the spawner, a summon, a slime split, a rising ghost or the golem; read by the bestiary, §17.1), `game.seenTiers` (`{}`, per enemy type the tiers of it met this run, ascending, added as enemies are created, §8.6; read by the bestiary). `game.score()` = `floor(t) + kills`.
 
 | Entity | Fields |
 |---|---|
@@ -217,6 +221,7 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 | `game.effects[]` | `id, scale, alpha, flip, tier, hold, life, done`. `scale` multiplies the standard 2× sprite scale; `tier` is the tier of the enemy whose death it shows (1 for every other effect), drawn as in §8.6; `life` (ticks, usually 0) is a minimum length: the effect holds its last frame until `life` ticks have passed |
 | `game.gems[]` | `id, x, y, value, homing` (§14) |
 | `game.miniTowers[]` | `id, x, y` (landing point), `fromX, fromY` (where the lob started), `lobTicks` (ticks of flight left), `life` (ticks left after landing), `timer` (seconds to the next shot) (§10.3) |
+| `game.slashes[]` | `id, weapon` (the claw's id), `shape` (`rect` or `cone`), `side` (rect: 1 right, −1 left), `dx, dy` (cone: unit direction), `w, h` (rect px), `angle, reach, maxTargets` (cone), `damage, knock` (after Might and Force), `delay` (ticks until it strikes), `struck`, `x, y` (the dragon's centre when it struck), `hits` (ids of the enemies it hit); `anim` is `claw.swipe` or `claw.cone` (§10.5–10.6) |
 | `game.braziers[]` | `id, x, y`; `anim` is `brazier.burn` (§14.2) |
 | `game.pickups[]` | `id, kind, x, y, life` (ticks left); `kind` is `heart`, `magnet` or `bomb`, `anim` its `pickup.<kind>` (§14.2) |
 | ring weapon | also `angle` (radians), `balls` (`[{ x, y }]`, the fireball positions this tick), `rehit` (enemy id → `tickCount` from which it may be hit again), and its own `anim, frame, frameTicks` (§10.4) |
@@ -233,8 +238,9 @@ The sim's state is plain data on the `Game` object. The loop and the renderer re
 - **World:** unbounded plane. No terrain in the demo. The camera is centred on the dragon: a world point is drawn at `world + offset` with `offset = (round(480 − dragon.x), round(300 − dragon.y))`, an integer so sprites do not shimmer. Sprites are drawn centred on the entity position, at integer screen pixels.
 - **Background:** a 64×64 grass tile generated once at startup into an offscreen canvas (dark green base, 28 lighter or darker 2×2 px speckles), tiled with the camera offset. The speckles come from the tile's own `mulberry32` with a fixed seed, never from `game.rng`, so drawing cannot change a run. A faint darker ring (2 px, black at 18% alpha) of radius `TETHER_LENGTH` around the tower makes the tether rule readable.
 - **Gem:** drawn procedurally as a 6×6 px diamond, a blue edge around a pale cyan core, at 2× (12 px on screen), centred on the gem.
-- **Draw order:** background, gems, tower, mini towers, braziers, pickups (a blinking one only on its shown steps, §14.2), enemies sorted by y, ring fireballs, projectiles, enemy shots (mage orbs), dragon, effects, the bomb flash (§14.2), HUD, then any screen (title, pause, game over) over a 60% black overlay. Enemies are sorted by y then id in a copy owned by the renderer; the game's enemy list is never reordered, because its order is part of the sim.
+- **Draw order:** background, gems, tower, mini towers, braziers, pickups (a blinking one only on its shown steps, §14.2), enemies sorted by y, ring fireballs, projectiles, enemy shots (mage orbs), dragon, claw slashes, effects, the bomb flash (§14.2), HUD, then any screen (title, pause, game over) over a 60% black overlay. Enemies are sorted by y then id in a copy owned by the renderer; the game's enemy list is never reordered, because its order is part of the sim.
 - **Sprites:** `scale` and `alpha` of effects and enemies apply as given (`scale` multiplies the 2×). An enemy or effect of tier 2–4 draws its anim's tier sprite `<anim>@t<tier>` (the plain anim if the atlas has no such sprite) at the tier's screen scale over the standard 2× (tiers 3 and 4: 1.5, times an effect's `scale`), with the same `frame`; `flip` mirrors around the sprite's centre. Projectiles whose anim is a 16-direction sheet (`laser.dir`, `laser.bigdir`) draw frame `dirFrame`; others draw `frame`. Enemy shots draw `frame` of their anim. The dragon draws `frame` of `dragon.walk`, mirrored when `flip`. Ring fireballs draw the ring weapon's `frame` at each of its `balls`. A mini tower in flight is drawn on the straight line from `(fromX, fromY)` to `(x, y)` at progress `p = 1 − lobTicks / 30`, raised by `sin(p × π) × 30` px; a landed one at `(x, y)`.
+- **Claw slashes** (§10.5–10.6): only struck ones, at the dragon's current centre (the claws are the dragon's, so the effect moves with it), `frame` of their anim, at a whole screen scale `k`: the integer nearest the slash's size over the sprite's (a rectangle's `w` over 56, a cone's `reach` over 40), halves rounding down, at least 1 (110 px and 140 px rectangles draw at 2×, an Area-scaled 168 px one at 3×). The sprite keeps its own size, so the effect only approximates the hitbox; `?debug=1` draws the hitbox (§19). A rectangle draws `claw.swipe` with its left edge on the dragon's centre, mirrored when `side` is −1. A cone takes the nearest of 16 directions (22.5° steps, clockwise from right): index `i = round(atan2(dy, dx) / 22.5°) mod 16`, base `b = i mod 4` and quarter turns `q = floor(i / 4)`; it draws `claw.cone`, `claw.cone22` or `claw.cone45` for `b` 0, 1, 2, and `claw.cone22` mirrored across its diagonal (x ↔ y, so 22.5° becomes 67.5°) for `b` 3, turned `q` quarter turns clockwise about its apex, which sits on the dragon's centre. Quarter turns and the diagonal mirror keep every pixel on the screen grid.
 - **Facing:** enemies flip horizontally when moving left (`ctx.scale(-1, 1)`). The dragon flips the same way when facing left (§6.3).
 - `draw.js` reads the game state and never writes it. Animation indices live in the entity (`anim`, `frame`, `frameTicks`) and advance during the tick, so rendering is stateless.
 
@@ -411,9 +417,9 @@ The spawner uses `t` at the start of the tick. The weights are those of the last
 
 ## 10. Weapons
 
-The player has up to **4 weapon slots**. Each weapon has levels 1–5. Weapons fire automatically on cooldown; there is no fire button. Stat buffs (§11) multiply the base values below.
+The player has up to **4 weapon slots**. Each weapon has levels 1–5, except an evolution, which has one (§10.7); a weapon's top level is its number of levels. Weapons fire automatically on cooldown; there is no fire button. Stat buffs (§11) multiply the base values below.
 
-`cooldown` is in seconds, `damage` is per hit, before resistances. Every weapon has a damage type (`type` in its `content.js` entry, §12.1): Fireball, Mini tower and Ring are fire, Laser is arcane. Every weapon also has a `knock` (§8.7), the px one of its hits pushes an enemy of mass 1 before Force:
+`cooldown` is in seconds, `damage` is per hit, before resistances. Every weapon has a damage type (`type` in its `content.js` entry, §12.1): Fireball, Mini tower and Ring are fire, Laser is arcane, the claws are physical. Every weapon also has a `knock` (§8.7), the px one of its hits pushes an enemy of mass 1 before Force:
 
 | Weapon | Knock px |
 |---|---|
@@ -421,6 +427,9 @@ The player has up to **4 weapon slots**. Each weapon has levels 1–5. Weapons f
 | Laser | 2 |
 | Mini tower (its shots) | 4 |
 | Ring | 8 |
+| Left claw | 14 |
+| Right claw | 22 |
+| Dual claw | 22 |
 
 *unmeasured*. Explosions knock `EXPLODE_KNOCK` (§8.7). Projectiles live until they hit (unless they win a pierce roll, §12) or have travelled `range` px.
 
@@ -493,6 +502,56 @@ Sprite `fireball.anim`, radius 6 px.
 
 Precisely: in the weapons step the ring turns by `spin × DT` degrees (its `angle` starts at 0 and wraps at 2π) and places its `n = count + amount` fireballs at `dragon + orbit × area × (cos, sin)(angle + i × 2π / n)`, after the dragon has moved, in `balls`. In the collisions step, after the projectiles, every ball hits every live enemy whose circle overlaps its own (radius 6, not scaled by area) and whose `rehit` entry is absent or not after the current `tickCount`; a hit deals `damage` (× Might, rounded up) as fire damage with the ring's knock × Force through the damage function (§12.1), which pushes the enemy away from the ball (§8.7; the golem by its own rule, §8.4), and sets the entry to `tickCount + rehit` in ticks; it spawns no effect. Balls are checked in order and enemies in grid order, so two balls over one enemy hit it once. Expired entries are dropped in the weapons step, so ids of dead enemies do not pile up. The ring takes Might, Area, Amount and Force only: Haste and Velocity do not change `rehit` or `spin`. It rolls no procs and draws no random numbers.
 
+### 10.5 Left claw (not aimed, slashes from the dragon)
+Every `cooldown` the dragon slashes a rectangle `width × height` px on the side it faces (§6.3): from the dragon's centre, `width` px sideways, `height` px tall centred on the dragon. It hits every live enemy overlapping it once. With `sides` 2 it also slashes the other side 0.15 s later (`sideDelay`). Like the VS whip: close-range area, physical, high knock.
+
+| Level | cooldown | damage | width | height | sides |
+|---|---|---|---|---|---|
+| 1 | 1.3 | 2 | 110 | 36 | 1 |
+| 2 | 1.2 | 3 | 115 | 38 | 1 |
+| 3 | 1.1 | 3 | 125 | 40 | 2 |
+| 4 | 1.0 | 4 | 130 | 42 | 2 |
+| 5 | 0.9 | 5 | 140 | 44 | 2 |
+
+*unmeasured*. Sprite `claw.swipe` (§5). Sound `screech`. Might, Haste, Area (both sides of the rectangle), Force and Amount apply; Velocity and Duration do not; no procs (§12).
+
+Claw slashes, precisely (all three claws):
+
+- **Volley.** In the weapons step, on the cooldown pattern of §10 (Haste applies), the claw queues its slashes in `game.slashes`: first the rectangles, one per side (the facing side, `side` −1 when `dragon.flip` and 1 otherwise, then with `sides` 2 the other side at `sideDelay`), each side repeated once per point of Amount (§11), `repeatDelay = 0.1 s` apart; then the cone (§10.6). A slash's `delay` is its time after the volley in ticks, `round(seconds / DT)` (the other side 9 ticks, Amount's repeats 6, 12, 18 ticks after their side). Its damage (× Might, rounded up), knock (× Force), size (× Area) and side, and a cone's direction and `maxTargets`, are read when it is queued: a dragon that turns does not move a queued slash to the other side.
+- **Delay.** At the start of every weapons step, before any weapon fires, each slash not yet struck with `delay` above 0 counts it down by one, so a slash queued with delay 0 strikes on the same tick and one with delay 9 nine ticks later.
+- **Strike.** In the collisions step, after the ring, each slash not yet struck whose `delay` is 0 strikes, in list order, from the dragon's centre at that moment: it is marked `struck` with that point in `x, y`; each of its targets takes its damage as physical damage through the damage function (§12.1) with its knock and `source` the dragon's centre, so knockback pushes straight away from the dragon (§8.7), and its id goes in `hits`; then every brazier it overlaps breaks (§14.2); sound `screech` plays. A rectangle's targets are the live enemies whose circle overlaps it (the rectangle's nearest point is closer than `r`), in grid order (query at the rectangle's centre, radius half its longer side plus the largest radius, §15). The golem is hit like any enemy and moved by its own rule (§8.4). A slash draws no random numbers.
+- **Effect.** A struck slash plays its anim (3, 4, 5 ticks) in the effects step and is removed on the tick it finishes. A queued slash outlives its weapon: slashes queued before an evolution still strike.
+
+### 10.6 Right claw (aimed, slashes from the dragon)
+Every `cooldown` the dragon slashes a cone `angle` degrees wide and `reach` px long in the fire direction (§6.2), apex at its centre, and hits the `maxTargets` nearest live enemies in it: single target, short range, heavy damage, very high knock.
+
+| Level | cooldown | damage | angle | reach | maxTargets |
+|---|---|---|---|---|---|
+| 1 | 1.1 | 4 | 60 | 80 | 1 |
+| 2 | 1.0 | 5 | 60 | 85 | 1 |
+| 3 | 0.9 | 6 | 65 | 90 | 2 |
+| 4 | 0.8 | 8 | 70 | 95 | 2 |
+| 5 | 0.7 | 9 | 75 | 100 | 3 |
+
+*unmeasured*. Sprite `claw.cone` in 16 directions (§5). Sound `screech`. Might, Haste, Area (the reach, not the angle), Force and Amount (+1 `maxTargets` per point) apply; no procs.
+
+Precisely: one cone slash per volley with delay 0, struck as in §10.5. An enemy is in the cone when its circle overlaps the sector: the apex is inside the circle, or its centre is closer than `reach + r` to the apex and within `angle / 2` of the direction, or the circle crosses one of the sector's two straight edges. The targets are the `maxTargets` such live enemies nearest the apex by centre distance, ties to the lower id, hit nearest first (query at the apex, radius `reach` plus the largest radius). With no enemy in the cone the slash still strikes (and still breaks braziers); the cooldown never waits.
+
+### 10.7 Dual claw (evolution) and evolutions
+The evolution of the two claws. Every `cooldown` it slashes both sides at once with the left claw's rectangle (`sides` 2, `sideDelay` 0) and the right claw's cone, all with the right claw's damage and knock.
+
+| Level | cooldown | damage | width | height | sides | angle | reach | maxTargets |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 0.7 | 9 | 140 | 44 | 2 | 75 | 100 | 3 |
+
+*unmeasured*. One level only: it is gained at its top level. Sprites `claw.swipe` and `claw.cone`, sound `screech`, knock 22. The buffs apply as to the claws it joins: Amount repeats both rectangles 0.1 s apart and adds to `maxTargets`. Its slashes strike as in §10.5–10.6.
+
+**Evolutions** are data: `EVOLUTIONS` in `content.js`, a list of `{ result, requires: [a, b] }`; today one entry, `{ result: 'dualClaw', requires: ['leftClaw', 'rightClaw'] }`.
+
+- **Offer.** While the result is not owned and every weapon it requires is owned at its top level, the level-up pool holds its evolution card (§14.1). It needs no free slot.
+- **Pick.** The required weapons leave `game.weapons` and the result takes the slot of the first of them (in slot order) at its top level, so a slot frees up. It fires on the next weapons step.
+- An evolution result is never offered as a new weapon or an upgrade; it is gained only by evolving (or the debug grant, §19). While it is owned, the weapons it was made from are not offered either, so the freed slot takes another weapon.
+
 ---
 
 ## 11. Buffs
@@ -503,11 +562,11 @@ Up to **4 buff slots**, levels 1–3. Seven generic buffs reach every weapon whe
 |---|---|---|---|---|---|
 | Might | `icon.might` | +20% | +40% | +60% | all damage, rounded up |
 | Haste | `icon.haste` | −10% | −20% | −30% | every weapon cooldown and the mini tower's fireRate |
-| Area | `icon.nuke` | +20% | +40% | +60% | projectile radius, explosion radius, ring orbit |
+| Area | `icon.nuke` | +20% | +40% | +60% | projectile radius, explosion radius, ring orbit, claw rectangles and cone reach |
 | Velocity | `icon.speed` | +20% | +40% | +60% | projectile speed and range |
 | Duration | `icon.duration` | +25% | +50% | +75% | mini-tower life, pickup life (§14.2) |
 | Force | `icon.force` | +50% | +100% | +150% | the knock of every hit (§8.7) |
-| Amount | `icon.amount` | +1 | +2 | +3 | fireballs and lasers per volley, ring fireballs, mini towers' maxActive |
+| Amount | `icon.amount` | +1 | +2 | +3 | fireballs and lasers per volley, ring fireballs, mini towers' maxActive, claw rectangles per side and cone targets |
 | Explode | `icon.explode` | 20% | 35% | 50% | fire projectiles; at L3 also arcane (lasers explode) |
 | Split | `icon.split` | 20% | 35% | 50% | fire projectiles |
 | Pierce | `icon.laser` | 20% | 35% | 50% | arcane projectiles; at L3 also fire (fireballs pierce) |
@@ -518,13 +577,13 @@ Buff maths, with `m, h, a, v, u, f, n` the current Might, Haste (negative), Area
 
 - damage = `ceil(base × (1 + m))` for every weapon, the ring included (2 at +20% is 3);
 - every weapon cooldown and the mini tower's `fireRate` × `(1 + h)`;
-- projectile radius (fireball, laser, mini-tower shot), explosion radius and ring orbit × `(1 + a)`;
+- projectile radius (fireball, laser, mini-tower shot), explosion radius, ring orbit, a claw rectangle's width and height and a claw cone's reach × `(1 + a)` (not the cone's angle);
 - projectile speed and range × `(1 + v)`;
 - mini-tower life and the life of a pickup when it drops (§14.2) × `(1 + u)`;
 - every knock × `(1 + f)` (§8.7);
-- `n` more fireballs per fireball volley (§10.1), lasers per laser volley (§10.2), ring fireballs (§10.4) and mini towers standing at once (§10.3). A mini tower's shots stay single.
+- `n` more fireballs per fireball volley (§10.1), lasers per laser volley (§10.2), ring fireballs (§10.4) and mini towers standing at once (§10.3); `n` more rectangles per side of a claw volley, 0.1 s apart, and `n` more claw cone targets (§10.5–10.7). A mini tower's shots stay single.
 
-Stats are read when a projectile is fired or a mini tower lobbed, so a buff gained later does not change projectiles already in flight. Buffs live in `game.buffs` in the order gained, which is also their HUD order.
+Stats are read when a projectile is fired, a mini tower lobbed or a claw slash queued, so a buff gained later does not change projectiles already in flight. Buffs live in `game.buffs` in the order gained, which is also their HUD order.
 
 ---
 
@@ -540,7 +599,7 @@ Resolved in `projectiles.js` when a projectile hits an enemy, in this order: dam
 | Split | L1 | never |
 | Pierce | L3 | L1 |
 
-So fireballs and mini-tower shots explode and split from L1 and pierce only at Pierce L3; lasers pierce from L1, explode only at Explode L3 and never split. Physical projectiles (none yet) have no procs.
+So fireballs and mini-tower shots explode and split from L1 and pierce only at Pierce L3; lasers pierce from L1, explode only at Explode L3 and never split. Physical damage has no procs: the claws (§10.5–10.7) roll nothing and draw no random numbers.
 
 - **Explode:** spawn an explosion at the hit point with radius `60 px × area`, damage equal to the projectile's damage, hitting every enemy in the circle once (the enemy already hit is excluded). Sprite `explosion.big` (fire) or `explosion.laser` (arcane) scaled to the radius. Explosions do not chain; an explosion is not a projectile. Sound `explosion01`.
 - **Split:** spawn 2 fireballs from the hit point at ±45° from the projectile's direction, same damage, `gen + 1`. Projectiles with `gen >= 2` cannot split. Split children can still explode and pierce.
@@ -563,11 +622,11 @@ Every hit on an enemy has a damage type: **fire**, **arcane** or **physical** (`
 | Fireball, mini-tower shots, ring, and their explosions | fire |
 | Laser and its explosions (Explode L3) | arcane |
 | Bomb pickup (§14.2) | fire |
-| Nothing yet (claws, bite and saw blade will be) | physical |
+| Left claw, right claw, dual claw (bite and saw blade will be) | physical |
 
 Each enemy type has a resistance `r` per damage type, in `[−0.5, 1]` (§8 table): `r < 0` is a weakness, `r > 0` a resistance, `r = 1` immunity.
 
-**The damage function.** Every hit on an enemy, from every weapon, goes through one function, `dealDamage(game, enemy, amount, type, source, knock)` in `damage.js`: projectile hits (§10, §12), explosions (§12) and the ring (§10.4) today, and every later weapon. `amount` is the hit's damage after Might (§11), `type` its damage type, `source` the hitter's position (the projectile, the ring fireball or the explosion centre), `knock` the hit's knock after Force (§8.7; 0 when left out). It:
+**The damage function.** Every hit on an enemy, from every weapon, goes through one function, `dealDamage(game, enemy, amount, type, source, knock)` in `damage.js`: projectile hits (§10, §12), explosions (§12), the ring (§10.4) and claw slashes (§10.5–10.7) today, and every later weapon. `amount` is the hit's damage after Might (§11), `type` its damage type, `source` the hitter's position (the projectile, the ring fireball, the explosion centre, or the dragon's centre for a claw), `knock` the hit's knock after Force (§8.7; 0 when left out). It:
 
 1. against an unkillable enemy (the golem) deals nothing: its HP stays `GOLEM_HP`, it is knocked back `GOLEM_KNOCKBACK` from `source` whatever the `knock` and `hit_golem` plays (§8.4); returns 0. Damage types do not affect the golem.
 2. otherwise takes the effective resistance `r' = max(−0.5, r − shred[type])` and deals `0` when `r' ≥ 1`, else `max(1, ceil(amount × power[type] × (1 − r')))`, with `power` and `shred` from `game.meta` (§4.1; 1 and 0 without an armoury). Rounding up comes after every multiplier, so any hit that is not immune does at least 1.
@@ -634,7 +693,8 @@ Build the pool, then draw 3 distinct cards with weights:
 | Card | Condition | Weight |
 |---|---|---|
 | New weapon X | X not owned, weapon slot free | 3 |
-| Upgrade weapon X to L+1 | owned, L < 5 | 4 |
+| Upgrade weapon X to L+1 | owned, L below its top level | 4 |
+| Evolve into weapon E | E not owned, every weapon E requires owned at its top level (§10.7) | 10 |
 | New buff Y | Y not owned, buff slot free | 3 |
 | Upgrade buff Y to L+1 | owned, L < 3 | 3 |
 | Repair tower +25 HP | while any other card is in the pool, or tower HP is below `REPAIR_OFFER_BELOW = 0.5` of max HP (*unmeasured*) | 1; it becomes the only card when the pool is otherwise empty |
@@ -643,16 +703,16 @@ A card shows the icon, name, level or NEW, and one line of effect text. Choose w
 
 Precisely:
 
-- **Pool order** is fixed: the weapons in the order Fireball, Laser, Mini Tower, Ring, then the buffs in the §11 table order, then Repair. A weapon or buff is either an upgrade (owned, below its cap), a new card (not owned, a slot free) or absent.
+- **Pool order** is fixed: the weapons in the order Fireball, Laser, Mini Tower, Ring, Left Claw, Right Claw, then the evolutions in `EVOLUTIONS` order, then the buffs in the §11 table order, then Repair. A weapon or buff is either an upgrade (owned, below its cap), a new card (not owned, a slot free) or absent; an evolution result (Dual Claw) is never a weapon card, only an evolution card, and the weapons of an owned evolution are not offered again.
 - **Drawing:** `min(3, pool size)` cards without replacement. Each card takes one `game.rng()`: `r = rng × total weight`, then the first card in pool order whose weight exceeds what is left of `r` (subtracting the weights passed). The chosen card leaves the pool before the next draw. Repair (weight 1) is in the pool whenever any other card is; once the build is full (every weapon slot and buff slot filled and at its cap) it is in the pool only while `hp < 0.5 × maxHp`, so a hurt full build is offered Repair alone and a healthy one is offered nothing.
 - **Empty pool:** when the offers rolled for a pending level-up come out empty, no card is shown and every pending level-up passes at once (`pendingLevelUps` becomes 0, `offers` stays empty): the levels are still gained, no `rng` is drawn, no sound plays and the world keeps running. This happens when the first level-up is queued and after a pick (a Repair that lifts the tower to half HP or above ends the rest of the queue).
-- **Card:** `{ kind: 'weapon' | 'buff' | 'repair', id, level }`, `level` being the level after the pick (1 = new). A new weapon fires on the next weapons step; an upgrade keeps the weapon's timer and state. A new buff is appended to `game.buffs`. **Repair** restores 25 tower HP, capped at `maxHp`.
-- **Names:** Fireball, Laser, Mini Tower, Ring; Might, Haste, Area, Velocity, Duration, Force, Amount, Explode, Split, Pierce; Repair.
+- **Card:** `{ kind: 'weapon' | 'evolve' | 'buff' | 'repair', id, level }`, `level` being the level after the pick (1 = new; an evolution card's `id` is its result and `level` the result's top level). A new weapon fires on the next weapons step; an upgrade keeps the weapon's timer and state. An evolution card evolves (§10.7). A new buff is appended to `game.buffs`. **Repair** restores 25 tower HP, capped at `maxHp`.
+- **Names:** Fireball, Laser, Mini Tower, Ring, Left Claw, Right Claw, Dual Claw; Might, Haste, Area, Velocity, Duration, Force, Amount, Explode, Split, Pierce; Repair.
 - **Icons:** weapons as in §17, buffs as in §11, Repair the `castle` at 1×.
-- **Tag:** `NEW` for level 1, `L<n>` for an upgrade, none for Repair.
-- **Text:** a new weapon has a short description (Fireball "Aimed fireballs", Laser "Fast long-range aimed laser", Mini Tower "Lobs turrets that shoot your fireball", Ring "Fireballs orbit the dragon"). A weapon upgrade lists the first three stats that change, in the order damage, count, maxActive, duration, fireRate, cooldown, orbit, spin, rehit, spread, speed, range, labelled `dmg, count, max, life, rate, cd, orbit, spin, rehit, spread, speed, range`, as `dmg 1→2, cd 1.3→1.2, speed 700→750`. A buff shows its value at the new level (`+40% damage`, `-20% cooldowns`, `+40% area and orbit`, `+40% shot speed and range`, `+50% mini tower life`, `+100% knockback`, `+2 shots, ring balls, max mini towers`, `35% chance fireballs split in two`). Explode and Pierce name their crossover: below L3 `35% fireballs explode; L3: lasers too` and `35% lasers pierce; L3: fireballs too`, at L3 `50% chance to explode; lasers explode too` and `50% chance to pierce; fireballs pierce too`. Repair shows `Tower +25 HP`.
+- **Tag:** `NEW` for level 1, `L<n>` for an upgrade, `EVOLVE` for an evolution, none for Repair.
+- **Text:** a new weapon has a short description (Fireball "Aimed fireballs", Laser "Fast long-range aimed laser", Mini Tower "Lobs turrets that shoot your fireball", Ring "Fireballs orbit the dragon", Left Claw "Slashes the side you face", Right Claw "Aimed claw strikes the nearest foes"). A weapon upgrade lists the first three stats that change, in the order damage, count, sides, maxTargets, maxActive, duration, fireRate, cooldown, orbit, spin, rehit, spread, width, height, angle, reach, speed, range, labelled `dmg, count, sides, targets, max, life, rate, cd, orbit, spin, rehit, spread, width, height, angle, reach, speed, range`, as `dmg 1→2, cd 1.3→1.2, speed 700→750`. An evolution card names what it joins: `Evolve: Left + Right Claw → Dual Claw` (the required weapons' names, a last word they share said once). A buff shows its value at the new level (`+40% damage`, `-20% cooldowns`, `+40% area and orbit`, `+40% shot speed and range`, `+50% mini tower life`, `+100% knockback`, `+2 shots, ring balls, max mini towers`, `35% chance fireballs split in two`). Explode and Pierce name their crossover: below L3 `35% fireballs explode; L3: lasers too` and `35% lasers pierce; L3: fireballs too`, at L3 `50% chance to explode; lasers explode too` and `50% chance to pierce; fireballs pierce too`. Repair shows `Tower +25 HP`.
 
-**Level-up screen** (`screens.js`, over a 60% black overlay): the title `LEVEL UP` at y 100, `<n> more to pick` below it when more level-ups wait, then the cards in a centred row, each 260×220 px with a 24 px gap, top at y 170. A card shows its key number (1–3) top left, its tag top right (green `NEW`, yellow `L<n>`), the icon at 3× its icon scale, the name, and the effect text in the largest monospace size from 15 px down to 9 px that fits the card. The highlighted card has a yellow border. Below the row a hint names the controls.
+**Level-up screen** (`screens.js`, over a 60% black overlay): the title `LEVEL UP` at y 100, `<n> more to pick` below it when more level-ups wait, then the cards in a centred row, each 260×220 px with a 24 px gap, top at y 170. A card shows its key number (1–3) top left, its tag top right (green `NEW`, orange `EVOLVE`, yellow `L<n>`), the icon at 3× its icon scale, the name, and the effect text in the largest monospace size from 15 px down to 9 px that fits the card. The highlighted card has a yellow border. Below the row a hint names the controls.
 
 **Picking** (`app.js`): keys 1/2/3 pick the card with that number if it is shown; a left click inside a card picks it (clicks elsewhere do nothing); gamepad d-pad left/right moves the highlight, clamped to the cards shown, and A picks the highlighted card. The highlight starts on the first card for every new set of offers. Pause works on the level-up screen as anywhere in a run.
 
@@ -685,7 +745,7 @@ Weights *unmeasured*.
 - **Timer.** `game.brazierTimer` starts at 1500 and goes down by one every spawner step (step 4, after the enemies); when it reaches 0 it restarts at 1500 and an attempt is made, so the first attempt is on tick 1500 (`t` = 25 s) and then one every 25 s of play. The timer counts steps, not `t`, so a debug jump (§19) neither skips nor adds attempts. An attempt with `MAX_BRAZIERS` standing does nothing and draws nothing.
 - **Placement.** Up to `BRAZIER_TRIES` candidates, each drawing from `game.rng` its angle (`rng × 2π`) and then its distance from the tower (`BRAZIER_MIN_DIST + rng × 200`). A candidate closer than `BRAZIER_SPACING` to a standing brazier is rejected. The first other candidate whose whole sprite (24×32 px on screen) is outside the 960×600 view around the dragon, `|x − dragon.x| > 480 + 12` or `|y − dragon.y| > 300 + 16`, becomes the brazier and the tries stop. If no try gives one, the first spaced candidate inside the view is used; if none was spaced, no brazier appears. So an attempt draws between 2 and 24 numbers. Since the dragon is within the tether of the tower, nearly every brazier lands just outside the view, most often above or below it.
 - **Far braziers.** In the spawner step, before the attempt, a brazier farther than `DESPAWN_DIST` (§8.3) from the tower is removed silently, so a walked-away player gets new ones.
-- **Breaking,** in step 8 before projectile vs enemy: every projectile (any kind, list order), then every ring fireball, breaks each brazier whose circle overlaps its own (`BRAZIER_RADIUS` + the projectile's `r`, or the ring's 6 px). A projectile is not used up and does not record the brazier in its hits: braziers are not targets. An explosion (§12) breaks every brazier its circle overlaps. Later weapons break braziers with their hit shapes the same way. The bomb pickup does not break braziers. A brazier takes no damage numbers and plays no hit effect.
+- **Breaking,** in step 8 before projectile vs enemy: every projectile (any kind, list order), then every ring fireball, breaks each brazier whose circle overlaps its own (`BRAZIER_RADIUS` + the projectile's `r`, or the ring's 6 px). A projectile is not used up and does not record the brazier in its hits: braziers are not targets. An explosion (§12) breaks every brazier its circle overlaps, and a claw slash every brazier its rectangle or cone overlaps when it strikes (§10.5–10.6, the same overlap tests as for enemies with `BRAZIER_RADIUS`). Later weapons break braziers with their hit shapes the same way. The bomb pickup does not break braziers. A brazier takes no damage numbers and plays no hit effect.
 - **Drop.** A broken brazier is removed, a `brazier.break` effect plays where it stood, sound `dropping` plays, and one `game.rng()` draw picks the pickup by the weights above (first kind in the order heart, magnet, bomb whose weight exceeds what is left of `rng × 100`). The pickup lies at the brazier's position with `life` = `PICKUP_LIFE` × Duration (`1 + u`, §11) in ticks, rounded, read when it drops.
 - **Pickups,** in step 8 after enemy shot vs dragon, in list order: a pickup whose centre is within `GEM_COLLECT_RADIUS` (§14) of the dragon's is collected (removed, its effect applied and its sound played, in list order once the scan is done); any other advances its anim, counts `life` down by one and is removed when it reaches 0. Pickups never move or home; the dragon has to touch them. Collecting in step 8 means a bomb's kills die in the same tick's deaths step (with their gems and kill counts) and a magnet's gems start homing in the same tick's gems step.
 - **Heart** adds `HEART_HP` to the tower, never above `maxHp`.
@@ -752,14 +812,14 @@ Top centre: run timer `m:ss`. Top left: tower HP bar in red with the number. Bot
 | Timer | `m:ss` of `floor(t)`, centred at the top (y 12) |
 | Tower HP | bar 200×16 px at (12, 12) with a black border, red fill proportional to `hp / maxHp`; `ceil(hp)/maxHp` to its right |
 | Icons | one 34 px slot per owned weapon (in slot order), a 16 px gap, then one per buff; the row is centred, icons at y 50 |
-| Level pips | under each icon at y 72: one 4×4 px pip per level (5 for weapons, 3 for buffs), yellow up to the current level, dark after |
+| Level pips | under each icon at y 72: one 4×4 px pip per level (a weapon's top level: 5, or 1 for an evolution; 3 for buffs), yellow up to the current level, dark after |
 | XP bar | 14 px high across the bottom, blue fill proportional to `xp / xpToNext(level)`; `LV n` just above its left end |
 
 Text is 16 px monospace (32 px for screen titles) with a 2 px black drop shadow. All HUD numbers *unmeasured*.
 
 **Edge markers** (§14.2), drawn first, under the rest of the HUD, while the phase is `'play'`: for every brazier, then every pickup currently shown (not blinked off), whose sprite at 2× lies wholly off the 960×600 screen, a gold (`#ffbf00`) arrowhead with a 2 px maroon edge, 14 px long, at the point where the line from the screen centre to the thing's centre meets the screen edge inset by 26 px, pointing along that line; the thing's own current frame at 1× sits 20 px behind the arrow, toward the centre. *unmeasured*.
 
-Weapon icons: fireball → frame 0 of `fireball.anim`; laser → frame 12 (facing right) of `laser.dir`; mini tower → `castle` at 1× (30 px); ring → `icon.ring`. Buff icons are the §11 icons. Icons draw at the standard 2× sprite scale unless stated.
+Weapon icons: fireball → frame 0 of `fireball.anim`; laser → frame 12 (facing right) of `laser.dir`; mini tower → `castle` at 1× (30 px); ring → `icon.ring`; left claw → `icon.leftclaw`; right claw → `icon.rightclaw`; dual claw → `icon.dualclaw`. Buff icons are the §11 icons. Icons draw at the standard 2× sprite scale unless stated.
 
 The title and pause screens list the controls: move, aim, pause and the bestiary (`Foes  Tab  Back`).
 
@@ -786,15 +846,15 @@ A voice counts from its start until its buffer's duration has passed, on the aud
 
 ## 19. Debug
 
-Query parameter `?debug=1` exposes the App as `window.app` for the console (read it; only the loop calls `tick`) and enables: collision circles, tick time and entity counts, keys F1–F4 to grant each weapon at level 5, F5 to jump to 4:50, `+` and `-` to change game speed. `?seed=N` fixes the RNG.
+Query parameter `?debug=1` exposes the App as `window.app` for the console (read it; only the loop calls `tick`) and enables: collision circles, tick time and entity counts, keys F1–F4 and F6–F8 to grant each weapon at its top level, F5 to jump to 4:50, `+` and `-` to change game speed. `?seed=N` fixes the RNG.
 
 Precisely:
 
-- **Debug commands travel in the intent.** The page builds every `Game` with `{ debug: true }`; F1–F4 (fireball, laser, mini tower, ring) and F5 become `intent.debug = { grant: '<weapon id>' }` or `{ jumpTo: 290 }` on the next tick that runs, like `pick`. Presses queue in order and travel one per tick, so presses made in frames that run no tick are not lost. A `Game` built without `debug` ignores the field, so a normal run cannot be changed by it, and a replay of the same intents, debug commands included, gives the same digest. A malformed command is ignored. Commands are read only on a tick that advances the world (not while level-up offers are open, nor in `'dying'` or `'over'`), before step 1 of §2.1; the tick then runs as usual.
-- **Grant** sets the weapon to level 5 if owned, else adds it at level 5 when a weapon slot is free (it fires on that tick's weapons step). It does not use a level-up.
+- **Debug commands travel in the intent.** The page builds every `Game` with `{ debug: true }`; F1–F4 (fireball, laser, mini tower, ring), F6–F8 (left claw, right claw, dual claw) and F5 become `intent.debug = { grant: '<weapon id>' }` or `{ jumpTo: 290 }` on the next tick that runs, like `pick`. Presses queue in order and travel one per tick, so presses made in frames that run no tick are not lost. A `Game` built without `debug` ignores the field, so a normal run cannot be changed by it, and a replay of the same intents, debug commands included, gives the same digest. A malformed command is ignored. Commands are read only on a tick that advances the world (not while level-up offers are open, nor in `'dying'` or `'over'`), before step 1 of §2.1; the tick then runs as usual.
+- **Grant** sets the weapon to its top level if owned; else, for an evolution result whose required weapons are all owned (at any level), evolves them (§10.7); else adds it at its top level when a weapon slot is free (it fires on that tick's weapons step). It does not use a level-up.
 - **Jump** sets `tickCount` to `round(jumpTo / DT)` and `t` with it, only forward. Nothing in between is simulated: the spawner reads its rate and weights from the new `t`, its budget is unchanged, and the golem spawns at 5:00 as usual.
 - **Game speed** is the loop's: `+` / `-` (also keypad) step through 0.25×, 0.5×, 1×, 2×, 4×. The accumulator adds `real time × speed`, and above 1× the cap of 4 ticks per frame scales with the speed (16 at 4×), so 4× runs 4 ticks per 60 Hz frame. The sim is untouched.
-- **Overlay** (`render/debug.js`, drawn from game state and loop stats only): circles for enemies (`r`), the tower (`TOWER_RADIUS`), projectiles, enemy shots, ring fireballs, landed mini towers' 300 px target radius, braziers (`BRAZIER_RADIUS`), the dragon's hit circle (`DRAGON_RADIUS`) and its pickup radius; at the top right the average ms per tick (smoothed), ticks run in the last frame, the game speed, the counts of enemies, projectiles, enemy shots (`orbs`), gems, effects, braziers and pickups, `t` and the seed. With `debug`, the browser defaults of F1–F5, `+` and `-` are suppressed.
+- **Overlay** (`render/debug.js`, drawn from game state and loop stats only): circles for enemies (`r`), the tower (`TOWER_RADIUS`), projectiles, enemy shots, ring fireballs, landed mini towers' 300 px target radius, braziers (`BRAZIER_RADIUS`), the hitbox of every struck claw slash where it struck (its rectangle, or its cone as a sector), the dragon's hit circle (`DRAGON_RADIUS`) and its pickup radius; at the top right the average ms per tick (smoothed), ticks run in the last frame, the game speed, the counts of enemies, projectiles, enemy shots (`orbs`), gems, effects, braziers and pickups, `t` and the seed. With `debug`, the browser defaults of F1–F8, `+` and `-` are suppressed.
 
 ---
 
@@ -811,6 +871,7 @@ Precisely:
 - **Level-up:** the world is frozen while offers are open (the digest does not change on ticks without a pick); the same seed and the same intents, picks included, give the same digest.
 - **Damage types:** every weapon's hits (projectile, explosion, split child, mini-tower shot, ring) carry their type; resistance maths with weakness, resistance, immunity and rounding; `meta` power and shred (floored at −0.5); the golem takes nothing from any type and is still knocked back; `game.seen` records types as they are first created; the bestiary's layout, bar styles and silhouettes, drawn under node without writing the game.
 - **Armoury:** gold from score; rank costs; buying (affordable, unaffordable, maxed) and refunding; untrusted purse data clamped; the storage wrapper round trip and a throwing or blocked storage; ranks → `meta`; the App flow title ↔ armoury (keys, buttons, clicks), buying, Reset's confirm step, the game-over payout once, Retry and `?seed` runs using the ranks, a reload reading the purse back; the screen's layout and navigation; the input edges.
+- **Claws:** the rectangle on the facing side, both sides from L3 with the other 9 ticks later, the side fixed at the volley; cone membership (edges, apex, reach + r) and the `maxTargets` nearest with ties to the lower id; physical damage through resistances (skeleton weak, slime resists) and the armoury; knockback straight away from the dragon by mass and Force; Might, Haste, Area, Force and Amount on each claw; no procs and no random draws; braziers broken by a slash; the evolution offered only with both claws at L5, never as a weapon card, replacing both in the first one's slot, and its card text; the debug grants; determinism and the snapshot; the renderer drawing struck slashes (scale, mirror, 16 directions) and the debug hitboxes without writing the game; the art's sizes and frames.
 - **Slime split:** killing a gen-0 slime yields two gen-1 slimes; killing those yields none.
 - **Tiers:** the multipliers and the radius at every tier; the golem stays tier 1; children inherit the tier through a slime split, a ghost knight's burn and a mage's summon; gems and contact damage scale; a timeline without tier weights draws no extra random number (the same digest with and without tier rows before the first one); the draw order type, tier, angle; `game.seenTiers`; the manifest's tier expansion and every tier sprite in the committed atlas (the plain frames with the tier's ops, 2 px larger, the same ticks); the renderer drawing the tier sprite at the tier's scale; the bestiary's pips and legend.
 - **Ghost:** killing a ghost knight yields a ghost after the burn effect finishes.
@@ -821,7 +882,7 @@ Precisely:
 - **Soak:** run 5 minutes with a scripted dragon that circles the tower, on the default timeline with every rate from 3:00 on raised to at least 30/s. Assert no exceptions, the spawner never spawns above the cap (§8.2), and the tower eventually dies. The test holds the tower at full HP until the golem has spawned, so the run reaches 5:00 whatever the balance; the horde reaches the cap on the way (asserted), and the golem then ends the run. It stays in the default suite (a few seconds).
 - **Atlas:** `build-atlas.mjs` run on the manifest produces every name the game asks for. `content.js` lists its required atlas names and the test cross-checks them.
 - **Art:** the art parser (frames, key by name or hex, transparency, durations, every error with its file and line), the palette file and tool, the off-palette warning, the variants on synthetic frames (tint keeps luminance and its order, outline grows by 2 px and borders opaque pixels edge-on only, op order swap → tint → outline, frame-key suffixes), art and `from` entries built into an atlas, and the committed atlas holding every art file pixel for pixel. Every file under `art/` parses with no warning and is used by the manifest. None of these needs the pack.
-- **Balance instrument:** `node tools/measure.mjs` plays headless runs over a pool of seeds (16 by default, a 420 s cap) and prints, per bot, median, min and max survival time, how many runs reached 5:00 and the cap, kills, level, what ended the fallen runs and how often the tower moved, as Markdown. A bot is a movement policy plus a pick rule, named `<policy>+<pick>`. The tower follows the dragon, so every policy is anchored to a fixed world point, home (the dragon's start), never to the tower. Policies: `idle` gives no input (stands on home, fires right, collects nothing, dodges nothing); `aim` stands on home and lets the tower come to rest; `kite` walks a circle of 80 px around home, inside the tether, so the tower keeps following on a smaller circle. `aim` and `kite` aim at the enemy nearest the tower; whenever a gem that is not yet homing lies within 300 px of home (`--gem-range` changes it) they fly to the one nearest the dragon instead; and a mage orb within 100 px that will pass within its radius + `DRAGON_RADIUS` + 4 px of the dragon overrides both: they step straight away from its path, the most imminent orb first (`--no-dodge` turns it off). Pick rules, used while level-up offers are open: `naive` takes card 0; `greedy` takes Repair when tower HP is below 40%, else a new weapon, else the upgrade of the highest-level weapon, else a buff upgrade, else a new buff (among buffs in the order Might, Haste, Amount, Explode, Split, Pierce, Area, Velocity, Force, Duration), else card 0. A fall's cause is the source (an enemy type's contact, or orbs) that took the most tower HP in the 30 s before it. `--timeline` adds tower HP, enemies alive, kills, spawned and level over time; `--causes` adds the tower HP lost by source per window and the HP repaired; `--set` runs a what-if (a timeline rate, the tower HP, an enemy field) without editing `content.js`; `--meta fire:P/S,arcane:P/S,physical:P/S` plays every run with those armoury ranks (Power/Shred, types left out 0/0), mapped to `meta` as the browser maps them (§13.1). Tests run one short seed per bot and pin the anchoring, the dodge and the damage split.
+- **Balance instrument:** `node tools/measure.mjs` plays headless runs over a pool of seeds (16 by default, a 420 s cap) and prints, per bot, median, min and max survival time, how many runs reached 5:00 and the cap, kills, level, what ended the fallen runs and how often the tower moved, as Markdown. A bot is a movement policy plus a pick rule, named `<policy>+<pick>`. The tower follows the dragon, so every policy is anchored to a fixed world point, home (the dragon's start), never to the tower. Policies: `idle` gives no input (stands on home, fires right, collects nothing, dodges nothing); `aim` stands on home and lets the tower come to rest; `kite` walks a circle of 80 px around home, inside the tether, so the tower keeps following on a smaller circle. `aim` and `kite` aim at the enemy nearest the tower; whenever a gem that is not yet homing lies within 300 px of home (`--gem-range` changes it) they fly to the one nearest the dragon instead; and a mage orb within 100 px that will pass within its radius + `DRAGON_RADIUS` + 4 px of the dragon overrides both: they step straight away from its path, the most imminent orb first (`--no-dodge` turns it off). Pick rules, used while level-up offers are open: `naive` takes card 0; `greedy` takes Repair when tower HP is below 40%, else an evolution, else a new weapon, else the upgrade of the highest-level weapon, else a buff upgrade, else a new buff (among buffs in the order Might, Haste, Amount, Explode, Split, Pierce, Area, Velocity, Force, Duration), else card 0. A fall's cause is the source (an enemy type's contact, or orbs) that took the most tower HP in the 30 s before it. `--timeline` adds tower HP, enemies alive, kills, spawned and level over time; `--causes` adds the tower HP lost by source per window and the HP repaired; `--set` runs a what-if (a timeline rate, the tower HP, an enemy field) without editing `content.js`; `--meta fire:P/S,arcane:P/S,physical:P/S` plays every run with those armoury ranks (Power/Shred, types left out 0/0), mapped to `meta` as the browser maps them (§13.1). Tests run one short seed per bot and pin the anchoring, the dodge and the damage split.
 
 ---
 
@@ -839,7 +900,7 @@ Each milestone is playable on its own.
 
 ## 22. Out of scope
 
-Unchanged from the design: meta progression beyond the armoury (§13.1), multiple stages, evolutions, terrain, mobile, music, controller rumble, merchants, royals, fireball lob, claw.
+Unchanged from the design: meta progression beyond the armoury (§13.1), multiple stages, terrain, mobile, music, controller rumble, merchants, royals, fireball lob.
 
 ## 23. Open decisions
 

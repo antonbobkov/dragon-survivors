@@ -80,6 +80,8 @@ export function drawGameOver(ctx, game, gold = null) {
 
 // ---- level-up cards (§14.1) -------------------------------------------------------
 
+// Card tag colours: NEW green, EVOLVE orange, L<n> yellow.
+export const TAG_COLORS = { NEW: '#7dff6a', EVOLVE: '#ff9a3d', level: '#ffd23f' };
 export const CARD = { w: 260, h: 220, gap: 24, y: 170, iconScale: 3, textMax: 15, textMin: 9 };
 
 // Screen rects of `n` cards, centred in a row: [{ x, y, w, h }].
@@ -116,7 +118,7 @@ export function drawLevelUp(ctx, game, atlas, sel = 0) {
     ctx.fillStyle = '#2a1f3a';
     ctx.fillRect(r.x, r.y, r.w, r.h);
     shadowText(ctx, String(i + 1), r.x + 10, r.y + 8, { color: '#aaa' });
-    if (info.tag) shadowText(ctx, info.tag, r.x + r.w - 10, r.y + 8, { align: 'right', color: info.tag === 'NEW' ? '#7dff6a' : '#ffd23f' });
+    if (info.tag) shadowText(ctx, info.tag, r.x + r.w - 10, r.y + 8, { align: 'right', color: TAG_COLORS[info.tag] || TAG_COLORS.level });
     drawAnim(ctx, atlas, info.icon.anim, info.icon.frame, r.x + r.w / 2, r.y + 72, { scale: info.icon.scale * CARD.iconScale });
     shadowText(ctx, info.name, r.x + r.w / 2, r.y + 132, { align: 'center' });
     shadowText(ctx, info.text, r.x + r.w / 2, r.y + 170, { align: 'center', color: '#ddd', font: fitFont(ctx, info.text, r.w - 16) });

@@ -1,0 +1,15 @@
+# icon.leftclaw (Left claw): three claw scratches slashed across the bonus tray.
+key
+  w white
+  s silver
+  Y gold
+frame
+..ws..ws.
+.ws..ws..
+ws..ws..w
+s..ws..ws
+..ws..ws.
+.ws..ws..
+.s..ws...
+YY.....YY
+.YYYYYYY.

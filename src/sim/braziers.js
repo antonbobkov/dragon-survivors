@@ -87,13 +87,18 @@ function breakBrazier(game, b) {
 // Every player hit area: breaks, in list order, each brazier whose circle overlaps the circle
 // at (x, y) of radius r. Weapons call it for their hit shapes (explosions today).
 export function hitBraziers(game, x, y, r) {
+  const rr = r + BRAZIER_RADIUS;
+  breakBraziersWhere(game, (bx, by) => (bx - x) ** 2 + (by - y) ** 2 < rr * rr);
+}
+
+// Any other hit shape: breaks, in list order, each brazier for which `overlaps(x, y, r)` of its
+// circle (its centre, BRAZIER_RADIUS) is true. The claws' rectangles and cones use it.
+export function breakBraziersWhere(game, overlaps) {
   const list = game.braziers;
   let n = 0;
   for (let i = 0; i < list.length; i++) {
     const b = list[i];
-    const dx = b.x - x, dy = b.y - y;
-    const rr = r + BRAZIER_RADIUS;
-    if (dx * dx + dy * dy < rr * rr) { breakBrazier(game, b); continue; }
+    if (overlaps(b.x, b.y, BRAZIER_RADIUS)) { breakBrazier(game, b); continue; }
     list[n++] = b;
   }
   list.length = n;

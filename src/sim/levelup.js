@@ -1,20 +1,48 @@
 // Level-up cards (§14.1): the weighted pool, rolling offers, applying a pick, and the
 // plain-data card description the level-up screen draws.
 import {
-  WEAPONS, WEAPON_IDS, WEAPON_SLOTS, WEAPON_MAX_LEVEL,
+  WEAPONS, WEAPON_IDS, WEAPON_SLOTS, weaponMaxLevel, EVOLUTIONS,
   BUFFS, BUFF_IDS, BUFF_SLOTS, BUFF_MAX_LEVEL,
   CARD_COUNT, CARD_WEIGHTS, REPAIR_HP, REPAIR_OFFER_BELOW,
 } from './content.js';
 import { createWeapon } from './weapons.js';
 
-// Card: { kind: 'weapon' | 'buff' | 'repair', id, level } with `level` the level after the pick.
-// Pool order is fixed: weapons in WEAPON_IDS order, buffs in BUFF_IDS order, then Repair.
+// The EVOLUTIONS entry whose result is weapon `id`, or undefined.
+export function evolutionOf(id) {
+  return EVOLUTIONS.find((e) => e.result === id);
+}
+
+// §10.7: an evolution is offered while its result is not owned and every weapon it requires is
+// owned at its top level.
+export function evolutionReady(game, evo) {
+  if (game.weapons.some((w) => w.id === evo.result)) return false;
+  return evo.requires.every((id) => game.weapons.some((w) => w.id === id && w.level >= weaponMaxLevel(id)));
+}
+
+// Replaces the weapons `evo` requires with its result, in the slot of the first of them, at
+// its top level; it fires on the next weapons step. Slashes already queued play out.
+export function evolve(game, evo) {
+  const at = game.weapons.findIndex((w) => evo.requires.includes(w.id));
+  const rest = game.weapons.filter((w) => !evo.requires.includes(w.id));
+  rest.splice(at < 0 ? rest.length : at, 0, createWeapon(evo.result, weaponMaxLevel(evo.result)));
+  game.weapons = rest;
+}
+
+// Card: { kind: 'weapon' | 'evolve' | 'buff' | 'repair', id, level } with `level` the level
+// after the pick. Pool order is fixed: weapons in WEAPON_IDS order (evolution results are not
+// offered as weapons, nor the weapons an owned evolution was made from), evolutions in
+// EVOLUTIONS order, buffs in BUFF_IDS order, then Repair.
 export function cardPool(game) {
   const pool = [];
+  const evolved = EVOLUTIONS.filter((e) => game.weapons.some((w) => w.id === e.result)).flatMap((e) => e.requires);
   for (const id of WEAPON_IDS) {
+    if (WEAPONS[id].evolution || evolved.includes(id)) continue;
     const w = game.weapons.find((x) => x.id === id);
-    if (w) { if (w.level < WEAPON_MAX_LEVEL) pool.push({ card: { kind: 'weapon', id, level: w.level + 1 }, weight: CARD_WEIGHTS.upgradeWeapon }); }
+    if (w) { if (w.level < weaponMaxLevel(id)) pool.push({ card: { kind: 'weapon', id, level: w.level + 1 }, weight: CARD_WEIGHTS.upgradeWeapon }); }
     else if (game.weapons.length < WEAPON_SLOTS) pool.push({ card: { kind: 'weapon', id, level: 1 }, weight: CARD_WEIGHTS.newWeapon });
+  }
+  for (const evo of EVOLUTIONS) {
+    if (evolutionReady(game, evo)) pool.push({ card: { kind: 'evolve', id: evo.result, level: weaponMaxLevel(evo.result) }, weight: CARD_WEIGHTS.evolve });
   }
   for (const id of BUFF_IDS) {
     const b = game.buffs.find((x) => x.id === id);
@@ -56,7 +84,9 @@ export function rollOffers(game) {
 
 // A new weapon fires on the next weapons step; an upgrade keeps its timer and state.
 export function applyCard(game, card) {
-  if (card.kind === 'weapon') {
+  if (card.kind === 'evolve') {
+    evolve(game, evolutionOf(card.id));
+  } else if (card.kind === 'weapon') {
     const w = game.weapons.find((x) => x.id === card.id);
     if (w) w.level = card.level;
     else game.weapons.push(createWeapon(card.id, card.level));
@@ -73,6 +103,7 @@ export function applyCard(game, card) {
 
 export const CARD_NAMES = {
   fireball: 'Fireball', laser: 'Laser', miniTower: 'Mini Tower', ring: 'Ring',
+  leftClaw: 'Left Claw', rightClaw: 'Right Claw', dualClaw: 'Dual Claw',
   might: 'Might', haste: 'Haste', area: 'Area', velocity: 'Velocity', duration: 'Duration', force: 'Force', amount: 'Amount',
   explode: 'Explode', split: 'Split', pierce: 'Pierce', repair: 'Repair',
 };
@@ -83,6 +114,9 @@ export const CARD_ICONS = {
   laser: { anim: 'laser.dir', frame: 12, scale: 1 },
   miniTower: { anim: 'castle', frame: 0, scale: 0.5 },
   ring: { anim: 'icon.ring', frame: 0, scale: 1 },
+  leftClaw: { anim: 'icon.leftclaw', frame: 0, scale: 1 },
+  rightClaw: { anim: 'icon.rightclaw', frame: 0, scale: 1 },
+  dualClaw: { anim: 'icon.dualclaw', frame: 0, scale: 1 },
   repair: { anim: 'castle', frame: 0, scale: 0.5 },
 };
 
@@ -91,13 +125,16 @@ const NEW_WEAPON_TEXT = {
   laser: 'Fast long-range aimed laser',
   miniTower: 'Lobs turrets that shoot your fireball',
   ring: 'Fireballs orbit the dragon',
+  leftClaw: 'Slashes the side you face',
+  rightClaw: 'Aimed claw strikes the nearest foes',
 };
 
 // Short labels of weapon stats, in the order an upgrade lists its changes (first 3 shown).
 const STAT_LABELS = [
-  ['damage', 'dmg'], ['count', 'count'], ['maxActive', 'max'],
+  ['damage', 'dmg'], ['count', 'count'], ['sides', 'sides'], ['maxTargets', 'targets'], ['maxActive', 'max'],
   ['duration', 'life'], ['fireRate', 'rate'], ['cooldown', 'cd'], ['orbit', 'orbit'],
-  ['spin', 'spin'], ['rehit', 'rehit'], ['spread', 'spread'], ['speed', 'speed'], ['range', 'range'],
+  ['spin', 'spin'], ['rehit', 'rehit'], ['spread', 'spread'], ['width', 'width'], ['height', 'height'],
+  ['angle', 'angle'], ['reach', 'reach'], ['speed', 'speed'], ['range', 'range'],
 ];
 
 const pct = (v) => `${Math.round(Math.abs(v) * 100)}%`;
@@ -120,6 +157,16 @@ function buffText(id, level) {
   }
 }
 
+// "Left + Right Claw": the required weapons' names, a shared last word said once.
+function evolveText(names) {
+  const last = (n) => n.split(' ').pop();
+  const tail = last(names[0]);
+  if (names.length > 1 && names.every((n) => last(n) === tail && n !== tail)) {
+    return `${names.map((n) => n.slice(0, -tail.length - 1)).join(' + ')} ${tail}`;
+  }
+  return names.join(' + ');
+}
+
 function upgradeText(id, level) {
   const a = WEAPONS[id].levels[level - 2], b = WEAPONS[id].levels[level - 1];
   const parts = [];
@@ -129,10 +176,14 @@ function upgradeText(id, level) {
   return parts.slice(0, 3).join(', ');
 }
 
-// { name, icon: { anim, frame, scale }, tag: 'NEW' | 'L<n>', text }
+// { name, icon: { anim, frame, scale }, tag: 'NEW' | 'L<n>' | 'EVOLVE', text }
 export function cardInfo(card) {
   const name = CARD_NAMES[card.id];
   if (card.kind === 'repair') return { name, icon: CARD_ICONS.repair, tag: '', text: `Tower +${REPAIR_HP} HP` };
+  if (card.kind === 'evolve') {
+    const from = evolutionOf(card.id).requires.map((id) => CARD_NAMES[id]);
+    return { name, icon: CARD_ICONS[card.id], tag: 'EVOLVE', text: `Evolve: ${evolveText(from)} → ${name}` };
+  }
   const tag = card.level === 1 ? 'NEW' : `L${card.level}`;
   if (card.kind === 'weapon') {
     return { name, icon: CARD_ICONS[card.id], tag, text: card.level === 1 ? NEW_WEAPON_TEXT[card.id] : upgradeText(card.id, card.level) };

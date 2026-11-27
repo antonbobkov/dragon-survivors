@@ -1,0 +1,18 @@
+# icon.rightclaw (Right claw): a green dragon hand reaching right, three white talons fanned
+# like the claw's cone.
+key
+  w white
+  s silver
+  g green
+  e green.dark
+  Y gold
+frame
+.......ws
+....ggw..
+.gggg....
+egggggwws
+.eeee....
+....eew..
+.......ws
+YY.....YY
+.YYYYYYY.
