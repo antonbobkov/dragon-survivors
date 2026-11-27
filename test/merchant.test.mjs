@@ -387,7 +387,7 @@ test('chest: collected like a pickup, it is a free level-up pick: offers rolled,
   chestPickup(h, 1, 0);
   h.tick({});
   assert.equal(h.pendingLevelUps, 2);
-  assert.ok(offers.length === 3);
+  assert.deepEqual(h.offers, offers, 'the open offers are not rerolled by a second chest');
 });
 
 // ---- the level-up reroll ------------------------------------------------------------
