@@ -61,9 +61,10 @@ test('content: mage orb constants match §8.5', () => {
 });
 
 test('content: enemy table matches §8', () => {
-  const names = { Knight: 'knight', Skeleton: 'skeleton', Slime: 'slime', Mage: 'mage', 'Ghost knight': 'ghostKnight', Ghost: 'ghost', 'Mega golem': 'golem' };
+  const names = { Knight: 'knight', Skeleton: 'skeleton', Slime: 'slime', Mage: 'mage', 'Ghost knight': 'ghostKnight', Ghost: 'ghost', Horse: 'horse', 'Mounted knight': 'mountedKnight', 'Mega golem': 'golem' };
   const rows = tableAfter('## 8. Enemies');
   assert.equal(rows.length, C.ENEMY_TYPES.length);
+  assert.deepEqual(rows.map((r) => names[r[0]]), C.ENEMY_TYPES, 'ENEMY_TYPES in table order (the bestiary order, §17.1)');
   for (const [type, hp, speed, r, dps, xp, mass, fire, arcane, physical, sprite] of rows) {
     const e = C.ENEMIES[names[type]];
     assert.ok(e, type);
@@ -84,10 +85,13 @@ test('content: enemy table matches §8', () => {
 });
 
 test('content: timeline matches §9', () => {
-  const cols = ['knight', 'skeleton', 'slime', 'mage', 'ghostKnight'];
+  const cols = ['knight', 'skeleton', 'slime', 'mage', 'ghostKnight', 'mountedKnight'];
   const rows = tableAfter('## 9. Spawning');
   assert.equal(rows.length, C.TIMELINE.length);
-  rows.forEach(([time, rate, ...w], i) => {
+  rows.forEach(([time, rate, ...cells], i) => {
+    // The last column is the stampede (§8.8): `every N s, min–max` or `–`.
+    const st = cells.pop();
+    const w = cells;
     const [m, s] = time.split(':').map(Number);
     const row = C.TIMELINE[i];
     assert.equal(row.t, m * 60 + s);
@@ -100,7 +104,28 @@ test('content: timeline matches §9', () => {
     assert.equal(tw.length, C.TIER_IDS.length, `${time} tier columns`);
     if (tw.every((c) => c === '–')) assert.equal(row.tiers, undefined, `${time} has no tier weights`);
     else C.TIER_IDS.forEach((t, j) => assert.equal(row.tiers[t], num(tw[j]), `${time} tier ${t}`));
+    if (st === '–') assert.equal(row.stampede, undefined, `${time} has no stampede`);
+    else {
+      const m = /^every (\d+) s, (\d+)–(\d+)$/.exec(st);
+      assert.ok(m, `${time} stampede cell "${st}"`);
+      assert.deepEqual(row.stampede, { every: Number(m[1]), min: Number(m[2]), max: Number(m[3]) }, `${time} stampede`);
+    }
   });
+});
+
+test('content: stages match §9.1', () => {
+  const rows = tableAfter('### 9.1');
+  const staged = C.TIMELINE.filter((r) => r.stage);
+  assert.equal(rows.length, staged.length);
+  rows.forEach(([stage, starts], i) => {
+    const [m, s] = starts.split(':').map(Number);
+    assert.equal(stage, `${i + 1} ${staged[i].stage}`);
+    assert.equal(staged[i].t, m * 60 + s, stage);
+  });
+  assert.equal(C.BANNER_TIME, Number(specText.match(/`BANNER_TIME = (\d+(?:\.\d+)?)` s/)[1]));
+  assert.equal(C.BANNER_FADE, Number(specText.match(/`BANNER_FADE = (\d+(?:\.\d+)?)` s/)[1]));
+  const sp = tableAfter('### 8.8').find((r) => r[0] === '`STAMPEDE_SPACING`');
+  assert.equal(C.STAMPEDE_SPACING, num(sp[1]));
 });
 
 test('content: tier table matches §8.6', () => {

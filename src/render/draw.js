@@ -1,7 +1,7 @@
 // World rendering (§5): background, tether ring, entities in draw order, effects.
 // Reads the game and never writes it.
 import { mulberry32 } from '../sim/rng.js';
-import { TETHER_LENGTH, WEAPONS, TICK_HZ, PICKUP_BLINK, tierAnim, tierOf, CLAW_CONE_ANIMS } from '../sim/content.js';
+import { TETHER_LENGTH, WEAPONS, TICK_HZ, PICKUP_BLINK, tierAnim, screenScale, CLAW_CONE_ANIMS } from '../sim/content.js';
 import { VIEW_W, VIEW_H, cameraOffset } from '../viewport.js';
 
 export const SPRITE_SCALE = 2;
@@ -58,11 +58,12 @@ export function drawAnim(ctx, atlas, name, frame, x, y, opts = {}) {
 }
 
 // §8.6 what an enemy or a death effect of tier `ent.tier` draws: the tier's anim (`<anim>@t<n>`;
-// the plain anim if the atlas has no such variant) at the tier's screen scale, as a multiple of
+// the plain anim if the atlas has no such variant) at the tier's screen scale for its anim (§5: a
+// type drawn bigger, the mounted knight, is 3× at tiers 1–2 and 4× at 3–4), as a multiple of
 // the standard 2× (an effect's own `scale` multiplies it).
 export function tierSprite(atlas, ent) {
   const name = tierAnim(ent.anim, ent.tier);
-  return { anim: atlas.anims[name] ? name : ent.anim, scale: tierOf(ent).scale / SPRITE_SCALE };
+  return { anim: atlas.anims[name] ? name : ent.anim, scale: screenScale(ent.anim, ent.tier) / SPRITE_SCALE };
 }
 
 // Speckle positions of the grass tile, from its own fixed-seed RNG.

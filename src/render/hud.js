@@ -1,6 +1,7 @@
-// HUD (§17): timer, tower HP bar, XP bar with level, weapon and buff icons with level pips.
-// Reads the game and never writes it.
-import { BUFFS, BUFF_MAX_LEVEL, weaponMaxLevel, xpToNext } from '../sim/content.js';
+// HUD (§17): timer, tower HP bar, XP bar with level, weapon and buff icons with level pips,
+// the stage banner. Reads the game and never writes it.
+import { BUFFS, BUFF_MAX_LEVEL, weaponMaxLevel, xpToNext, BANNER_TIME, BANNER_FADE } from '../sim/content.js';
+import { stageAt } from '../sim/spawner.js';
 import { VIEW_W, VIEW_H, cameraOffset } from '../viewport.js';
 import { drawAnim, frameRect, SPRITE_SCALE, pickupVisible } from './draw.js';
 
@@ -11,7 +12,21 @@ export const HUD = {
   timerY: 12,
   icons: { y: 50, slot: 34, pipY: 72, pip: 4, pipGap: 2, gap: 16 },
   xp: { h: 14, back: '#10202e', fill: '#3fa9ff' },
+  banner: { y: 92, color: '#ffd23f' },
 };
+
+// §17 the stage banner, `Stage n: Name`, for BANNER_TIME s from the start of each stage of the
+// game's timeline (§9.1), fading out over the last BANNER_FADE s; null when none shows. Driven by
+// `t` alone, so it needs no state.
+export function stageBanner(game) {
+  if (game.phase !== 'play') return null;
+  const s = stageAt(game.timeline || [], game.t);
+  if (!s) return null;
+  const age = game.t - s.t;
+  if (age >= BANNER_TIME - 1e-9) return null;
+  const left = BANNER_TIME - age;
+  return { text: `Stage ${s.n}: ${s.name}`, alpha: left >= BANNER_FADE ? 1 : left / BANNER_FADE };
+}
 
 // §17 weapon icons: fireball first frame, laser facing right, mini tower castle at 1×, ring icon,
 // the claws' own icons.
@@ -149,6 +164,15 @@ export function drawHud(ctx, game, atlas) {
       ctx.fillRect(px, ic.pipY, ic.pip, ic.pip);
       px += ic.pip + ic.pipGap;
     }
+  }
+
+  // Stage banner, top centre under the icons.
+  const banner = stageBanner(game);
+  if (banner) {
+    ctx.save();
+    ctx.globalAlpha = banner.alpha;
+    shadowText(ctx, banner.text, VIEW_W / 2, HUD.banner.y, { align: 'center', font: BIG_FONT, color: HUD.banner.color });
+    ctx.restore();
   }
 
   // XP bar across the bottom with the level at the left.

@@ -59,7 +59,7 @@ Ops always run swap, then tint, then outline (the outline is never tinted). A th
 
 ### Enemy tiers
 
-The bronze, silver and gold enemies ([§8.6](../docs/demo-spec.md#86-tiers)) are not listed one by one: the manifest's `tiers` block names the enemy anims once and the three tier variants once, and the build makes `<anim>@t2`, `@t3` and `@t4` of each (45 anims). A new enemy anim gets its tiers by joining `tiers.anims` (a test checks the list against `content.js`).
+The bronze, silver and gold enemies ([§8.6](../docs/demo-spec.md#86-tiers)) are not listed one by one: the manifest's `tiers` block names the enemy anims once and the three tier variants once, and the build makes `<anim>@t2`, `@t3` and `@t4` of each (57 anims). A new enemy anim gets its tiers by joining `tiers.anims` (a test checks the list against `content.js`).
 
 | Tier | Tint | Strength | Outline | Why |
 |---|---|---|---|---|
@@ -90,7 +90,7 @@ What the pack's sprites look like (print any of them with `node tools/bmp-to-art
 - **Side view, facing right.** The game mirrors sprites that move left. Heads and weapons point right.
 - **Light from the top left.** Where a shape has shading, the lighter shade is on the top and left, the darker on the bottom and right (the sword's white edge, the knight's grey over charcoal).
 - **Outlines only where the pack has them.** The pack's characters have no outline: the silhouette is the colour itself against the grass. Shapes that need an edge (the fireball's rim, the castle's mortar, the bonus tray) use a darker shade of their own colour, never black. Do not add a black outline to a sprite; tiers add a coloured one as a variant.
-- **Sizes are fixed and never faked by scaling.** Standard enemies 16 × 16, the dragon 20 × 20, projectiles 8 or 12, icons 9 × 9, the golem 64 × 64. A new size is new art (the slime generations are drawn at 16, 12 and 9). The game draws every sprite at 2× (tiers at 3×), always an integer.
+- **Sizes are fixed and never faked by scaling.** Standard enemies 16 × 16, the horse 20 × 14, the mounted knight 22 × 22, the dragon 20 × 20, projectiles 8 or 12, icons 9 × 9, the golem 64 × 64. A new size is new art (the slime generations are drawn at 16, 12 and 9). The game draws every sprite at 2× (silver and gold tiers at 3×; the mounted knight at 3×, 4× at silver and gold), always an integer.
 - **Animation.** Walks are 2 frames at 6 ticks; deaths 5–9 frames; projectiles loop 8 frames. Keep the feet on the bottom row and the body in the same place between walk frames, moving one or two pixels.
 - **Icons** (9 × 9) sit on the pack's gold bonus tray: the bottom two rows are always `YY.....YY` / `.YYYYYYY.` in `gold`, the symbol fills the 9 × 7 above it (it may dip into the tray's middle). One bold shape, readable at 2× on a dark card: high contrast (`white`/`silver` metal, `yellow`/`gold` energy, `red` fire), a 2–3 px wide main stroke, and nothing finer than 1 px detail.
 
@@ -120,5 +120,11 @@ What the pack's sprites look like (print any of them with `node tools/bmp-to-art
 | `icons/dualclaw.txt` | `icon.dualclaw` | Dual claw: two scratches crossed, white and red |
 | `effects/swipe.txt` | `claw.swipe` | 56 × 18 rectangle slash: three bowed white and silver streaks from the left edge (the dragon's centre); strike, full, fading far end (3, 4, 5 ticks) |
 | `effects/cone.txt`, `cone22.txt`, `cone45.txt` | `claw.cone`, `claw.cone22`, `claw.cone45` | 40 × 40 cone slash: three white and silver claw arcs fanned around 0°, 22.5° and 45° from the apex (0, 20), (0, 6), (0, 0); near, out, fading (3, 4, 5 ticks). The game turns them by quarter turns and mirrors the 22.5° one across its diagonal for 16 directions, so no pixel leaves the grid |
+| `enemies/horse.txt` | `horse.walk` | 20 × 14 chestnut horse, 2-frame gallop: legs stretched fore and aft, then gathered under the belly; the head and tail bob a pixel |
+| `enemies/horse-die.txt` | `horse.die` | 5 frames: red spatter, the forelegs buckle, it lies on its side, the hide burns to cream bones (the last frame holds 12 ticks) |
+| `enemies/mounted-knight.txt` | `mounted.walk` | 22 × 22: the pack's knight, rider's helm, visor, mail and blue shield copied from `knight.walk`, on the chestnut horse under a blue saddle cloth with a yellow hem; a cream lance held upright with a red pennant that flaps. Drawn at 3× in game (4× at silver and gold) |
+| `enemies/mounted-knight-die.txt` | `mounted.die` | 6 frames: struck, the horse stumbles and the lance tips forward, the rider is thrown off the back, both lie on the ground, then burn to bones with the shield gone dark, as the knight's does |
 
 World objects and pickups are drawn at 2× like everything else; dark objects (the bomb) need a broad lit side in `grey`/`silver`, because `charcoal` alone vanishes on the dark grass.
+
+The horse is `gold.dark` with `brown` shade, not `brown`: `brown` has about the grass's own brightness and the body would sink into it. A `gold` line along the back and neck is the lit top edge, `brown.dark` the mane, tail and hooves. The mounted knight's rider reuses the pack knight's pixels and keys (charcoal, silver, grey, blue, yellow), so the two read as the same army.
