@@ -1,6 +1,6 @@
 # T-038: Close the merchant test gaps found in review
 
-**Source:** [T-030 review](../../reports/reviews/2026-11-26-T-030-review.md), finding 4 · **Model:** Sonnet · **Depends on:** T-031, T-032 merged (they touch `game.js`, `app.js`, targeting)
+**Source:** [T-030 review](../../../reports/reviews/2026-11-26-T-030-review.md), finding 4 · **Model:** Sonnet · **Depends on:** T-031, T-032 merged (they touch `game.js`, `app.js`, targeting)
 
 Tests only (new file `test/merchant-review.test.mjs`, and fix the assertion at `test/merchant.test.mjs:389` to check the second game), so each mutation fails at least one test; restore from a backup copy, never commit a mutation.
 
