@@ -2,14 +2,15 @@
 //
 // Usage: node tools/dps.mjs [--near N | --view-time S] [--min-near N] [--radius PX]
 //                           [--levels L1,L2,...] [--seeds N] [--beam N] [--trivial X]
-//        node tools/dps.mjs --check [--weapon ID] [--seconds S] [--seed N] [--verbose]
+//        node tools/dps.mjs --check [--weapon ID] [--seconds S] [--reshuffle S] [--settle S] [--seed N]
 //
 // Everything is read from src/sim/content.js; a new weapon needs only an entry in MODELS.
 // Default mode prints, as Markdown: the assumptions; per minute (0:30 … 5:00) the incoming
 // HP per second (pressure), the floor (median DPS of naive builds at the measured level) and
-// the ceiling (best allocation of the same level-ups, beam search) with their ratio to the
-// pressure; a per-stage summary; and the weapons ranked per role. --check measures every
-// weapon in the real sim against dummies and exits 1 when a model is off by more than 15%.
+// the ceiling (best allocation of the same level-ups: a layered beam search plus an exhaustive
+// search of full builds) with their ratio to the pressure; a per-stage summary; the weapons
+// ranked per role; hits to kill. --check measures every weapon in the real sim against dummies
+// and exits 1 when a model is off by more than 15%.
 //
 // THE FIELD. Every model works in a "field": enemies spread as a Poisson process of density
 // `rho` (per px²) inside a disk of radius `R` around the dragon (nothing outside it), all of
@@ -17,7 +18,9 @@
 // dragon. Enemies stand still (no walking, no knockback): a hit's geometry is the overlap of
 // a shape with a static crowd. Aimed weapons (fireball, laser, right claw) and mini-tower
 // shots aim at the enemy nearest their origin, as the bots do, so an aimed shot hits its
-// target (at the Poisson nearest-neighbour distance 1/(2√rho)) and finds nothing closer.
+// target (at the Poisson nearest-neighbour distance, averaged over its distribution) and
+// nothing is nearer the shooter (explosions near it miss that empty disk). A still dragon
+// faces its aim, so a one-sided claw slashes toward the nearest enemy.
 //
 // THE MODELS (per weapon, at a level and a buff loadout; all rates in hits per second):
 // - Projectiles (fireball, laser, mini-tower shots, split children): a projectile of radius
@@ -40,7 +43,8 @@
 //   with the per-enemy rehit timer (`count + Amount` balls, `spin`, ball radius 6), then
 //   integrated over the annulus: rho × ∫ hits/s × 2π(orbit + δ) dδ.
 // - Left claw / dual claw rectangles: each rectangle (w, h × Area) hits rho × its area grown
-//   by r (w·h + 2(w + h)·r + π r²); sides × (1 + Amount) rectangles per volley.
+//   by r (w·h + 2(w + h)·r + π r²); sides × (1 + Amount) rectangles per volley. One-sided
+//   (sides 1): the side toward the nearest enemy, which it then holds if it overlaps.
 // - Right claw / dual claw cone: aimed at the nearest enemy; if that one is within reach·Area
 //   + r the cone hits it plus min(Poisson(rho × cone area grown by r), maxTargets + Amount − 1)
 //   others.
@@ -68,7 +72,7 @@ import { pathToFileURL } from 'node:url';
 import {
   DT, WEAPONS, WEAPON_IDS, BUFFS, BUFF_IDS, ENEMIES, TIERS, TIMELINE, SLIME_GENS, MAGE_SUMMON_COUNT,
   EXPLODE_RADIUS, SPLIT_ANGLE, SPLIT_MAX_GEN, TOWER_REST_DIST, WEAPON_SLOTS, BUFF_SLOTS, BUFF_MAX_LEVEL,
-  EVOLUTIONS, STAMPEDE_TYPE, FACING_DEADZONE, tierHp, weaponMaxLevel,
+  EVOLUTIONS, STAMPEDE_TYPE, FACING_DEADZONE, tierHp, weaponMaxLevel, xpToNext,
 } from '../src/sim/content.js';
 import { buffMods, buffDamage, procChance, fireballShot, createWeapon } from '../src/sim/weapons.js';
 import { damageTaken } from '../src/sim/damage.js';
@@ -139,10 +143,6 @@ function edgeDist(d, psi, R) {
   return -d * Math.cos(psi) + Math.sqrt(Math.max(0, R * R - d * d * s * s));
 }
 
-// Poisson nearest-neighbour distance (the aim target of an aimed weapon), capped at the field.
-export function aimDistance(F) {
-  return F.rho > 0 ? Math.min(0.5 / Math.sqrt(F.rho), F.R) : Infinity;
-}
 
 // Shots fired by a timer started at 0 over `ticks` steps, period `period` s: the sim's pattern
 // (fire at timer <= 0, then timer += period - DT, else timer -= DT).
@@ -664,6 +664,16 @@ export function buildDps(build, F, cache = null) {
   return { dps, per };
 }
 
+// Effective DPS of one weapon alone (the mini tower's shots at fireball level `fireballLevel`).
+export function weaponDps(id, level, buffs, F, fireballLevel = 1) {
+  const mods = modsOf({ buffs });
+  let d = 0;
+  for (const s of weaponStreams(id, level, mods, F, { fireballLevel })) {
+    if (s.rate > 0) d += s.rate * effectivePerHit(F, buffDamage(s.base, mods), s.type, s.execute && !s.explosion);
+  }
+  return d;
+}
+
 // Raw DPS (no overkill) of one weapon against one enemy type, as the --check dummies take it.
 export function rawDps(streams, mods, enemyType) {
   let d = 0;
@@ -700,7 +710,7 @@ export function bodiesAt(t, opts = {}, timeline = TIMELINE) {
   const out = [];
   const add = (type, tier, rt, hp, r) => {
     if (rt <= 0) return;
-    out.push({ type, tier, rate: rt, hp: tierHp(hp, tier), r: r * TIERS[tier].r });
+    out.push({ type, tier, rate: rt, hp: tierHp(hp, tier), r: r * TIERS[tier].r, xp: ENEMIES[type].xp * TIERS[tier].xp });
   };
   for (const [type, w] of Object.entries(row.weights)) {
     if (!(w > 0) || !(tot > 0)) continue;
@@ -728,6 +738,17 @@ export function minuteAt(t, opts = {}, timeline = TIMELINE) {
   const F = { rho: near / (Math.PI * o.radius * o.radius), r, R: o.radius, mix, near };
   const stage = stageAt(timeline, t);
   return { t, rate, pressure, F, stage: stage ? stage.name : '', bodies };
+}
+
+// The level a player would have at time t if every enemy spawned so far were killed and every
+// gem collected (§14 xpToNext): an upper bound on the level curve.
+export function xpBoundLevel(t, opts = {}, timeline = TIMELINE) {
+  let xp = 0;
+  const step = 0.5;
+  for (let s = step / 2; s < t; s += step) xp += bodiesAt(s, opts, timeline).bodies.reduce((a, b) => a + b.rate * b.xp, 0) * step;
+  let level = 1;
+  while (xp >= xpToNext(level)) { xp -= xpToNext(level); level++; }
+  return level;
 }
 
 // ---- floor and ceiling ----------------------------------------------------------------
@@ -779,23 +800,87 @@ export function nextBuilds(b) {
   return out;
 }
 
-// The best build reachable in `picks` level-ups for field F: a beam search (width `beam`) on
-// effective DPS, one pick at a time; a state with no card left keeps its build.
-export function ceilingBuild(picks, F, beam = DEFAULTS.beam, cache = new Map()) {
-  let states = [{ b: START_BUILD, dps: buildDps(START_BUILD, F, cache).dps }];
-  for (let i = 0; i < picks; i++) {
-    const seen = new Map();
-    for (const s of states) {
-      const nexts = nextBuilds(s.b);
-      if (!nexts.length) { seen.set(buildKey(s.b), s); continue; }
-      for (const n of nexts) {
-        const k = buildKey(n);
-        if (!seen.has(k)) seen.set(k, { b: n, dps: buildDps(n, F, cache).dps });
-      }
-    }
-    states = [...seen.values()].sort((a, b) => b.dps - a.dps).slice(0, beam);
+// Builds several level-ups away: an owned weapon or buff taken straight to its top level, or a
+// new one bought at its top level, with the picks that costs. These let the search see items
+// that pay off only at a high level (Pierce reaches fireballs only at L3).
+export function maxMoves(b) {
+  const out = [];
+  const evolved = EVOLUTIONS.filter((e) => b.weapons.some((w) => w.id === e.result)).flatMap((e) => e.requires);
+  for (const id of WEAPON_IDS) {
+    if (WEAPONS[id].evolution || evolved.includes(id)) continue;
+    const top = weaponMaxLevel(id);
+    const i = b.weapons.findIndex((w) => w.id === id);
+    if (i >= 0) {
+      if (top - b.weapons[i].level >= 2) { const n = cloneBuild(b); n.weapons[i].level = top; out.push({ b: n, cost: top - b.weapons[i].level }); }
+    } else if (b.weapons.length < WEAPON_SLOTS && top >= 2) { const n = cloneBuild(b); n.weapons.push({ id, level: top }); out.push({ b: n, cost: top }); }
   }
-  return states[0];
+  for (const id of BUFF_IDS) {
+    const i = b.buffs.findIndex((x) => x.id === id);
+    if (i >= 0) {
+      if (BUFF_MAX_LEVEL - b.buffs[i].level >= 2) { const n = cloneBuild(b); n.buffs[i].level = BUFF_MAX_LEVEL; out.push({ b: n, cost: BUFF_MAX_LEVEL - b.buffs[i].level }); }
+    } else if (b.buffs.length < BUFF_SLOTS) { const n = cloneBuild(b); n.buffs.push({ id, level: BUFF_MAX_LEVEL }); out.push({ b: n, cost: BUFF_MAX_LEVEL }); }
+  }
+  return out;
+}
+
+// The best build reachable in `picks` level-ups for field F (offers aside: as if every card
+// were on offer): a beam search on effective DPS over layers of picks spent, keeping the best
+// `beam` builds per layer and stepping by one pick (nextBuilds) or by an item taken to its top
+// level (maxMoves). A build that spends fewer picks counts too (the rest go to Repair).
+export function ceilingBuild(picks, F, beam = DEFAULTS.beam, cache = new Map()) {
+  const layers = Array.from({ length: picks + 1 }, () => new Map());
+  const put = (k, b) => {
+    if (k > picks) return;
+    const key = buildKey(b);
+    if (!layers[k].has(key)) layers[k].set(key, { b, dps: buildDps(b, F, cache).dps });
+  };
+  put(0, START_BUILD);
+  let best = null;
+  for (let k = 0; k <= picks; k++) {
+    const states = [...layers[k].values()].sort((a, b) => b.dps - a.dps).slice(0, beam);
+    layers[k] = null;
+    for (const s of states) {
+      if (!best || s.dps > best.dps) best = s;
+      for (const n of nextBuilds(s.b)) put(k + 1, n);
+      for (const m of maxMoves(s.b)) put(k + m.cost, m.b);
+    }
+  }
+  return best;
+}
+
+// Level-ups a build took from START_BUILD (an evolution: its weapons' levels plus the pick).
+export function picksOf(b) {
+  let n = 0;
+  for (const w of b.weapons) {
+    const evo = EVOLUTIONS.find((e) => e.result === w.id);
+    n += evo ? evo.requires.reduce((a, id) => a + weaponMaxLevel(id), 0) + 1 : w.level - (w.id === 'fireball' ? 1 : 0);
+  }
+  return n + b.buffs.reduce((a, x) => a + x.level, 0);
+}
+
+// The small exhaustive check: every full build (the fireball and three more weapons at their
+// top level, four buffs at L3) that `picks` level-ups can buy, the best by effective DPS.
+export function bestFullBuild(picks, F, cache = new Map()) {
+  const others = WEAPON_IDS.filter((id) => id !== 'fireball');
+  let best = null;
+  const combos = (xs, k, from = 0, acc = [], out = []) => {
+    if (acc.length === k) { out.push(acc.slice()); return out; }
+    for (let i = from; i < xs.length; i++) { acc.push(xs[i]); combos(xs, k, i + 1, acc, out); acc.pop(); }
+    return out;
+  };
+  const buffSets = combos(BUFF_IDS, BUFF_SLOTS);
+  for (const ws of combos(others, WEAPON_SLOTS - 1)) {
+    // an evolution excludes the weapons it was made from
+    if (EVOLUTIONS.some((e) => ws.includes(e.result) && e.requires.some((id) => ws.includes(id)))) continue;
+    const weapons = [{ id: 'fireball', level: weaponMaxLevel('fireball') }, ...ws.map((id) => ({ id, level: weaponMaxLevel(id) }))];
+    for (const bs of buffSets) {
+      const b = { weapons, buffs: bs.map((id) => ({ id, level: BUFF_MAX_LEVEL })) };
+      if (picksOf(b) > picks) continue;
+      const dps = buildDps(b, F, cache).dps;
+      if (!best || dps > best.dps) best = { b, dps };
+    }
+  }
+  return best;
 }
 
 export function levelAt(t, levels = LEVEL_CURVE) {
@@ -822,10 +907,12 @@ export function minuteRow(t, opts = {}) {
   }
   naive.sort((a, b) => a.dps - b.dps);
   const floor = naive[Math.floor((naive.length - 1) / 2)];
-  const ceil = ceilingBuild(picks, m.F, o.beam, cache);
+  let ceil = ceilingBuild(picks, m.F, o.beam, cache);
+  const full = bestFullBuild(picks, m.F, cache); // null until a full build is affordable
+  if (full && full.dps > ceil.dps) ceil = { ...full, exhaustive: true };
   const ceilPer = buildDps(ceil.b, m.F, cache).per;
   const flag = ceil.dps < m.pressure ? 'unwinnable' : floor.dps > o.trivial * m.pressure ? 'trivial' : '';
-  return { ...m, level, picks, floor, ceil, ceilPer, floorMedian: median(naive.map((x) => x.dps)), flag };
+  return { ...m, level, xpLevel: xpBoundLevel(t, o), picks, floor, ceil, ceilPer, floorMedian: median(naive.map((x) => x.dps)), flag };
 }
 
 // ---- report ---------------------------------------------------------------------------
@@ -845,9 +932,31 @@ export function assumptionsText(o) {
 }
 
 export function minuteTable(rows) {
-  const out = ['| t | Stage | Spawn/s | Pressure HP/s | Near | Level | Floor DPS | Ceiling DPS | Floor / P | Ceiling / P | Flag | Ceiling build |', '|---|---|---|---|---|---|---|---|---|---|---|---|'];
+  const out = ['| t | Stage | Spawn/s | Pressure HP/s | Near | Level (XP bound) | Floor DPS | Ceiling DPS | Floor / P | Ceiling / P | Flag | Ceiling build |', '|---|---|---|---|---|---|---|---|---|---|---|---|'];
   for (const r of rows) {
-    out.push(`| ${mmss(r.t)} | ${r.stage} | ${f2(r.rate)} | ${f1(r.pressure)} | ${f1(r.F.near)} | ${r.level} | ${f1(r.floor.dps)} | ${f1(r.ceil.dps)} | ${f2(r.floor.dps / r.pressure)} | ${f2(r.ceil.dps / r.pressure)} | ${r.flag} | ${buildText(r.ceil.b)} |`);
+    out.push(`| ${mmss(r.t)} | ${r.stage} | ${f2(r.rate)} | ${f1(r.pressure)} | ${f1(r.F.near)} | ${r.level} (${r.xpLevel}) | ${f1(r.floor.dps)} | ${f1(r.ceil.dps)} | ${f2(r.floor.dps / r.pressure)} | ${f2(r.ceil.dps / r.pressure)} | ${r.flag} | ${buildText(r.ceil.b)}${r.ceil.exhaustive ? " (exhaustive)" : ""} |`);
+  }
+  return out.join('\n');
+}
+
+// Hits to kill each plain enemy (the slime: its whole family, 1 + 2 + 4 bodies) with one hit's
+// damage of each weapon at L1 and its top level, no buffs (the damage function's rounding and
+// resistances; the bite's execute).
+export function matchupTable() {
+  const cols = [['knight'], ['skeleton'], ['slime'], ['mage'], ['ghostKnight'], ['ghost'], ['horse'], ['mountedKnight']];
+  const out = [`| Weapon | L | Damage | ${cols.map(([t]) => ENEMIES[t].name).join(' | ')} |`, `|---|---|---|${cols.map(() => '---|').join('')}`];
+  for (const id of WEAPON_IDS) {
+    for (const level of [...new Set([1, weaponMaxLevel(id)])]) {
+      const def = WEAPONS[id];
+      const base = id === 'miniTower' ? WEAPONS.fireball.levels[level - 1].damage : def.levels[level - 1].damage;
+      const ex = id === 'bite';
+      const cells = cols.map(([t]) => {
+        const r = ENEMIES[t].resist[def.type] || 0;
+        if (t === 'slime') return SLIME_GENS.reduce((a, g, i) => a + 2 ** i * hitsToKill(g.hp, base, r, ex), 0);
+        return hitsToKill(ENEMIES[t].hp, base, r, ex);
+      });
+      out.push(`| ${id}${id === 'miniTower' ? ' (fireball L' + level + ' shots)' : ''} | ${level} | ${base} ${def.type} | ${cells.join(' | ')} |`);
+    }
   }
   return out.join('\n');
 }
@@ -874,10 +983,10 @@ export function rankingTable(opts = {}) {
   const rows = [];
   for (const id of WEAPON_IDS) {
     for (const level of [...new Set([1, weaponMaxLevel(id)])]) {
+      // the mini tower's shots are the fireball's: rank it with a fireball at the same level
       const ctx = { fireballLevel: id === 'miniTower' ? level : 1 };
       const single = MODELS[id].single(level, mods, ctx).reduce((a, s) => a + s.rate * buffDamage(s.base, mods), 0);
-      const crowd = mids.map((m) => buildDps({ weapons: [{ id, level }], buffs: [] }, m.F).dps);
-      // the mini tower's shots are the fireball's: rank it with the fireball at the same level
+      const crowd = mids.map((m) => weaponDps(id, level, [], m.F, ctx.fireballLevel));
       rows.push({ id, level, single, crowd });
     }
   }
@@ -900,6 +1009,7 @@ export const CHECK_BUFFS = {
   stat: [{ id: 'might', level: 2 }, { id: 'haste', level: 1 }, { id: 'area', level: 1 }, { id: 'amount', level: 1 }],
   proc: [{ id: 'explode', level: 3 }, { id: 'split', level: 2 }, { id: 'pierce', level: 3 }, { id: 'velocity', level: 1 }],
   reach: [{ id: 'velocity', level: 2 }, { id: 'duration', level: 2 }, { id: 'area', level: 2 }, { id: 'haste', level: 2 }],
+  ceiling: [{ id: 'explode', level: 3 }, { id: 'split', level: 3 }, { id: 'pierce', level: 3 }, { id: 'area', level: 3 }],
 };
 export const CHECK_RHO = { crowd: 1 / 2500, sparse: 1 / 15000 };
 
@@ -914,6 +1024,10 @@ export function checkCases() {
       }
       if (['saw', 'miniTower'].includes(id)) cases.push({ weapon: id, level, set: 'reach', density: 'crowd', dummy: 'horse' });
     }
+  }
+  // the proc loadout of the late ceilings, in both fields
+  for (const id of ['fireball', 'miniTower']) {
+    for (const density of ['crowd', 'sparse']) cases.push({ weapon: id, level: weaponMaxLevel(id), set: 'ceiling', density, dummy: 'horse' });
   }
   cases.push({ weapon: 'fireball', level: 1, set: 'none', density: 'crowd', dummy: 'slime' });
   cases.push({ weapon: 'laser', level: 1, set: 'none', density: 'crowd', dummy: 'mage' });
@@ -1025,7 +1139,7 @@ export function main(argv) {
     const cases = checkCases().filter((c) => !o.weapon || c.weapon === o.weapon);
     if (!cases.length) throw new Error(`no check cases for weapon "${o.weapon}"`);
     const results = cases.map((c) => runCheck(c, { seconds: o.seconds, seed: o.seed, reshuffle: o.reshuffle, settle: o.settle }));
-    console.log(`Model vs real sim: dummies (HP 1e9, held in place) in a ${CHECK_RUN.radius} px disk around a still dragon that aims at the nearest; crowd 1 per ${1 / CHECK_RHO.crowd} px², sparse 1 per ${1 / CHECK_RHO.sparse} px². Dummies redrawn every ${o.reshuffle} s, the first ${o.settle} s of each layout not counted; ${o.seconds} s counted per case after ${CHECK_RUN.warm} s warm-up; seed ${o.seed}. Tolerance ±${CHECK_TOLERANCE * 100}%.\n`);
+    console.log(`Model vs real sim: dummies (HP 1e9, held in place) in a ${CHECK_RUN.radius} px disk around a still dragon that aims at the nearest; crowd 1 per ${1 / CHECK_RHO.crowd} px², sparse 1 per ${1 / CHECK_RHO.sparse} px². Dummies redrawn every ${o.reshuffle * 0.5}–${o.reshuffle * 1.5} s (random), the first ${o.settle} s of each layout not counted; ${o.seconds} s counted per case after ${CHECK_RUN.warm} s warm-up; seed ${o.seed}. Tolerance ±${CHECK_TOLERANCE * 100}%.\n`);
     console.log(checkTable(results));
     const bad = results.filter((r) => !(Math.abs(r.err) <= CHECK_TOLERANCE));
     console.log(`\n${results.length - bad.length}/${results.length} within ±${CHECK_TOLERANCE * 100}% (${(Number(process.hrtime.bigint() - start) / 1e9).toFixed(1)} s wall)`);
@@ -1041,6 +1155,8 @@ export function main(argv) {
   console.log(stageTable(rows));
   console.log('\n## Weapons per role (no buffs)\n');
   console.log(rankingTable(o));
+  console.log('\n## Hits to kill (plain tier, no buffs)\n');
+  console.log(matchupTable());
   console.log(`\n(${(Number(process.hrtime.bigint() - start) / 1e9).toFixed(1)} s wall)`);
   return 0;
 }
