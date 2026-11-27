@@ -38,3 +38,5 @@ Retune existing numbers. Another agent (T-024: horses, mounted knights, stages) 
 ## Done means
 
 `npm run gate` green; `npm run build:assets` reproduces the atlas; both weapons visible and working in a run; spec updated; `Measured:` in the commit body; commit `T-023: …` with `Closes: T-023`.
+
+**Paused at the usage limit (2026-11-26):** WIP commits on branch `worktree-agent-afd0ae2baa58e6335` (art, sim, render, spec, tests; not yet gated). Resume from that branch.

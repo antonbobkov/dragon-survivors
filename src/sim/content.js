@@ -27,8 +27,10 @@ export const REPAIR_HP = 25;
 export const DYING_TIME = 2; // s of 'dying' phase before 'over' (§13)
 
 // §8 Enemies. hp Infinity = cannot die. xp 0 = no gem. `mass` divides knockback (§8.7); the
-// golem has none: it keeps its own knockback rule (GOLEM_KNOCKBACK).
-export const ENEMY_TYPES = ['knight', 'skeleton', 'slime', 'mage', 'ghostKnight', 'ghost', 'golem'];
+// golem has none: it keeps its own knockback rule (GOLEM_KNOCKBACK). `scale` (default 2, the
+// standard) is the screen scale of a type drawn bigger (§5, §8.6). `stampede` marks the horse:
+// it comes only in stampedes and runs straight (§8.8), never from the spawn budget.
+export const ENEMY_TYPES = ['knight', 'skeleton', 'slime', 'mage', 'ghostKnight', 'ghost', 'horse', 'mountedKnight', 'golem'];
 export const ENEMIES = {
   knight:      { name: 'Knight',       hp: 3,        speed: 27.5, r: 12, dps: 2,  xp: 1, mass: 1,    walk: 'knight.walk',  die: 'knight.die',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.25 } },
   skeleton:    { name: 'Skeleton',     hp: 1,        speed: 45,   r: 10, dps: 6,  xp: 1, mass: 0.7,  walk: 'skelly.walk',  die: 'skelly.die',  alpha: 1, resist: { fire: 0,    arcane: 0.25, physical: -0.5 }, summon: 'skelly.summon' },
@@ -36,6 +38,8 @@ export const ENEMIES = {
   mage:        { name: 'Mage',         hp: 4,        speed: 20,   r: 12, dps: 5,  xp: 5, mass: 1,    walk: 'mage.walk',    die: 'mage.die',    alpha: 1, resist: { fire: 0,    arcane: 0.5,  physical: -0.25 }, spell: 'mage.spell' },
   ghostKnight: { name: 'Ghost knight', hp: 10,       speed: 27.5, r: 12, dps: 10, xp: 2, mass: 1,    walk: 'ghost.knight', die: 'ghost.burn',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.25 } },
   ghost:       { name: 'Ghost',        hp: 2,        speed: 36,   r: 10, dps: 8,  xp: 1, mass: 0.6,  walk: 'ghost.ghost',  die: 'ghost.die',   alpha: 0.6, resist: { fire: 0.25, arcane: -0.5, physical: 0.75 } },
+  horse:       { name: 'Horse',        hp: 2,        speed: 120,  r: 10, dps: 4,  xp: 1, mass: 0.5,  walk: 'horse.walk',   die: 'horse.die',   alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0 }, stampede: true },
+  mountedKnight: { name: 'Mounted knight', hp: 30,   speed: 60,   r: 16, dps: 15, xp: 8, mass: 2,    walk: 'mounted.walk', die: 'mounted.die', alpha: 1, resist: { fire: 0.25, arcane: -0.25, physical: 0.5 }, scale: 3 },
   golem:       { name: 'Mega golem',   hp: Infinity, speed: 75,   r: 56, dps: 40, xp: 0, mass: null, walk: 'golem.walk',   die: 'golem.die',   alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0 }, immovable: true, procImmune: true, unkillable: true },
 };
 
@@ -59,6 +63,13 @@ export const tierAnim = (anim, tier) => (tier > 1 ? `${anim}@t${tier}` : anim);
 // Every anim with tier variants: all anims of every enemy type except the golem's.
 export const TIERED_ANIMS = ENEMY_TYPES.filter((t) => !ENEMIES[t].unkillable)
   .flatMap((t) => { const d = ENEMIES[t]; return [d.walk, d.die, d.summon, d.split, d.spell].filter(Boolean); });
+// §5, §8.6 the screen scale of an enemy or death-effect sprite: its type's scale (2 unless the
+// type is drawn bigger) times the tier's ratio to the standard, rounded down to a whole number.
+// A 3× type is 3× at tiers 1–2 and 4× at tiers 3–4; every other type 2× and 3×.
+export const ANIM_SCALE = Object.fromEntries(ENEMY_TYPES.filter((t) => ENEMIES[t].scale)
+  .flatMap((t) => { const d = ENEMIES[t]; return [d.walk, d.die, d.summon, d.split, d.spell].filter(Boolean).map((a) => [a, d.scale]); }));
+export const screenScale = (anim, tier) =>
+  Math.floor((ANIM_SCALE[anim] || TIERS[1].scale) * (TIERS[tier] || TIERS[1]).scale / TIERS[1].scale + 1e-9);
 
 // §8 specials (implemented by the roster task)
 export const SLIME_CHILDREN = 2;
@@ -90,20 +101,29 @@ export const DESPAWN_DIST = 1400;
 
 // §9 Spawning and the timeline. t in seconds; weights switch at row boundaries, rate is interpolated.
 // `tiers` (optional) are the tier weights (§8.6); a row without them spawns tier 1 and draws no
-// tier. The 2:30 and 3:30 rows only start tiers: their rates are the interpolated ones.
+// tier. `stage` (optional) names the stage that starts at the row (§9.1; the banner, §17).
+// `stampede` (optional) is the row's horse stampedes (§8.8): one every `every` s, each of
+// `min`–`max` horses; a row without one has none. The 2:30 and 3:30 rows change the tiers (the
+// 2:30 row also brings mounted knights); their rates are the interpolated ones.
 export const SPAWN_RING_RADIUS = 560;
 export const GOLEM_TIME = 300;
 export const TIMELINE = [
-  { t: 0,   rate: 0.3,  weights: { knight: 100, skeleton: 0,  slime: 0,  mage: 0,  ghostKnight: 0 } },
-  { t: 30,  rate: 0.5,  weights: { knight: 70,  skeleton: 30, slime: 0,  mage: 0,  ghostKnight: 0 } },
-  { t: 60,  rate: 0.6,  weights: { knight: 50,  skeleton: 30, slime: 20, mage: 0,  ghostKnight: 0 } },
-  { t: 120, rate: 2.5,  weights: { knight: 40,  skeleton: 25, slime: 25, mage: 10, ghostKnight: 0 } },
-  { t: 150, rate: 6.25, weights: { knight: 40,  skeleton: 25, slime: 25, mage: 10, ghostKnight: 0 },  tiers: { 1: 90, 2: 10, 3: 0,  4: 0 } },
-  { t: 180, rate: 10,   weights: { knight: 30,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 15 }, tiers: { 1: 85, 2: 15, 3: 0,  4: 0 } },
-  { t: 210, rate: 13,   weights: { knight: 30,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 15 }, tiers: { 1: 80, 2: 15, 3: 5,  4: 0 } },
-  { t: 240, rate: 16,   weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 }, tiers: { 1: 75, 2: 17, 3: 8,  4: 0 } },
-  { t: 300, rate: 18,   weights: { knight: 25,  skeleton: 25, slime: 20, mage: 10, ghostKnight: 20 }, tiers: { 1: 65, 2: 20, 3: 10, 4: 5 }, golem: true },
+  { t: 0,   rate: 0.3,  stage: 'Muster', weights: { knight: 100, skeleton: 0,  slime: 0,  mage: 0,  ghostKnight: 0,  mountedKnight: 0 } },
+  { t: 30,  rate: 0.5,  weights: { knight: 70, skeleton: 30, slime: 0,  mage: 0,  ghostKnight: 0,  mountedKnight: 0 } },
+  { t: 60,  rate: 0.6,  stage: 'Ooze',   weights: { knight: 45, skeleton: 30, slime: 25, mage: 0,  ghostKnight: 0,  mountedKnight: 0 }, stampede: { every: 20, min: 5, max: 6 } },
+  { t: 120, rate: 2.5,  stage: 'Arcana', weights: { knight: 40, skeleton: 25, slime: 20, mage: 15, ghostKnight: 0,  mountedKnight: 0 }, stampede: { every: 30, min: 5, max: 7 } },
+  { t: 150, rate: 6.25, weights: { knight: 39, skeleton: 25, slime: 20, mage: 15, ghostKnight: 0,  mountedKnight: 1 }, tiers: { 1: 90, 2: 10, 3: 0,  4: 0 }, stampede: { every: 30, min: 5, max: 7 } },
+  { t: 180, rate: 10,   stage: 'Haunt',  weights: { knight: 28, skeleton: 23, slime: 17, mage: 10, ghostKnight: 20, mountedKnight: 2 }, tiers: { 1: 70, 2: 30, 3: 0,  4: 0 }, stampede: { every: 30, min: 6, max: 8 } },
+  { t: 210, rate: 13,   weights: { knight: 28, skeleton: 23, slime: 17, mage: 10, ghostKnight: 20, mountedKnight: 2 }, tiers: { 1: 65, 2: 30, 3: 5,  4: 0 }, stampede: { every: 30, min: 6, max: 8 } },
+  { t: 240, rate: 16,   stage: 'Siege',  weights: { knight: 26, skeleton: 25, slime: 18, mage: 10, ghostKnight: 18, mountedKnight: 3 }, tiers: { 1: 60, 2: 25, 3: 15, 4: 0 }, stampede: { every: 15, min: 8, max: 12 } },
+  { t: 300, rate: 18,   weights: { knight: 26, skeleton: 25, slime: 18, mage: 10, ghostKnight: 18, mountedKnight: 3 }, tiers: { 1: 55, 2: 25, 3: 15, 4: 5 }, stampede: { every: 15, min: 8, max: 12 }, golem: true },
 ];
+// §8.8 stampedes: horses in a line STAMPEDE_SPACING px apart, perpendicular to their run.
+export const STAMPEDE_TYPE = 'horse';
+export const STAMPEDE_SPACING = 24;
+// §17 the stage banner: shown for BANNER_TIME s from a stage's start, fading over the last BANNER_FADE s.
+export const BANNER_TIME = 2;
+export const BANNER_FADE = 0.5;
 
 // §12.1 Damage types. Every hit on an enemy has one; resistances r in [RESIST_MIN, 1] per enemy
 // type (ENEMIES[type].resist): damage taken = ceil(damage × power × (1 − r)), r = 1 immune.
@@ -329,6 +349,7 @@ export const ATLAS_NAMES = [
   'mage.walk', 'mage.die', 'mage.spell',
   'ghost.knight', 'ghost.burn', 'ghost.ghost', 'ghost.die',
   'golem.walk', 'golem.die',
+  'horse.walk', 'horse.die', 'mounted.walk', 'mounted.die',
   'fireball.anim', 'fireball.big', 'orb.green',
   'laser.dir', 'laser.bigdir',
   'castle', 'castle.destroy', 'royal.prince', 'royal.princess',

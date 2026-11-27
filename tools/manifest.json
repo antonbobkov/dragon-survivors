@@ -58,6 +58,10 @@
     { "name": "claw.cone", "art": "effects/cone.txt" },
     { "name": "claw.cone22", "art": "effects/cone22.txt" },
     { "name": "claw.cone45", "art": "effects/cone45.txt" },
+    { "name": "horse.walk", "art": "enemies/horse.txt" },
+    { "name": "horse.die", "art": "enemies/horse-die.txt" },
+    { "name": "mounted.walk", "art": "enemies/mounted-knight.txt" },
+    { "name": "mounted.die", "art": "enemies/mounted-knight-die.txt" },
     { "name": "icon.bite", "art": "icons/bite.txt" },
     { "name": "icon.saw", "art": "icons/saw.txt" },
     { "name": "bite.jaws", "art": "effects/jaws.txt" },
@@ -69,7 +73,9 @@
       "skelly.walk", "skelly.die", "skelly.summon",
       "slime.walk", "slime.die", "slime.split",
       "mage.walk", "mage.die", "mage.spell",
-      "ghost.knight", "ghost.burn", "ghost.ghost", "ghost.die"
+      "ghost.knight", "ghost.burn", "ghost.ghost", "ghost.die",
+      "horse.walk", "horse.die",
+      "mounted.walk", "mounted.die"
     ],
     "variants": [
       { "tier": 2, "tint": "#c86428", "tintStrength": 0.6, "outline": "#d8702c" },
