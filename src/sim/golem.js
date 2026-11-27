@@ -1,7 +1,7 @@
 // The mega golem (§8.10): poise and stagger, the tower shove, footsteps, and the screen-shake
 // events its spawn, footsteps and staggers send to the renderer (§5).
 import {
-  DT, GOLEM_HP, GOLEM_POISE, GOLEM_POISE_DECAY, GOLEM_STAGGER_DIST, GOLEM_STAGGER_TIME, GOLEM_STAGGER_HOLD,
+  DT, GOLEM_HP, GOLEM_POISE, GOLEM_POISE_GROWTH, GOLEM_POISE_DECAY, GOLEM_STAGGER_DIST, GOLEM_STAGGER_TIME, GOLEM_STAGGER_HOLD,
   GOLEM_SHOVE_DIST, GOLEM_SHOVE_INTERVAL, GOLEM_STEP_RANGE, GOLEM_STEP_FRAMES,
 } from './content.js';
 
@@ -16,6 +16,7 @@ export const SHOVE_TICKS = Math.round(GOLEM_SHOVE_INTERVAL / DT); // 60
 // `shoveTimer` counts enemies steps until it may shove the tower again.
 export function initGolem(e) {
   e.poise = 0;
+  e.staggers = 0; // staggers so far: each raises the next threshold (golemPoiseNeeded)
   e.poiseHit = false;
   e.stagger = 0;
   e.staggerDx = 0;
@@ -30,6 +31,12 @@ export function staggerEase(k) {
   return 1 - (1 - p) * (1 - p);
 }
 
+// Poise the next stagger needs: GOLEM_POISE × GOLEM_POISE_GROWTH^staggers, so a build can
+// stagger the golem a few times but never hold it off for good.
+export function golemPoiseNeeded(e) {
+  return GOLEM_POISE * Math.pow(GOLEM_POISE_GROWTH, e.staggers || 0);
+}
+
 // Every hit on the golem (from the damage function, §12.1): it takes nothing (its HP stays
 // GOLEM_HP) and `hit_golem` plays. Outside a stagger the hit's knock after Force adds to its
 // poise; at GOLEM_POISE it staggers.
@@ -39,7 +46,7 @@ export function golemHit(game, e, knock) {
   if (e.stagger > 0 || !(knock > 0)) return;
   e.poise += knock;
   e.poiseHit = true;
-  if (e.poise >= GOLEM_POISE) startStagger(game, e);
+  if (e.poise >= golemPoiseNeeded(e)) startStagger(game, e);
 }
 
 // Poise back to 0; the push goes straight away from the dragon as it is now ((0, 1) when they
@@ -51,6 +58,7 @@ function startStagger(game, e) {
   if (len > 0) { dx /= len; dy /= len; } else { dx = 0; dy = 1; }
   e.poise = 0;
   e.poiseHit = false;
+  e.staggers = (e.staggers || 0) + 1;
   e.stagger = STAGGER_TICKS;
   e.staggerDx = dx;
   e.staggerDy = dy;

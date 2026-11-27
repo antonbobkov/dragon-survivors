@@ -114,6 +114,7 @@ export const GHOST_BURN_TIME = 0.5;
 export const GOLEM_HP = 1e9; // finite stand-in for hp ∞ in state; restored after every hit
 // §8.10 the golem's poise and stagger, its tower shove and its footsteps (src/sim/golem.js).
 export const GOLEM_POISE = 60; // poise (the sum of hits' knock after Force) at which it staggers
+export const GOLEM_POISE_GROWTH = 1.5; // each stagger multiplies the poise the next one needs (unmeasured)
 export const GOLEM_POISE_DECAY = 10; // poise lost per second while not hit
 export const GOLEM_STAGGER_DIST = 40; // px a stagger pushes it straight away from the dragon
 export const GOLEM_STAGGER_TIME = 0.3; // s the push takes (eased out)

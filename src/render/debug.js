@@ -1,5 +1,6 @@
 // Debug overlay (§19, only with ?debug=1): collision circles over the world, and loop and
 // entity stats at the top right. Reads the game and the loop stats; never writes them.
+import { golemPoiseNeeded } from '../sim/golem.js';
 import { TOWER_RADIUS, DRAGON_PICKUP_RADIUS, DRAGON_RADIUS, WEAPONS, BRAZIER_RADIUS, GOLEM_POISE } from '../sim/content.js';
 import { VIEW_W } from '../viewport.js';
 import { worldOffset } from './draw.js';
@@ -13,13 +14,13 @@ export const DEBUG_COLORS = {
   slash: '#ff80ff', bite: '#ff4040', blade: '#e0e0e0',
 };
 // §19 the golem's poise bar: POISE_BAR.w × h px, centred POISE_BAR.gap px above its circle;
-// filled to poise / GOLEM_POISE, full in the stagger colour while it staggers.
+// filled to poise / the poise its next stagger needs, full in the stagger colour while it staggers.
 export const POISE_BAR = { w: 60, h: 5, gap: 6, back: '#202020', fill: '#ffd040', stagger: '#ff4040' };
 
 // The poise bar of a golem `e` drawn at screen point (x, y): { x, y, w, h, frac, color }.
 export function poiseBar(e, x, y) {
   const staggering = e.stagger > 0;
-  const frac = staggering ? 1 : Math.max(0, Math.min(1, (e.poise || 0) / GOLEM_POISE));
+  const frac = staggering ? 1 : Math.max(0, Math.min(1, (e.poise || 0) / golemPoiseNeeded(e)));
   return {
     x: Math.round(x - POISE_BAR.w / 2), y: Math.round(y - e.r - POISE_BAR.gap - POISE_BAR.h),
     w: POISE_BAR.w, h: POISE_BAR.h, frac, color: staggering ? POISE_BAR.stagger : POISE_BAR.fill,

@@ -40,7 +40,7 @@ test('content: dragon and tower constants match §6 and §7', () => {
 
 test('content: the golem constants match §8.10', () => {
   const consts = Object.fromEntries(tableAfter('### 8.10').map((r) => [r[0].replace(/`/g, ''), num(r[1])]));
-  const names = ['GOLEM_POISE', 'GOLEM_POISE_DECAY', 'GOLEM_STAGGER_DIST', 'GOLEM_STAGGER_TIME', 'GOLEM_STAGGER_HOLD', 'GOLEM_SHOVE_DIST', 'GOLEM_SHOVE_INTERVAL', 'GOLEM_STEP_RANGE'];
+  const names = ['GOLEM_POISE', 'GOLEM_POISE_GROWTH', 'GOLEM_POISE_DECAY', 'GOLEM_STAGGER_DIST', 'GOLEM_STAGGER_TIME', 'GOLEM_STAGGER_HOLD', 'GOLEM_SHOVE_DIST', 'GOLEM_SHOVE_INTERVAL', 'GOLEM_STEP_RANGE'];
   assert.deepEqual(Object.keys(consts).sort(), [...names].sort());
   for (const name of names) assert.equal(C[name], consts[name], name);
   assert.deepEqual(C.GOLEM_STEP_FRAMES, [3, 6]);
