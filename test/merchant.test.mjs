@@ -438,13 +438,23 @@ test('determinism: the same seed and intents (walking to merchants, trading, lea
   assert.notEqual(c.digest(), d0);
 });
 
-test('measure bots ignore the merchant: a shop that opens is left', () => {
+test('measure bots trade in the shop; with merchant "ignore" (and idle) a shop that opens is left', () => {
   const { g } = openShop(50);
-  const it = botIntent(g, 'aim', 'greedy');
+  const it = botIntent(g, 'aim', 'greedy', { merchant: 'ignore' });
   assert.equal(it.leave, true);
+  assert.equal(botIntent(g, 'idle', 'greedy').leave, true);
   g.tick(it);
   assert.equal(g.shop, null);
   assert.equal(botIntent(still(), 'aim').leave, false);
+  // By default the greedy bot opens the cards page and buys a card by its own rule.
+  const { g: h } = openShop(50);
+  const a = botIntent(h, 'aim', 'greedy');
+  assert.deepEqual([a.pick, a.leave], [1, false]);
+  h.tick(a);
+  assert.equal(h.shop.page, 'cards');
+  h.tick(botIntent(h, 'aim', 'greedy'));
+  assert.equal(h.shop, null);
+  assert.equal(h.xp, 50 - SHOP_PRICES.card);
 });
 
 // ---- input --------------------------------------------------------------------------
