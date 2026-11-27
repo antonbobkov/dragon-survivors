@@ -219,3 +219,20 @@ test('filterSprites matches every word against name, folder and source', () => {
   assert.deepEqual(filterSprites(list, 'WALK enem').map((s) => s.name), ['horse.walk']);
   assert.equal(filterSprites(list, '  ').length, 2);
 });
+
+test('pack/index.json lists exactly the files of pack/ (run node tools/folder-index.mjs)', async () => {
+  const { indexText } = await import('../tools/folder-index.mjs');
+  const { fileURLToPath } = await import('node:url');
+  assert.equal(read('pack/index.json').toString('utf8'), indexText(fileURLToPath(new URL('pack/', root))));
+});
+
+test('the old game pack scans: every frame list loads, and its game frames are there', async () => {
+  const { files } = JSON.parse(read('pack/index.json'));
+  const map = new Map(files.map((p) => [p, { text: async () => read(`pack/${p}`).toString('utf8'), bytes: async () => new Uint8Array(read(`pack/${p}`)) }]));
+  const s = await scanFolder(map, { decodeImage: async () => { throw new Error('no PNGs expected'); } });
+  const lists = s.filter((x) => x.source.endsWith('frames)'));
+  assert.ok(lists.length > 60 && s.length > 150, `${lists.length} lists, ${s.length} sprites`);
+  for (const sp of s) await sp.load();
+  const names = new Set(s.map((x) => `${x.path.join('/')}/${x.name}`));
+  for (const want of ['knight/knight', 'golem/golem', 'princess/prince', 'castle/royal_figure_prince.bmp']) assert.ok(names.has(want), want);
+});
