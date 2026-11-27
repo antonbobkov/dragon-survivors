@@ -4,6 +4,8 @@ A Vampire Survivors-style demo: walk an invulnerable dragon, keep the tethered t
 
 **Play it:** <https://antonbobkov.github.io/dragon-survivors/> (GitHub Pages, deployed from `main`).
 
+**Pixel viewer:** <https://antonbobkov.github.io/dragon-survivors/pixel/>, browse and animate the game's sprites, tiers and any local folder of pixel art ([pixel/README.md](pixel/README.md)).
+
 Plain JavaScript ES modules on an HTML canvas. No framework, no bundler, no runtime dependencies.
 
 ## Run
