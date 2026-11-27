@@ -4,7 +4,7 @@
 
 ## Why
 
-A merchant gives the player a choice every 90 s: **trade** (stand by him, spend gems for a reroll or a chosen card) or **rob** him (he is fast and tanky; killing him drops a chest with a free upgrade). It pulls the player out of position (control) and creates a greed decision.
+A merchant gives the player a choice every 90 s: **trade** (stand by him, spend banked XP for a reroll, a chosen card or a heal) or **rob** him (he is fast and tanky; killing him drops a chest with a free upgrade). It pulls the player out of position (control) and creates a greed decision.
 
 ## What
 
