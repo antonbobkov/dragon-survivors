@@ -10,7 +10,7 @@ import { createWeapon, buffMods, buffDamage, collideRing, procChance } from '../
 import { spawnProjectile, resolveHit } from '../src/sim/projectiles.js';
 import {
   DT, MAX_GEMS, GEM_COLLECT_RADIUS, DRAGON_PICKUP_RADIUS, WEAPONS, BUFFS, BUFF_IDS, WEAPON_IDS,
-  EXPLODE_RADIUS, GOLEM_HP, GOLEM_KNOCKBACK, REPAIR_HP, xpToNext,
+  EXPLODE_RADIUS, GOLEM_HP, REPAIR_HP, xpToNext,
 } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }];
@@ -517,14 +517,14 @@ test('ring: an enemy is hit at most once per rehit; expired entries are pruned; 
   assert.deepEqual(w.rehit, {}, 'pruned once expired');
 });
 
-test('ring: the golem is knocked back from the ring fireball', () => {
+test('ring: a ring fireball hit on the golem builds its poise and plays hit_golem', () => {
   const g = still();
   g.weapons = [createWeapon('ring', 1)];
   const m = createEnemy(g, 'golem', 200, 0);
   g.weapons[0].balls = [{ x: 150, y: 0 }];
   g.grid.build(g.enemies);
   collideRing(g);
-  assert.ok(near(m.x, 200 + GOLEM_KNOCKBACK) && near(m.y, 0));
+  assert.deepEqual([m.x, m.y, m.poise], [200, 0, WEAPONS.ring.knock]);
   assert.equal(m.hp, GOLEM_HP);
   assert.ok(sounded(g, 'hit_golem'));
 });
@@ -619,7 +619,7 @@ test('procs: explosion radius 60 × area, every enemy once except the one hit; g
   assert.equal(g.effects.length, 1, 'only the fireball explosion');
 });
 
-test('procs: the golem takes the hit and the knockback but no proc rolls at all', () => {
+test('procs: the golem takes the hit and its poise but no proc rolls at all', () => {
   const g = still();
   g.buffs = [{ id: 'explode', level: 3 }, { id: 'split', level: 3 }, { id: 'pierce', level: 3 }];
   const c = countingRng(g);
@@ -628,7 +628,7 @@ test('procs: the golem takes the hit and the knockback but no proc rolls at all'
   const p = shot(g);
   assert.equal(resolveHit(g, p, m), false, 'no pierce through the golem');
   assert.equal(c.n, 0);
-  assert.ok(near(m.x, 50 + GOLEM_KNOCKBACK));
+  assert.equal(m.x, 50);
   assert.equal(g.projectiles.length, 1, 'no split');
 });
 

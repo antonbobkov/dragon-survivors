@@ -1,5 +1,5 @@
 // Roster specials (§8, §9, §13): skeleton, slime split, mage cast + summon, ghost knight
-// burn -> ghost, mega golem at 5:00 with knockback.
+// burn -> ghost, mega golem at 5:00 (its poise and shove: golem.test.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Game } from '../src/sim/game.js';
@@ -8,7 +8,7 @@ import { setAnim, spawnEffect, animLength } from '../src/sim/effects.js';
 import { spawnProjectile, resolveHit } from '../src/sim/projectiles.js';
 import { createWeapon } from '../src/sim/weapons.js';
 import {
-  TIMELINE, MAX_ENEMIES, SPAWN_RING_RADIUS, DESPAWN_DIST, TOWER_RADIUS, GOLEM_HP, GOLEM_KNOCKBACK, ENEMIES, TOWER_REST_DIST,
+  TIMELINE, MAX_ENEMIES, SPAWN_RING_RADIUS, DESPAWN_DIST, TOWER_RADIUS, GOLEM_HP, GOLEM_POISE, ENEMIES, TOWER_REST_DIST,
 } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }];
@@ -296,12 +296,12 @@ test('golem: spawn direction falls back to (0, 1); it ignores the cap; no golem 
   assert.equal(ofType(h, 'golem').length, 0);
 });
 
-test('golem: a hit knocks it GOLEM_KNOCKBACK px away from the projectile and does not lower its HP', () => {
+test('golem: a hit does not move it or lower its HP; its knock goes to poise', () => {
   const g = still();
   const m = createEnemy(g, 'golem', 0, 400);
-  const p = spawnProjectile(g, { kind: 'fireball', x: -30, y: 440, dx: 1, dy: 0, speed: 420, range: 420, r: 6, damage: 4, anim: 'fireball.anim' });
-  resolveHit(g, p, m); // from (-30, 440): unit direction away is (0.6, -0.8)
-  assert.ok(near(m.x, 0.6 * GOLEM_KNOCKBACK) && near(m.y, 400 - 0.8 * GOLEM_KNOCKBACK), `${m.x}, ${m.y}`);
+  const p = spawnProjectile(g, { kind: 'fireball', x: -30, y: 440, dx: 1, dy: 0, speed: 420, range: 420, r: 6, damage: 4, knock: 4, anim: 'fireball.anim' });
+  resolveHit(g, p, m);
+  assert.deepEqual([m.x, m.y, m.poise], [0, 400, 4]);
   assert.equal(m.hp, GOLEM_HP);
   assert.ok(sounded(g, 'hit_golem'));
   m.hp = -100;
@@ -310,7 +310,7 @@ test('golem: a hit knocks it GOLEM_KNOCKBACK px away from the projectile and doe
   assert.equal(g.kills, 0);
 });
 
-test('golem: fireballs in play push it back; it is never despawned', () => {
+test('golem: fireballs in play build poise but never push it; it is never despawned', () => {
   const g = still();
   g.weapons = [createWeapon('fireball', 1)];
   g.tower.x = 0; g.tower.y = -TOWER_REST_DIST; // behind the dragon, at rest so it stays put
@@ -322,9 +322,10 @@ test('golem: fireballs in play push it back; it is never despawned', () => {
     g.tick(aim);
     if (sounded(g, 'hit_golem')) hits++;
   }
-  // it walks up 180 px; every hit from straight above pushes it GOLEM_KNOCKBACK px down
-  assert.ok(hits >= 1, `hits ${hits}`);
-  assert.ok(near(m.y, 300 - 180 + GOLEM_KNOCKBACK * hits, 1e-6), `y ${m.y} after ${hits} hits`);
+  // it walks up 180 px, unpushed: a few level-1 fireballs (knock 4) stay short of a stagger
+  assert.ok(hits >= 1 && hits * 4 < GOLEM_POISE, `hits ${hits}`);
+  assert.ok(near(m.y, 300 - 180, 1e-6), `y ${m.y} after ${hits} hits`);
+  assert.ok(m.poise > 0 && m.poise <= 4 * hits && m.stagger === 0, `poise ${m.poise}`);
   assert.ok(near(m.x, 0));
   assert.equal(m.hp, GOLEM_HP);
 
@@ -338,7 +339,8 @@ test('golem: fireballs in play push it back; it is never despawned', () => {
 
 test('golem: contact deals 40 DPS to the tower', () => {
   const g = still();
-  createEnemy(g, 'golem', g.tower.x, g.tower.y + TOWER_RADIUS + 56 - 4);
+  const m = createEnemy(g, 'golem', g.tower.x, g.tower.y + TOWER_RADIUS + 56 - 4);
+  m.shoveTimer = 1e9; // test only: no shove (§8.10), so the contact lasts the whole second
   run(g, 60);
   assert.ok(Math.abs(g.tower.hp - 60) <= 40 / 60 + 1e-9, `hp ${g.tower.hp}`);
   assert.equal(ENEMIES.golem.dps, 40);

@@ -6,7 +6,7 @@ import { Game } from '../src/sim/game.js';
 import { createEnemy, separate } from '../src/sim/enemies.js';
 import { setAnim } from '../src/sim/effects.js';
 import { spawnProjectile, resolveHit } from '../src/sim/projectiles.js';
-import { MAX_ENEMIES, MAGE_NO_CAST_DIST, GOLEM_KNOCKBACK, TOWER_HP } from '../src/sim/content.js';
+import { MAX_ENEMIES, MAGE_NO_CAST_DIST, GOLEM_POISE, GOLEM_STAGGER_DIST, TOWER_HP } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }];
 const still = (timeline = QUIET) => {
@@ -120,13 +120,17 @@ test('separation: a summoning skeleton and a neighbour push apart, the first in 
 
 // ---- golem -----------------------------------------------------------------------
 
-// Mutation: the golem knockback fallback for a coincident hit changes to (0, -1).
-test('golem: a hit exactly at its centre knocks it 6 px along (0, 1)', () => {
+// Mutation: the stagger's fallback direction, when the golem stands on the dragon, changes to (0, -1).
+test('golem: a stagger on the dragon pushes it along (0, 1)', () => {
   const g = still();
-  const m = createEnemy(g, 'golem', 40, 400);
+  const m = createEnemy(g, 'golem', g.dragon.x, g.dragon.y);
+  m.poise = GOLEM_POISE - 1;
   const p = shot(g, 40, 400);
+  p.knock = 4;
   resolveHit(g, p, m);
-  assert.deepEqual([m.x, m.y], [40, 400 + GOLEM_KNOCKBACK]);
+  assert.deepEqual([m.staggerDx, m.staggerDy], [0, 1]);
+  for (let i = 0; i < 30; i++) g.stepEnemies();
+  assert.ok(Math.abs(m.x - g.dragon.x) < 1e-9 && Math.abs(m.y - g.dragon.y - GOLEM_STAGGER_DIST) < 1e-9, `${m.x}, ${m.y}`);
 });
 
 // ---- mage cast threshold ---------------------------------------------------------

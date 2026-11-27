@@ -118,7 +118,7 @@ export function spawnStampede(game, n, tier, a) {
 // Called from the clock step after `t` advances. On the first tick where `t` reaches a
 // timeline row marked `golem` (5:00 in the default table), spawn the mega golem once, on
 // the spawn ring on the far side of the tower from the dragon, sound `ohno`. It ignores
-// the cap.
+// the cap. The screen shakes (§5).
 export function spawnGolemIfDue(game) {
   const sp = game.spawner;
   if (sp.golem) return;
@@ -131,4 +131,5 @@ export function spawnGolemIfDue(game) {
   if (len > 0) { ux /= len; uy /= len; } else { ux = 0; uy = 1; }
   createEnemy(game, 'golem', d.x + SPAWN_RING_RADIUS * ux, d.y + SPAWN_RING_RADIUS * uy);
   game.sound('ohno');
+  game.shake('spawn'); // §5 a strong shake as it arrives
 }

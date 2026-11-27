@@ -11,7 +11,7 @@ import { dropGem } from '../src/sim/gems.js';
 import { applyCard } from '../src/sim/levelup.js';
 import { createWeapon, collideRing } from '../src/sim/weapons.js';
 import { spawnProjectile, resolveHit } from '../src/sim/projectiles.js';
-import { DT, MAX_GEMS, WEAPONS, EXPLODE_RADIUS, GOLEM_HP, GOLEM_KNOCKBACK, REPAIR_HP, TOWER_HP } from '../src/sim/content.js';
+import { DT, MAX_GEMS, WEAPONS, EXPLODE_RADIUS, GOLEM_HP, GOLEM_POISE, GOLEM_STAGGER_DIST, REPAIR_HP, TOWER_HP } from '../src/sim/content.js';
 
 const QUIET = [{ t: 0, rate: 0, weights: { knight: 100 } }];
 // No spawns, no weapons: only what a test places acts.
@@ -123,15 +123,20 @@ test('split: children start at the projectile position, not at the enemy', () =>
 
 // ---- ring (§10.4) -------------------------------------------------------------------
 
-test('ring: the golem is knocked back away from the ball, not from the dragon', () => {
+test('ring: a stagger pushes the golem away from the dragon, not from the ball', () => {
   const g = still();
   g.weapons = [createWeapon('ring', 1)];
-  // dragon (0, 0), ball (150, 0), golem (150, 40): not collinear. Straight away from the ball is +y.
+  // dragon (0, 0), ball (150, 0), golem (150, 40): not collinear. Straight away from the dragon is (0.966, 0.258).
   const m = createEnemy(g, 'golem', 150, 40);
+  m.poise = GOLEM_POISE - 1;
   g.weapons[0].balls = [{ x: 150, y: 0 }];
   g.grid.build(g.enemies);
   collideRing(g);
-  assert.ok(near(m.x, 150) && near(m.y, 40 + GOLEM_KNOCKBACK), `${m.x}, ${m.y}`);
+  assert.ok(m.stagger > 0 && m.poise === 0);
+  assert.deepEqual([m.x, m.y], [150, 40], 'the hit itself moves nothing');
+  for (let i = 0; i < 18; i++) g.stepEnemies();
+  const L = Math.hypot(150, 40);
+  assert.ok(near(m.x, 150 + GOLEM_STAGGER_DIST * 150 / L, 1e-6) && near(m.y, 40 + GOLEM_STAGGER_DIST * 40 / L, 1e-6), `${m.x}, ${m.y}`);
 });
 
 test('ring: spin ignores the cooldown buff', () => {

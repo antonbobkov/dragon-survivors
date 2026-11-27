@@ -81,7 +81,7 @@ export function stepBlades(game) {
 // Step 8, after the bite: every blade hits every live enemy whose circle overlaps its own and
 // that it has not hit in the last `rehit` s, as physical damage (§12.1) with its knock away from
 // the blade (§8.7). It never stops on a hit. Blades in list order, enemies in grid order.
-// No procs, no random draws; the golem is hit and knocked by its own rule.
+// No procs, no random draws; the golem is hit; the knock builds its poise (§8.10).
 export function collideBlades(game) {
   for (const b of game.blades) {
     for (const e of game.grid.nearby(b.x, b.y, b.r + game.grid.maxR, scratch)) {

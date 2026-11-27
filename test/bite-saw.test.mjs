@@ -194,7 +194,7 @@ test('bite: knock straight away from the dragon by mass and Force; the jaws face
   assert.equal(dead.x, 20);
 });
 
-test('bite: physical through resistances and the armoury; the golem takes nothing and moves 1 px', () => {
+test('bite: physical through resistances and the armoury; the golem takes nothing and gains the knock as poise', () => {
   const vals = {};
   for (const type of ['knight', 'skeleton', 'slime', 'mage', 'ghost']) {
     const g = still(armed('bite'));
@@ -211,7 +211,7 @@ test('bite: physical through resistances and the armoury; the golem takes nothin
   const golem = createEnemy(g, 'golem', 40, 0);
   tick(g);
   assert.equal(golem.hp, 1e9);
-  assert.ok(near(golem.x, 41));
+  assert.deepEqual([golem.x, golem.poise], [40, WEAPONS.bite.knock], 'not pushed: poise 30 (§8.10)');
 });
 
 test('bite: breaks the braziers its reach overlaps; draws no random numbers', () => {
