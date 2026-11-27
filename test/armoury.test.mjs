@@ -255,6 +255,27 @@ test('App: game over pays floor(score / 20) gold once, saves it, and Retry uses 
   close(app.game.meta.power.arcane, 1.08);
 });
 
+test('App: a debug page pays no gold (its grants and jump would farm it)', () => {
+  const storage = memoryStorage();
+  storage.setItem(ARMOURY_KEY, JSON.stringify(purseWith(3)));
+  let next = 100;
+  const app = new App({
+    makeGame: (seed, meta) => new Game({ seed, meta, debug: true }), debug: true,
+    randomSeed: () => next++, audio: { play: () => true, resume: () => Promise.resolve() }, store: createStore(() => storage),
+  });
+  let f = 0;
+  const step = (input = idle) => app.frame(f++ * STEP_MS, input);
+  step(press({ confirm: true }));
+  for (let i = 0; i < 90; i++) step();
+  app.game.kills = 400; // test only: a score worth gold on a normal page
+  app.game.tower.hp = 0;
+  for (let i = 0; i < 130; i++) step();
+  assert.equal(app.game.phase, 'over');
+  assert.ok(goldFor(app.game.score()) > 0);
+  assert.deepEqual(app.goldLine(), { earned: 0, purse: 3 });
+  assert.equal(app.purse.gold, 3);
+});
+
 test('App: with storage unavailable the armoury still works for the session', () => {
   const { app, step } = makeApp({ storage: throwingStorage });
   assert.deepEqual(app.purse, freshPurse());

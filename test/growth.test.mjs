@@ -235,11 +235,11 @@ test('level-up: buff names, icons and card text at each level; Explode and Pierc
     ['icon.might', 'icon.haste', 'icon.nuke', 'icon.speed', 'icon.duration', 'icon.force', 'icon.amount', 'icon.explode', 'icon.split', 'icon.laser']);
   assert.deepEqual([1, 2, 3].map((l) => text('might', l)), ['+20% damage', '+40% damage', '+60% damage']);
   assert.deepEqual([1, 2, 3].map((l) => text('haste', l)), ['-10% cooldowns', '-20% cooldowns', '-30% cooldowns']);
-  assert.equal(text('area', 2), '+40% area and orbit');
-  assert.equal(text('velocity', 3), '+60% shot speed and range');
-  assert.deepEqual([1, 2, 3].map((l) => text('duration', l)), ['+25% mini tower life', '+50% mini tower life', '+75% mini tower life']);
+  assert.equal(text('area', 2), '+40% shot, blast, ring, claw, bite, saw size');
+  assert.equal(text('velocity', 3), '+60% shot and saw speed and range');
+  assert.deepEqual([1, 2, 3].map((l) => text('duration', l)), ['+25% life: mini towers, pickups; saw spin', '+50% life: mini towers, pickups; saw spin', '+75% life: mini towers, pickups; saw spin']);
   assert.deepEqual([1, 2, 3].map((l) => text('force', l)), ['+50% knockback', '+100% knockback', '+150% knockback']);
-  assert.deepEqual([1, 2, 3].map((l) => text('amount', l)), [1, 2, 3].map((n) => `+${n} shots, ring balls, max mini towers`));
+  assert.deepEqual([1, 2, 3].map((l) => text('amount', l)), [1, 2, 3].map((n) => `+${n} shots, ring, towers, slashes, bites, saws`));
   assert.equal(text('explode', 1), '20% fireballs explode; L3: lasers too');
   assert.equal(text('explode', 3), '50% chance to explode; lasers explode too');
   assert.equal(text('split', 2), '35% chance fireballs split in two');

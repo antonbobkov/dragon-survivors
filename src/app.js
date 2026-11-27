@@ -116,11 +116,12 @@ export class App {
     if (act >= 0 && act < ITEMS) this.activateArmoury(act);
   }
 
-  // Pays out a finished run's gold, once per game (§13.1).
+  // Pays out a finished run's gold, once per game (§13.1). A debug page's runs pay nothing:
+  // its grants and jump would farm gold.
   payGold() {
     if (this.game.phase !== 'over' || this.goldGame === this.game) return;
     this.goldGame = this.game;
-    this.goldEarned = goldFor(this.game.score());
+    this.goldEarned = this.debug ? 0 : goldFor(this.game.score());
     this.setPurse(addGold(this.purse, this.goldEarned));
   }
 

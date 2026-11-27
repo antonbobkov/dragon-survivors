@@ -27,6 +27,7 @@ import {
   drawShop, drawLevelUp, tileRects, shopItemAt, shopNav, cardRects, SHOP_BUTTON, BACK_BUTTON, REROLL_BUTTON, TILE, clipText,
 } from '../src/render/screens.js';
 import { botIntent } from '../tools/measure.mjs';
+import { drawDebugWorld, debugLines } from '../src/render/debug.js';
 
 const atlasJson = JSON.parse(readFileSync(new URL('../assets/atlas.json', import.meta.url), 'utf8'));
 const atlas = { image: {}, frames: atlasJson.frames, anims: atlasJson.anims };
@@ -565,6 +566,15 @@ function fakeCtx() {
   });
 }
 const texts = (c) => c.calls.filter((x) => x[0] === 'fillText').map((x) => x[1]);
+
+test("debug overlay: the merchant's circle, his trade radius while he will trade, and the count", () => {
+  const { g, m } = trading(200);
+  const arcs = () => { const c = fakeCtx(); drawDebugWorld(c, g); return c.calls.filter((x) => x[0] === 'arc').map((x) => x[3]); };
+  assert.ok(arcs().includes(DEF.r) && arcs().includes(TRADE_RADIUS));
+  m.willTrade = false;
+  assert.ok(arcs().includes(DEF.r) && !arcs().includes(TRADE_RADIUS));
+  assert.match(debugLines(g, { ticks: 1, tickMs: 0.1 }, 1).join(' '), /merchants 1/);
+});
 
 test('shop layout: 19 tiles fit above Back; hit tests and navigation', () => {
   const r = tileRects(19);
