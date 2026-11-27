@@ -1,6 +1,6 @@
 # T-039: Damage calculator: fixes from the T-020 review
 
-**Source:** [T-020 review](../../reports/reviews/2026-11-26-T-020-review.md) · **Model:** Opus · **Depends on:** — (must land before T-029)
+**Source:** [T-020 review](../../../reports/reviews/2026-11-26-T-020-review.md) · **Model:** Opus · **Depends on:** — (must land before T-029)
 
 ## What
 
