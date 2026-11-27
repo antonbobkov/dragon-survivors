@@ -119,7 +119,7 @@ test('content: tier table matches §8.6', () => {
 });
 
 test('content: weapon tables match §10', () => {
-  const sections = { fireball: '### 10.1', laser: '### 10.2', miniTower: '### 10.3', ring: '### 10.4', leftClaw: '### 10.5', rightClaw: '### 10.6', dualClaw: '### 10.7' };
+  const sections = { fireball: '### 10.1', laser: '### 10.2', miniTower: '### 10.3', ring: '### 10.4', leftClaw: '### 10.5', rightClaw: '### 10.6', dualClaw: '### 10.7', bite: '### 10.8', saw: '### 10.9' };
   for (const [id, heading] of Object.entries(sections)) {
     const i = SPEC.findIndex((l) => l.startsWith(heading));
     let h = i; while (!SPEC[h].startsWith('|')) h++;
@@ -135,7 +135,7 @@ test('content: weapon tables match §10', () => {
   }
   assert.deepEqual(C.WEAPON_IDS, Object.keys(C.WEAPONS));
   // knock per weapon (§10 intro, §8.7)
-  const knockNames = { Fireball: 'fireball', Laser: 'laser', 'Mini tower (its shots)': 'miniTower', Ring: 'ring', 'Left claw': 'leftClaw', 'Right claw': 'rightClaw', 'Dual claw': 'dualClaw' };
+  const knockNames = { Fireball: 'fireball', Laser: 'laser', 'Mini tower (its shots)': 'miniTower', Ring: 'ring', 'Left claw': 'leftClaw', 'Right claw': 'rightClaw', 'Dual claw': 'dualClaw', Bite: 'bite', 'Saw blade': 'saw' };
   const knocks = tableAfter('## 10. Weapons');
   assert.equal(knocks.length, C.WEAPON_IDS.length);
   for (const [name, k] of knocks) assert.equal(C.WEAPONS[knockNames[name]].knock, num(k), `${name} knock`);

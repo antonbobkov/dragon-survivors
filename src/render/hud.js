@@ -14,7 +14,7 @@ export const HUD = {
 };
 
 // §17 weapon icons: fireball first frame, laser facing right, mini tower castle at 1×, ring icon,
-// the claws' own icons.
+// the claws', the bite's and the saw blade's own icons.
 export const WEAPON_ICONS = {
   fireball: { anim: 'fireball.anim', frame: 0, scale: 1 },
   laser: { anim: 'laser.dir', frame: 12, scale: 1 },
@@ -23,6 +23,8 @@ export const WEAPON_ICONS = {
   leftClaw: { anim: 'icon.leftclaw', frame: 0, scale: 1 },
   rightClaw: { anim: 'icon.rightclaw', frame: 0, scale: 1 },
   dualClaw: { anim: 'icon.dualclaw', frame: 0, scale: 1 },
+  bite: { anim: 'icon.bite', frame: 0, scale: 1 },
+  saw: { anim: 'icon.saw', frame: 0, scale: 1 },
 };
 
 export function buffIcon(id) {

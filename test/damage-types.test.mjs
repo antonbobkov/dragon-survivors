@@ -25,7 +25,7 @@ const NEUTRAL = { power: { fire: 1, arcane: 1, physical: 1 }, shred: { fire: 0, 
 test('types: every weapon and projectile kind has a damage type; fire for fireball, mini tower and ring, arcane for laser', () => {
   assert.deepEqual(DAMAGE_TYPES, ['fire', 'arcane', 'physical']);
   assert.deepEqual(Object.fromEntries(WEAPON_IDS.map((id) => [id, WEAPONS[id].type])),
-    { fireball: 'fire', laser: 'arcane', miniTower: 'fire', ring: 'fire', leftClaw: 'physical', rightClaw: 'physical', dualClaw: 'physical' });
+    { fireball: 'fire', laser: 'arcane', miniTower: 'fire', ring: 'fire', leftClaw: 'physical', rightClaw: 'physical', dualClaw: 'physical', bite: 'physical', saw: 'physical' });
   assert.equal(PROJECTILE_KINDS.fireball.type, WEAPONS.fireball.type);
   assert.equal(PROJECTILE_KINDS.laser.type, WEAPONS.laser.type);
   for (const t of ENEMY_TYPES) for (const d of DAMAGE_TYPES) {

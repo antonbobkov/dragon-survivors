@@ -18,9 +18,9 @@ const CONFIRM_KEYS = ['Enter', 'NumpadEnter'];
 const ARMOURY_KEYS = ['KeyU']; // §13.1; gamepad Y
 const PICK_KEYS = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 };
 
-// §19 debug keys (read always, acted on only by a debug App): F1–F4 and F6–F8 grant a weapon
+// §19 debug keys (read always, acted on only by a debug App): F1–F4 and F6–F10 grant a weapon
 // at its top level, F5 jumps to 4:50, + / - change game speed.
-export const DEBUG_GRANT_KEYS = { F1: 'fireball', F2: 'laser', F3: 'miniTower', F4: 'ring', F6: 'leftClaw', F7: 'rightClaw', F8: 'dualClaw' };
+export const DEBUG_GRANT_KEYS = { F1: 'fireball', F2: 'laser', F3: 'miniTower', F4: 'ring', F6: 'leftClaw', F7: 'rightClaw', F8: 'dualClaw', F9: 'bite', F10: 'saw' };
 export const DEBUG_JUMP_KEY = 'F5';
 export const DEBUG_SPEED_KEYS = { Equal: 1, NumpadAdd: 1, Minus: -1, NumpadSubtract: -1 };
 export const DEBUG_KEYS = new Set([...Object.keys(DEBUG_GRANT_KEYS), DEBUG_JUMP_KEY, ...Object.keys(DEBUG_SPEED_KEYS)]);

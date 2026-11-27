@@ -103,7 +103,7 @@ export function applyCard(game, card) {
 
 export const CARD_NAMES = {
   fireball: 'Fireball', laser: 'Laser', miniTower: 'Mini Tower', ring: 'Ring',
-  leftClaw: 'Left Claw', rightClaw: 'Right Claw', dualClaw: 'Dual Claw',
+  leftClaw: 'Left Claw', rightClaw: 'Right Claw', dualClaw: 'Dual Claw', bite: 'Bite', saw: 'Saw Blade',
   might: 'Might', haste: 'Haste', area: 'Area', velocity: 'Velocity', duration: 'Duration', force: 'Force', amount: 'Amount',
   explode: 'Explode', split: 'Split', pierce: 'Pierce', repair: 'Repair',
 };
@@ -117,6 +117,8 @@ export const CARD_ICONS = {
   leftClaw: { anim: 'icon.leftclaw', frame: 0, scale: 1 },
   rightClaw: { anim: 'icon.rightclaw', frame: 0, scale: 1 },
   dualClaw: { anim: 'icon.dualclaw', frame: 0, scale: 1 },
+  bite: { anim: 'icon.bite', frame: 0, scale: 1 },
+  saw: { anim: 'icon.saw', frame: 0, scale: 1 },
   repair: { anim: 'castle', frame: 0, scale: 0.5 },
 };
 
@@ -127,6 +129,8 @@ const NEW_WEAPON_TEXT = {
   ring: 'Fireballs orbit the dragon',
   leftClaw: 'Slashes the side you face',
   rightClaw: 'Aimed claw strikes the nearest foes',
+  bite: 'Bites the nearest foe; double on the weak',
+  saw: 'Tower flings a saw blade past you and back',
 };
 
 // Short labels of weapon stats, in the order an upgrade lists its changes (first 3 shown).
@@ -134,7 +138,7 @@ const STAT_LABELS = [
   ['damage', 'dmg'], ['count', 'count'], ['sides', 'sides'], ['maxTargets', 'targets'], ['maxActive', 'max'],
   ['duration', 'life'], ['fireRate', 'rate'], ['cooldown', 'cd'], ['orbit', 'orbit'],
   ['spin', 'spin'], ['rehit', 'rehit'], ['spread', 'spread'], ['width', 'width'], ['height', 'height'],
-  ['angle', 'angle'], ['reach', 'reach'], ['speed', 'speed'], ['range', 'range'],
+  ['angle', 'angle'], ['reach', 'reach'], ['r', 'size'], ['dwell', 'dwell'], ['speed', 'speed'], ['range', 'range'],
 ];
 
 const pct = (v) => `${Math.round(Math.abs(v) * 100)}%`;

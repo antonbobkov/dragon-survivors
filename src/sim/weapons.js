@@ -5,6 +5,8 @@ import { spawnProjectile } from './projectiles.js';
 import { advanceAnim } from './effects.js';
 import { dealDamage } from './damage.js';
 import { clawVolley, tickSlashes } from './claws.js';
+import { tickBite, collideBite } from './bite.js';
+import { sawVolley } from './saw.js';
 
 const EPS = 1e-9;
 const DEG = Math.PI / 180;
@@ -264,9 +266,32 @@ export function fireClaw(game, w, mods) {
   if (ready(w, L.cooldown * mods.cooldown)) clawVolley(game, w, L, mods, buffDamage(L.damage, mods));
 }
 
+// §10.8: the bite's cooldown runs here; it bites in step 8 (collideBites) once it is at 0
+// and an enemy is in reach.
+export function fireBite(game, w) {
+  tickBite(game, w);
+}
+
+// Step 8, after the claw slashes: each bite that is ready bites (bite.js).
+export function collideBites(game) {
+  let mods = null;
+  for (const w of game.weapons) {
+    if (w.id !== 'bite') continue;
+    mods = mods || buffMods(game);
+    const L = weaponLevel(w);
+    collideBite(game, w, L, mods, buffDamage(L.damage, mods));
+  }
+}
+
+// §10.9: every cooldown the tower launches a volley of saw blades (saw.js).
+export function fireSaw(game, w, mods) {
+  const L = weaponLevel(w);
+  if (ready(w, L.cooldown * mods.cooldown)) sawVolley(game, L, mods, buffDamage(L.damage, mods));
+}
+
 const FIRE = {
   fireball: fireFireball, laser: fireLaser, miniTower: fireMiniTower, ring: spinRing,
-  leftClaw: fireClaw, rightClaw: fireClaw, dualClaw: fireClaw,
+  leftClaw: fireClaw, rightClaw: fireClaw, dualClaw: fireClaw, bite: fireBite, saw: fireSaw,
 };
 
 // Step 6. Pending claw slashes count down first, so a volley's own delays start next tick.

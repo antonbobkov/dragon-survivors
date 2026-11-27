@@ -4,11 +4,12 @@ import { TOWER_RADIUS, DRAGON_PICKUP_RADIUS, DRAGON_RADIUS, WEAPONS, BRAZIER_RAD
 import { VIEW_W, cameraOffset } from '../viewport.js';
 import { shadowText } from './hud.js';
 import { slashRect } from '../sim/claws.js';
+import { buffMods, weaponLevel } from '../sim/weapons.js';
 
 export const DEBUG_FONT = '12px monospace';
 export const DEBUG_COLORS = {
   enemy: '#ff4040', tower: '#ffa020', projectile: '#ffff40', ring: '#ffff40', pickup: '#40e0ff', mini: '#c080ff', orb: '#60ff60', dragon: '#ffffff', brazier: '#ff8000',
-  slash: '#ff80ff',
+  slash: '#ff80ff', bite: '#ff4040', blade: '#e0e0e0',
 };
 
 // Text lines of the stats overlay. stats: { ticks, tickMs } from the App; speed: game speed.
@@ -45,9 +46,9 @@ function slashOutline(ctx, s, o) {
   ctx.stroke();
 }
 
-// Collision circles: enemies, the tower, projectiles, enemy shots, ring fireballs, mini
-// towers' target radius, braziers, claw slash hitboxes, the dragon's hit circle and its gem
-// pickup radius.
+// Collision circles: enemies, the tower, projectiles, enemy shots, ring fireballs, saw blades,
+// mini towers' target radius, braziers, claw slash hitboxes, the bite's reach around the
+// dragon, the dragon's hit circle and its gem pickup radius.
 export function drawDebugWorld(ctx, game) {
   const o = cameraOffset(game.dragon);
   ctx.save();
@@ -60,11 +61,17 @@ export function drawDebugWorld(ctx, game) {
     if (w.id !== 'ring' || !Array.isArray(w.balls)) continue;
     for (const b of w.balls) circle(ctx, b.x + o.x, b.y + o.y, WEAPONS.ring.r, DEBUG_COLORS.ring);
   }
+  for (const b of game.blades || []) circle(ctx, b.x + o.x, b.y + o.y, b.r, DEBUG_COLORS.blade);
   for (const m of game.miniTowers || []) {
     if (!(m.lobTicks > 0)) circle(ctx, m.x + o.x, m.y + o.y, WEAPONS.miniTower.targetRadius, DEBUG_COLORS.mini);
   }
   for (const s of game.slashes || []) if (s.struck) slashOutline(ctx, s, o);
   for (const b of game.braziers || []) circle(ctx, b.x + o.x, b.y + o.y, BRAZIER_RADIUS, DEBUG_COLORS.brazier);
+  for (const w of game.weapons) {
+    if (w.id !== 'bite') continue;
+    const reach = weaponLevel(w).reach * buffMods(game).area;
+    circle(ctx, game.dragon.x + o.x, game.dragon.y + o.y, reach, DEBUG_COLORS.bite);
+  }
   circle(ctx, game.dragon.x + o.x, game.dragon.y + o.y, DRAGON_RADIUS, DEBUG_COLORS.dragon);
   circle(ctx, game.dragon.x + o.x, game.dragon.y + o.y, DRAGON_PICKUP_RADIUS, DEBUG_COLORS.pickup);
   ctx.restore();
