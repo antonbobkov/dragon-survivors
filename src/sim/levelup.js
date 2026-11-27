@@ -30,11 +30,13 @@ export function evolve(game, evo) {
 
 // Card: { kind: 'weapon' | 'evolve' | 'buff' | 'repair', id, level } with `level` the level
 // after the pick. Pool order is fixed: weapons in WEAPON_IDS order (evolution results are not
-// offered as weapons), evolutions in EVOLUTIONS order, buffs in BUFF_IDS order, then Repair.
+// offered as weapons, nor the weapons an owned evolution was made from), evolutions in
+// EVOLUTIONS order, buffs in BUFF_IDS order, then Repair.
 export function cardPool(game) {
   const pool = [];
+  const evolved = EVOLUTIONS.filter((e) => game.weapons.some((w) => w.id === e.result)).flatMap((e) => e.requires);
   for (const id of WEAPON_IDS) {
-    if (WEAPONS[id].evolution) continue;
+    if (WEAPONS[id].evolution || evolved.includes(id)) continue;
     const w = game.weapons.find((x) => x.id === id);
     if (w) { if (w.level < weaponMaxLevel(id)) pool.push({ card: { kind: 'weapon', id, level: w.level + 1 }, weight: CARD_WEIGHTS.upgradeWeapon }); }
     else if (game.weapons.length < WEAPON_SLOTS) pool.push({ card: { kind: 'weapon', id, level: 1 }, weight: CARD_WEIGHTS.newWeapon });

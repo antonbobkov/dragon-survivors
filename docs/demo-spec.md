@@ -550,7 +550,7 @@ The evolution of the two claws. Every `cooldown` it slashes both sides at once w
 
 - **Offer.** While the result is not owned and every weapon it requires is owned at its top level, the level-up pool holds its evolution card (§14.1). It needs no free slot.
 - **Pick.** The required weapons leave `game.weapons` and the result takes the slot of the first of them (in slot order) at its top level, so a slot frees up. It fires on the next weapons step.
-- An evolution result is never offered as a new weapon or an upgrade; it is gained only by evolving (or the debug grant, §19).
+- An evolution result is never offered as a new weapon or an upgrade; it is gained only by evolving (or the debug grant, §19). While it is owned, the weapons it was made from are not offered either, so the freed slot takes another weapon.
 
 ---
 
@@ -703,7 +703,7 @@ A card shows the icon, name, level or NEW, and one line of effect text. Choose w
 
 Precisely:
 
-- **Pool order** is fixed: the weapons in the order Fireball, Laser, Mini Tower, Ring, Left Claw, Right Claw, then the evolutions in `EVOLUTIONS` order, then the buffs in the §11 table order, then Repair. A weapon or buff is either an upgrade (owned, below its cap), a new card (not owned, a slot free) or absent; an evolution result (Dual Claw) is never a weapon card, only an evolution card.
+- **Pool order** is fixed: the weapons in the order Fireball, Laser, Mini Tower, Ring, Left Claw, Right Claw, then the evolutions in `EVOLUTIONS` order, then the buffs in the §11 table order, then Repair. A weapon or buff is either an upgrade (owned, below its cap), a new card (not owned, a slot free) or absent; an evolution result (Dual Claw) is never a weapon card, only an evolution card, and the weapons of an owned evolution are not offered again.
 - **Drawing:** `min(3, pool size)` cards without replacement. Each card takes one `game.rng()`: `r = rng × total weight`, then the first card in pool order whose weight exceeds what is left of `r` (subtracting the weights passed). The chosen card leaves the pool before the next draw. Repair (weight 1) is in the pool whenever any other card is; once the build is full (every weapon slot and buff slot filled and at its cap) it is in the pool only while `hp < 0.5 × maxHp`, so a hurt full build is offered Repair alone and a healthy one is offered nothing.
 - **Empty pool:** when the offers rolled for a pending level-up come out empty, no card is shown and every pending level-up passes at once (`pendingLevelUps` becomes 0, `offers` stays empty): the levels are still gained, no `rng` is drawn, no sound plays and the world keeps running. This happens when the first level-up is queued and after a pick (a Repair that lifts the tower to half HP or above ends the rest of the queue).
 - **Card:** `{ kind: 'weapon' | 'evolve' | 'buff' | 'repair', id, level }`, `level` being the level after the pick (1 = new; an evolution card's `id` is its result and `level` the result's top level). A new weapon fires on the next weapons step; an upgrade keeps the weapon's timer and state. An evolution card evolves (§10.7). A new buff is appended to `game.buffs`. **Repair** restores 25 tower HP, capped at `maxHp`.

@@ -260,7 +260,7 @@ test('evolution: offered (weight 10) only with both claws at L5, never as a weap
   assert.equal(g.weapons[1].timer, 0, 'fires on the next weapons step');
   assert.ok(!cardPool(g).some((p) => p.card.kind === 'evolve'), 'no second offer');
   assert.deepEqual(cardPool(g).filter((p) => p.card.kind === 'weapon' && p.card.level === 1).map((p) => p.card.id),
-    ['miniTower', 'ring', 'leftClaw', 'rightClaw'], 'a slot is free again');
+    ['miniTower', 'ring'], 'a slot is free again, but not for the claws the dual claw was made from');
   // picking it through the level-up flow
   const h = new Game({ seed: 3, timeline: QUIET });
   h.weapons = [createWeapon('leftClaw', 5), createWeapon('rightClaw', 5)];
