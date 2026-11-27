@@ -1,6 +1,6 @@
 # T-033: Art pipeline: fixes from the T-017 review
 
-**Source:** [T-017 review](../../reports/reviews/2026-11-26-T-017-review.md) · **Model:** Sonnet · **Depends on:** T-021 merged (it edits `tools/build-atlas.mjs` and the manifest)
+**Source:** [T-017 review](../../../reports/reviews/2026-11-26-T-017-review.md) · **Model:** Sonnet · **Depends on:** T-021 merged (it edits `tools/build-atlas.mjs` and the manifest)
 
 ## What
 

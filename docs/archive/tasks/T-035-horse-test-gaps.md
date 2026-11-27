@@ -1,6 +1,6 @@
 # T-035: Close the horse and stage test gaps found in review
 
-**Source:** [T-024 review](../../reports/reviews/2026-11-26-T-024-review.md), finding 4 · **Model:** Sonnet · **Depends on:** T-025 merged (it edits `enemies.js`)
+**Source:** [T-024 review](../../../reports/reviews/2026-11-26-T-024-review.md), finding 4 · **Model:** Sonnet · **Depends on:** T-025 merged (it edits `enemies.js`)
 
 ## What
 

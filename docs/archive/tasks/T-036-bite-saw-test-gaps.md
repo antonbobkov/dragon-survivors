@@ -1,6 +1,6 @@
 # T-036: Close the bite and saw test gaps found in review
 
-**Source:** [T-023 review](../../reports/reviews/2026-11-26-T-023-review.md), finding 4 · **Model:** Sonnet · **Depends on:** — (run together with T-034)
+**Source:** [T-023 review](../../../reports/reviews/2026-11-26-T-023-review.md), finding 4 · **Model:** Sonnet · **Depends on:** — (run together with T-034)
 
 ## What
 

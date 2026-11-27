@@ -1,6 +1,6 @@
 # T-034: Close the claw test gaps found in review
 
-**Source:** [T-022 review](../../reports/reviews/2026-11-26-T-022-review.md), finding 4 · **Model:** Sonnet · **Depends on:** T-023 merged (it extends `src/sim/claws.js`)
+**Source:** [T-022 review](../../../reports/reviews/2026-11-26-T-022-review.md), finding 4 · **Model:** Sonnet · **Depends on:** T-023 merged (it extends `src/sim/claws.js`)
 
 ## What
 

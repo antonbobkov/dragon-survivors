@@ -1,6 +1,6 @@
 # T-037: Close the slime test gaps found in review
 
-**Source:** [T-025 review](../../reports/reviews/2026-11-26-T-025-review.md), finding 4 · **Model:** Sonnet · **Depends on:** —
+**Source:** [T-025 review](../../../reports/reviews/2026-11-26-T-025-review.md), finding 4 · **Model:** Sonnet · **Depends on:** —
 
 Tests only (new file `test/slimes-review.test.mjs`), so each mutation fails at least one test; restore from a backup copy, never commit a mutation.
 
