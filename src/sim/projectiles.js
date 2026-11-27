@@ -8,6 +8,7 @@ import { advanceAnim, spawnEffect } from './effects.js';
 import { dealDamage } from './damage.js';
 import { buffMods, procChance } from './weapons.js';
 import { hitBraziers } from './braziers.js';
+import { merchantsHit } from './merchant.js';
 
 const SPRITE_SCALE = 2; // §5: every sprite is drawn at 2× source size
 
@@ -74,6 +75,10 @@ export function explode(game, p, hit, mods) {
     if (dx * dx + dy * dy >= rr * rr) continue;
     dealDamage(game, e, p.damage, p.type, src, knock);
   }
+  // §14.3: it also hits every merchant it overlaps, except the one just hit
+  for (const m of merchantsHit(game, (x, y, r) => (x - cx) ** 2 + (y - cy) ** 2 < (R + r) ** 2)) {
+    if (m !== hit) dealDamage(game, m, p.damage, p.type, src, knock);
+  }
   hitBraziers(game, cx, cy, R); // §14.2: an explosion breaks the braziers it overlaps
   const anim = EXPLOSION_ANIMS[p.type] || EXPLOSION_ANIM;
   const scale = (2 * R) / (EXPLOSION_SPRITE_PX[anim] * SPRITE_SCALE);
@@ -108,7 +113,8 @@ export function resolveHit(game, p, e) {
 const scratch = [];
 const scratchExplode = [];
 
-// Step 8 (first part): each projectile hits the nearest live, not-yet-hit enemy it overlaps.
+// Step 8 (first part): each projectile hits the nearest live, not-yet-hit enemy or merchant
+// (§14.3) it overlaps; a merchant is proc-immune, so a projectile is used up on him.
 // Projectiles spawned here (split children) are kept but not tested until the next tick.
 export function collideProjectiles(game) {
   const list = game.projectiles;
@@ -126,6 +132,12 @@ export function collideProjectiles(game) {
       const rr = e.r + p.r;
       if (d2 >= rr * rr) continue;
       if (d2 < bestD2 || (d2 === bestD2 && e.id < best.id)) { best = e; bestD2 = d2; }
+    }
+    for (const m of game.merchants) {
+      if (m.hp <= 0 || p.hits.includes(m.id)) continue;
+      const d2 = (m.x - p.x) ** 2 + (m.y - p.y) ** 2;
+      if (d2 >= (m.r + p.r) ** 2) continue;
+      if (d2 < bestD2 || (d2 === bestD2 && m.id < best.id)) { best = m; bestD2 = d2; }
     }
     if (best && !resolveHit(game, p, best)) continue;
     list[n++] = p;

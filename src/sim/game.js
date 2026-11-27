@@ -16,10 +16,13 @@ import { stepGems } from './gems.js';
 import { applyCard, openOffers, evolutionOf, evolve } from './levelup.js';
 import { normalizeMeta } from './damage.js';
 import { stepBraziers, collideBraziers, collidePickups, BRAZIER_INTERVAL_TICKS } from './braziers.js';
+import { spawnMerchantIfDue, stepMerchants, merchantDeaths, openShopIfDue, MERCHANT_INTERVAL_TICKS } from './merchant.js';
+import { stepShop } from './shop.js';
 
 const DYING_TICKS = Math.round(DYING_TIME / DT);
 
 // §4: a missing or partial intent is all zeros; move is clamped to length 1, aim normalised.
+// `pick` is a whole number from 0 (a card, a shop offer) or -1; `reroll` and `leave` are edges.
 export function normalizeIntent(intent) {
   const i = intent || {};
   const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -29,8 +32,11 @@ export function normalizeIntent(intent) {
   let aimX = num(i.aimX), aimY = num(i.aimY);
   const al = Math.hypot(aimX, aimY);
   if (al > 0) { aimX /= al; aimY /= al; }
-  const pick = i.pick === 0 || i.pick === 1 || i.pick === 2 ? i.pick : -1;
-  return { moveX, moveY, aimX, aimY, hasAim: i.hasAim === true && al > 0, confirm: i.confirm === true, pick };
+  const pick = Number.isInteger(i.pick) && i.pick >= 0 ? i.pick : -1;
+  return {
+    moveX, moveY, aimX, aimY, hasAim: i.hasAim === true && al > 0, confirm: i.confirm === true, pick,
+    reroll: i.reroll === true, leave: i.leave === true,
+  };
 }
 
 // §19: the optional `intent.debug` command, `{ grant: <weapon id> }` or `{ jumpTo: <s> }`,
@@ -73,6 +79,10 @@ export class Game {
     this.brazierTimer = BRAZIER_INTERVAL_TICKS; // spawner steps until the next brazier attempt
     this.lastBomb = null; // tickCount of the last bomb pickup (read by the renderer's flash)
     this.lastFusion = null; // tickCount of the last slime fusion (§8.9)
+    this.merchants = []; // §14.3, at most one
+    this.merchantTimer = MERCHANT_INTERVAL_TICKS; // spawner steps until the next merchant is due
+    this.shop = null; // the merchant's shop while it is open (§14.3)
+    this.rerolls = 0; // level-up rerolls bought from merchants (§14)
     this.spawner = createSpawner();
     this.grid = new Grid();
     this.kills = 0;
@@ -111,6 +121,7 @@ export class Game {
     }
     const it = normalizeIntent(intent);
     if (this.offers.length > 0) { this.stepPick(it); return; } // the world is frozen
+    if (this.shop) { stepShop(this, it); return; } // §14.3, frozen too
     if (this.debug) this.stepDebug(normalizeDebug(intent)); // §19, before step 1
     this.stepIntent(it);       // 1
     this.stepDragon();         // 2
@@ -128,7 +139,14 @@ export class Game {
 
   // §14: while offers are open no step runs; a valid `pick` applies that card, and the
   // next offers are rolled if level-ups remain.
+  // A banked reroll (`intent.reroll`, §14.3) rolls the offers again instead.
   stepPick(intent) {
+    if (intent.reroll && this.rerolls > 0) {
+      this.rerolls--;
+      openOffers(this);
+      this.sound('powerup03');
+      return;
+    }
     const card = this.offers[intent.pick];
     if (!card) return;
     applyCard(this, card);
@@ -164,13 +182,17 @@ export class Game {
   stepDragon() { moveDragon(this); }
   // 3. §7.1
   stepTether() { stepTether(this); }
-  // 4. §9 enemies, then §14.2 braziers.
+  // 4. §9 enemies, then §14.2 braziers, then §14.3 the merchant.
   stepSpawner() {
     stepSpawner(this);
     stepBraziers(this);
+    spawnMerchantIfDue(this);
   }
   // 5. Special timers (mage cast, summon anim), AI, move, separation, despawn, slime fusion (§8).
-  stepEnemies() { stepEnemies(this); }
+  stepEnemies() {
+    stepEnemies(this);
+    stepMerchants(this); // §14.3
+  }
   // 6. §10: cooldowns, firing, ring positions, mini towers.
   stepWeapons() { stepWeapons(this); }
   // 7. Projectiles, then saw blades, then enemy shots: move, expire by range (a blade by
@@ -196,7 +218,10 @@ export class Game {
     collidePickups(this);
   }
   // 9. Deaths, gems, slime split, ghost knight burn (§8.4).
-  stepDeaths() { stepDeaths(this); }
+  stepDeaths() {
+    stepDeaths(this);
+    merchantDeaths(this); // §14.3: a chest, no gem, no kill
+  }
   // 10. §14: attract and collect gems, queue level-ups and roll offers.
   stepGems() { stepGems(this); }
   // 11. Effects, then the claw slashes' effects.
@@ -217,6 +242,7 @@ export class Game {
       this.offers = []; // a level-up queued on the tick the tower fell is dropped
       this.pendingLevelUps = 0;
     }
+    openShopIfDue(this); // §14.3, only while still in play
   }
 
   // Plain-data view of the state (no rng, grid or events).
@@ -228,6 +254,7 @@ export class Game {
       dragon: this.dragon, tower: this.tower, enemies: this.enemies,
       projectiles: this.projectiles, enemyShots: this.enemyShots, effects: this.effects, gems: this.gems, miniTowers: this.miniTowers, slashes: this.slashes, blades: this.blades,
       braziers: this.braziers, pickups: this.pickups, brazierTimer: this.brazierTimer, lastBomb: this.lastBomb, lastFusion: this.lastFusion,
+      merchants: this.merchants, merchantTimer: this.merchantTimer, shop: this.shop, rerolls: this.rerolls,
       weapons: this.weapons, buffs: this.buffs,
     };
   }

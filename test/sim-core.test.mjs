@@ -51,9 +51,12 @@ test('digest: changes with state, ignores events', () => {
 // ---- intent and dragon ---------------------------------------------------------
 
 test('intent: missing or partial intent is all zeros; move clamped, aim normalised', () => {
-  const zero = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, hasAim: false, confirm: false, pick: -1 };
+  const zero = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, hasAim: false, confirm: false, pick: -1, reroll: false, leave: false };
   assert.deepEqual(normalizeIntent(undefined), zero);
-  assert.deepEqual(normalizeIntent({ moveX: NaN, pick: 7 }), zero);
+  assert.deepEqual(normalizeIntent({ moveX: NaN, pick: 2.5, reroll: 1, leave: 'yes' }), zero);
+  assert.equal(normalizeIntent({ pick: -3 }).pick, -1);
+  assert.equal(normalizeIntent({ pick: 7 }).pick, 7, 'any whole number: the shop card list can be long (§14.3)');
+  assert.deepEqual([normalizeIntent({ reroll: true }).reroll, normalizeIntent({ leave: true }).leave], [true, true]);
   assert.deepEqual(normalizeIntent({ moveX: 1 }), { ...zero, moveX: 1 });
   const n = normalizeIntent({ moveX: 3, moveY: 4, aimX: 0, aimY: -5, hasAim: true, pick: 2 });
   assert.ok(Math.abs(n.moveX - 0.6) < 1e-12 && Math.abs(n.moveY - 0.8) < 1e-12);

@@ -6,6 +6,7 @@ import { WEAPONS, DT, CLAW_RECT_ANIM, CLAW_CONE_ANIMS, CLAW_SOUND } from './cont
 import { dealDamage } from './damage.js';
 import { advanceAnim } from './effects.js';
 import { breakBraziersWhere } from './braziers.js';
+import { merchantsHit } from './merchant.js';
 
 const DEG = Math.PI / 180;
 const scratch = [];
@@ -138,6 +139,11 @@ export function collideSlashes(game) {
     for (const e of slashTargets(game, s, d.x, d.y)) {
       dealDamage(game, e, s.damage, WEAPONS[s.weapon].type, src, s.knock);
       s.hits.push(e.id);
+    }
+    // §14.3: a merchant the slash overlaps is hit too; he never takes a cone's target slot
+    for (const m of merchantsHit(game, (x, y, r) => slashOverlaps(s, d.x, d.y, x, y, r))) {
+      dealDamage(game, m, s.damage, WEAPONS[s.weapon].type, src, s.knock);
+      s.hits.push(m.id);
     }
     breakBraziersWhere(game, (bx, by, br) => slashOverlaps(s, d.x, d.y, bx, by, br));
     game.sound(CLAW_SOUND);

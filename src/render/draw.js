@@ -1,7 +1,8 @@
 // World rendering (§5): background, tether ring, entities in draw order, effects.
 // Reads the game and never writes it.
 import { mulberry32 } from '../sim/rng.js';
-import { TETHER_LENGTH, WEAPONS, TICK_HZ, PICKUP_BLINK, tierAnim, screenScale, CLAW_CONE_ANIMS } from '../sim/content.js';
+import { TETHER_LENGTH, WEAPONS, TICK_HZ, PICKUP_BLINK, CHARACTERS, tierAnim, screenScale, CLAW_CONE_ANIMS } from '../sim/content.js';
+import { TRADE_TICKS } from '../sim/merchant.js';
 import { VIEW_W, VIEW_H, cameraOffset } from '../viewport.js';
 
 export const SPRITE_SCALE = 2;
@@ -170,14 +171,45 @@ export function pickupVisible(p) {
 // §14.2 the bomb's screen flash: white over the world, FLASH.alpha on the first frame after
 // the bomb, fading to nothing over FLASH.ticks ticks. Derived from `game.lastBomb`. Shown only
 // while the world runs (phase 'play', no level-up offers): the tick count stops otherwise, and
-// the flash would freeze on screen.
+// the flash would freeze on screen. The merchant's shop freezes it too (§14.3).
 export const FLASH = { alpha: 0.6, ticks: 24, color: '#ffffff' };
 export function bombFlashAlpha(game) {
   if (typeof game.lastBomb !== 'number') return 0;
-  if (game.phase !== 'play' || (game.offers && game.offers.length > 0)) return 0;
+  if (game.phase !== 'play' || (game.offers && game.offers.length > 0) || game.shop) return 0;
   const age = game.tickCount - game.lastBomb; // 1 on the frame after the bomb's tick
   if (age < 1 || age > FLASH.ticks) return 0;
   return FLASH.alpha * (1 - (age - 1) / FLASH.ticks);
+}
+
+// §14.3 a merchant at screen point (x, y): his sprite (mirrored when `flip`), then above it his
+// bars and bubble. While he will trade: the bubble over his head and, while the dragon stands by
+// him, a gold bar filling to TRADE_TICKS. Once hurt: a red HP bar.
+export const MERCHANT_BARS = { w: 24, h: 3, gap: 3, back: '#1a1a1a', trade: '#ffd23f', hp: '#e03a3a' };
+export function merchantOverlay(m) {
+  const out = [];
+  if (m.hp < m.maxHp) out.push({ kind: 'hp', frac: Math.max(0, m.hp / m.maxHp) });
+  if (m.willTrade && m.trade > 0) out.push({ kind: 'trade', frac: Math.min(1, m.trade / TRADE_TICKS) });
+  return { bars: out, bubble: m.willTrade === true };
+}
+export function drawMerchant(ctx, atlas, m, x, y) {
+  drawAnim(ctx, atlas, m.anim, m.frame, x, y, { flip: m.flip });
+  const r = frameRect(atlas, m.anim, m.frame);
+  let top = Math.round(y - (r ? r.h : 16) * SPRITE_SCALE / 2);
+  const B = MERCHANT_BARS;
+  const { bars, bubble } = merchantOverlay(m);
+  for (const b of bars) {
+    top -= B.gap + B.h;
+    const left = Math.round(x - B.w / 2);
+    ctx.fillStyle = B.back;
+    ctx.fillRect(left, top, B.w, B.h);
+    ctx.fillStyle = B[b.kind];
+    ctx.fillRect(left, top, Math.round(B.w * b.frac), B.h);
+  }
+  if (bubble) {
+    const br = frameRect(atlas, CHARACTERS.merchant.bubble, 0);
+    const h = (br ? br.h : 8) * SPRITE_SCALE;
+    drawAnim(ctx, atlas, CHARACTERS.merchant.bubble, 0, x + 8, top - 2 - h / 2);
+  }
 }
 
 // Enemies in draw order (by y, then id), as a new array: the game's list is never reordered.
@@ -229,7 +261,7 @@ export function createRenderer({ atlas, makeCanvas }) {
     }
   }
 
-  // Draw order (§5): background, gems, tower, mini towers, braziers, pickups, enemies by y,
+  // Draw order (§5): background, gems, tower, mini towers, braziers, pickups, merchants, enemies by y,
   // ring fireballs, saw blades, projectiles, enemy shots (mage orbs), dragon, claw slashes,
   // effects (the bite's jaws among them), the bomb flash. The HUD and screens draw on top.
   // `shake` ({ x, y } px, optional) offsets the whole world (§5).
@@ -273,6 +305,8 @@ export function createRenderer({ atlas, makeCanvas }) {
     for (const p of game.pickups || []) {
       if (pickupVisible(p)) drawAnim(ctx, atlas, p.anim, p.frame, p.x + o.x, p.y + o.y);
     }
+
+    for (const m of game.merchants || []) drawMerchant(ctx, atlas, m, m.x + o.x, m.y + o.y);
 
     for (const e of enemyDrawOrder(game.enemies, sorted)) {
       const s = tierSprite(atlas, e);

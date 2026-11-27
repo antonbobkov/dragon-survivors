@@ -10,6 +10,7 @@ import { advanceAnim, setAnim, spawnEffect } from './effects.js';
 import { dropGem } from './gems.js';
 import { initialOrbTimer, stepMageOrb } from './enemyShots.js';
 import { initGolem, golemSpecial, golemHit, golemFootstep } from './golem.js';
+import { merchantHit } from './merchant.js';
 
 const MAGE_INTERVAL_TICKS = Math.round(MAGE_CAST_INTERVAL / DT);
 const MAGE_CAST_TICKS = Math.round(MAGE_CAST_TIME / DT);
@@ -113,8 +114,10 @@ function summonSkeletons(game, e) {
 
 // Called on every hit, after the damage, with the hit's knock after Force. An unkillable
 // enemy (the golem) keeps its HP and builds poise (§8.10).
+// A merchant (§14.3) flees and stops trading.
 export function onEnemyHit(game, e, knock = 0) {
   if (e.unkillable) golemHit(game, e, knock);
+  else if (e.type === 'merchant') merchantHit(e);
 }
 
 // Step 9, for each dead enemy after kills/gem. Returns true when the death was handled

@@ -1,9 +1,9 @@
 // Screen flow and ticking (§4, §13, §14): title <-> armoury, title -> play <-> paused,
-// level-up cards, game over (gold) -> Retry. No DOM: main.js feeds it timestamps, input
+// level-up cards, the merchant's shop (§14.3), game over (gold) -> Retry. No DOM: main.js feeds it timestamps, input
 // frames and a storage wrapper, so it is tested under node. Only `game.tick(intent)` enters
 // the sim; the armoury reaches it only as the `meta` a Game is built with (§13.1).
 import { Accumulator, SPEEDS } from './loop.js';
-import { cardAt, inRect, ARMOURY_BUTTON } from './render/screens.js';
+import { cardAt, inRect, ARMOURY_BUTTON, REROLL_BUTTON, shopItemAt, shopNav } from './render/screens.js';
 import { armouryNav, armouryItemAt, cellItem, ITEMS, RESET, BACK } from './render/armoury.js';
 import { createStore, metaFromRanks, goldFor, addGold, buy, refundAll, totalSpent } from './armoury.js';
 import { Shake } from './render/shake.js';
@@ -39,9 +39,11 @@ export class App {
     this.game = makeGame(this.nextSeed(), this.meta());
     this.screen = 'title'; // 'title' | 'armoury' | 'play' | 'paused' | 'bestiary'
     this.bestiaryFrom = 'play'; // the screen the bestiary returns to when closed (§17.1)
-    this.pending = { confirm: false, pick: -1, debug: [] };
+    this.pending = { confirm: false, pick: -1, reroll: false, leave: false, debug: [] };
     this.cardSel = 0; // highlighted level-up card (d-pad + A), reset for every new set of offers
     this.seenOffers = null;
+    this.shopSel = 0; // highlighted shop item, reset when a shop opens or changes page (§14.3)
+    this.seenShop = '';
   }
 
   nextSeed() {
@@ -138,6 +140,44 @@ export class App {
     return this.screen === 'play' && this.game.phase === 'play' && this.game.offers.length > 0;
   }
 
+  // The shop screen shows while the running game has its shop open and no level-up offers.
+  shopOpen() {
+    return this.screen === 'play' && this.game.phase === 'play' && this.game.offers.length === 0 && !!this.game.shop;
+  }
+
+  // A shop or a shop page starts with its first item highlighted.
+  syncShop() {
+    const s = this.game.shop;
+    const key = s ? `${s.merchant}:${s.page}` : '';
+    if (key !== this.seenShop) {
+      this.seenShop = key;
+      this.shopSel = 0;
+    }
+  }
+
+  // §14.3 the shop: Esc / B leaves (back from the cards page), P / Start pause; keys 1/2/3, a
+  // click, or the d-pad or move keys + Enter / A choose. Choices reach the sim in the next
+  // tick's intent (`pick`, `leave`); the sim checks the price.
+  handleShop(input) {
+    this.syncShop();
+    const shop = this.game.shop;
+    if (input.leave) { this.pending.leave = true; return; }
+    if (input.pause) { this.screen = 'paused'; return; }
+    const last = shop.page === 'cards' ? shop.cards.length : 3; // the Leave / Back button
+    const m = input.menu || { x: 0, y: 0 };
+    const dx = m.x || input.nav || 0, dy = m.y || 0;
+    if (dx || dy) this.shopSel = shopNav(shop, this.shopSel, Math.sign(dx), Math.sign(dy));
+    let act = -1;
+    if (shop.page !== 'cards' && input.pick >= 0 && input.pick < 3) act = input.pick;
+    if (input.confirm) act = this.shopSel;
+    if (input.click) {
+      const i = shopItemAt(shop, input.click.x, input.click.y);
+      if (i >= 0) { this.shopSel = i; act = i; }
+    }
+    if (act === last) this.pending.leave = true;
+    else if (act >= 0) this.pending.pick = act;
+  }
+
   // A new set of offers starts with the first card highlighted.
   syncOffers() {
     if (this.game.offers !== this.seenOffers) {
@@ -149,7 +189,7 @@ export class App {
   start() {
     this.screen = 'play';
     this.acc.reset(); // the run starts on the next frame
-    this.pending = { confirm: false, pick: -1, debug: [] };
+    this.pending = { confirm: false, pick: -1, reroll: false, leave: false, debug: [] };
     Promise.resolve(this.audio.resume()).then(() => this.audio.play('start_game'));
   }
 
@@ -205,6 +245,10 @@ export class App {
       if (input.confirm || input.click) this.retry();
       return;
     }
+    if (this.shopOpen()) {
+      this.handleShop(input);
+      return;
+    }
     if (input.pause) {
       this.screen = 'paused';
       return;
@@ -222,6 +266,8 @@ export class App {
         if (i >= 0) pick = i;
       }
       if (pick >= 0) this.pending.pick = pick;
+      // §14: a banked reroll, R / X or a click on its button
+      if (input.reroll || (input.click && this.game.rerolls > 0 && inRect(REROLL_BUTTON, input.click.x, input.click.y))) this.pending.reroll = true;
       return;
     }
     // Edge-triggered fields wait for the next tick, so a frame that runs no tick loses none.
@@ -241,10 +287,12 @@ export class App {
     const n = this.acc.advance(nowMs, this.ticking());
     const t0 = n > 0 ? this.now() : 0;
     for (let i = 0; i < n; i++) {
-      const intent = { ...input.intent, confirm: this.pending.confirm, pick: this.pending.pick };
+      const intent = { ...input.intent, confirm: this.pending.confirm, pick: this.pending.pick, reroll: this.pending.reroll, leave: this.pending.leave };
       if (this.pending.debug.length) intent.debug = this.pending.debug.shift();
       this.pending.confirm = false;
       this.pending.pick = -1;
+      this.pending.reroll = false;
+      this.pending.leave = false;
       this.game.tick(intent);
       for (const ev of this.game.events) {
         if (ev.type === 'sound') this.audio.play(ev.name);
@@ -258,6 +306,7 @@ export class App {
     this.stats.ticks = n;
     this.payGold();
     this.syncOffers();
+    this.syncShop();
     return n;
   }
 }

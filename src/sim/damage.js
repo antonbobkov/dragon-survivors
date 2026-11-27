@@ -1,10 +1,14 @@
 // Damage types, resistances and the one damage function every hit on an enemy goes through
 // (§12.1): projectiles, explosions, the ring, and every later weapon. Knockback by weapon
 // knock and enemy mass (§8.7) is applied here, right after the damage.
-import { ENEMIES, DAMAGE_TYPES, RESIST_MIN } from './content.js';
+import { ENEMIES, CHARACTERS, DAMAGE_TYPES, RESIST_MIN } from './content.js';
 import { onEnemyHit } from './enemies.js';
 
 const EPS = 1e-9;
+
+// The stats of a hit target's type: an enemy type, or a character the player can hit (the
+// merchant, §14.3), whose resistances and mass are read the same way.
+const defOf = (type) => ENEMIES[type] || CHARACTERS[type];
 
 // §4.1 `meta`: the armoury's per-damage-type modifiers, given at construction. `power[type]`
 // multiplies the damage of that type (default 1), `shred[type]` is taken off every enemy's
@@ -25,7 +29,7 @@ export function normalizeMeta(meta) {
 // An enemy type's resistance to a damage type after the armoury's shred, never below
 // RESIST_MIN. Types without a resistance entry read 0.
 export function effectiveResist(enemyType, type, meta) {
-  const def = ENEMIES[enemyType];
+  const def = defOf(enemyType);
   const base = (def && def.resist && def.resist[type]) || 0;
   const shred = meta ? meta.shred[type] || 0 : 0;
   return Math.max(RESIST_MIN, base - shred);
@@ -44,7 +48,7 @@ export function damageTaken(amount, r, power = 1) {
 // §8.7 knockback: the px a hit of effective knock `knock` (the weapon's knock × Force) pushes
 // an enemy type: knock / mass. 0 for a type without a mass (the golem, whose hits build poise).
 export function knockDistance(enemyType, knock) {
-  const def = ENEMIES[enemyType];
+  const def = defOf(enemyType);
   const mass = def && def.mass;
   if (!(knock > 0) || !(mass > 0)) return 0;
   return knock / mass;

@@ -4,6 +4,7 @@
 import { WEAPONS, DT } from './content.js';
 import { dealDamage } from './damage.js';
 import { advanceAnim } from './effects.js';
+import { merchantsHit } from './merchant.js';
 
 const EPS = 1e-9;
 const DEG = Math.PI / 180;
@@ -93,6 +94,13 @@ export function collideBlades(game) {
       if (dx * dx + dy * dy >= rr * rr) continue;
       dealDamage(game, e, b.damage, WEAPONS.saw.type, b, b.knock);
       b.rehit[e.id] = game.tickCount + REHIT_TICKS;
+    }
+    // §14.3: a merchant the blade overlaps, on the same rehit timer
+    for (const m of merchantsHit(game, (x, y, r) => (x - b.x) ** 2 + (y - b.y) ** 2 < (r + b.r) ** 2)) {
+      const until = b.rehit[m.id];
+      if (until !== undefined && until > game.tickCount) continue;
+      dealDamage(game, m, b.damage, WEAPONS.saw.type, b, b.knock);
+      b.rehit[m.id] = game.tickCount + REHIT_TICKS;
     }
   }
 }

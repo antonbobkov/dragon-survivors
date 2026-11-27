@@ -81,7 +81,7 @@ export function iconSlots(weapons, buffs) {
   });
 }
 
-// §17 edge markers: an arrow at the screen edge toward each brazier or pickup whose sprite is
+// §17 edge markers: an arrow at the screen edge toward each merchant, brazier or pickup whose sprite is
 // wholly off screen, with the thing's own sprite at 1× just inside it.
 export const MARKER = { margin: 26, size: 7, iconGap: 20, fill: '#ffbf00', edge: '#7f0000' };
 
@@ -98,7 +98,7 @@ export function edgeMarker(x, y, hw, hh, w = VIEW_W, h = VIEW_H, margin = MARKER
   return { x: cx + dx * s, y: cy + dy * s, angle: Math.atan2(dy, dx) };
 }
 
-// Markers of every off-screen brazier, then every off-screen pickup still showing, in list order:
+// Markers of every off-screen merchant, then brazier, then pickup still showing, in list order:
 // [{ x, y, angle, anim, frame }].
 export function edgeMarkers(game, atlas) {
   const o = cameraOffset(game.dragon);
@@ -109,6 +109,7 @@ export function edgeMarkers(game, atlas) {
     const m = edgeMarker(ent.x + o.x, ent.y + o.y, hw, hh);
     if (m) out.push({ ...m, anim: ent.anim, frame: ent.frame });
   };
+  for (const m of game.merchants || []) add(m); // §14.3
   for (const b of game.braziers || []) add(b);
   for (const p of game.pickups || []) if (pickupVisible(p)) add(p);
   return out;

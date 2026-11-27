@@ -132,6 +132,9 @@ What the pack's sprites look like (print any of them with `node tools/bmp-to-art
 | `enemies/slime-small-split.txt` | `slime.split1` | 6 frames (8, 20, 4, 4, 4, 4 ticks): as the pack's `slime.split`, an empty frame, a 2-row puddle, then it wells up into the gen-1 slime |
 | `enemies/slime-tiny.txt` | `slime.walk2` | 9 × 9 gen-2 slime: the same creature at its smallest, 1 px eyes (as the pack's own growing slime has), the same hop |
 | `enemies/slime-tiny-die.txt` | `slime.die2` | 5 frames: as the pack's `slime.die`, red runs down into it, it bursts into red, dark red and maroon splatter, the drops scatter and fade |
+| `pickups/chest.txt` | `pickup.chest` | 12 × 10 chest dropped by a robbed merchant: `gold.dark` wood with `brown` shade (as the horse, so it does not sink into the grass) under a domed lid with a `gold` lit top, two silver bands, a yellow lock |
+| `world/bubble.txt` | `merchant.bubble` | 9 × 8 white speech bubble with a yellow coin (`gold.dark` rim), silver shade, the tail at the bottom left; drawn over a merchant who will trade |
+| `icons/reroll.txt` | `icon.reroll` | Reroll: a white die showing three, silver shade on the right and bottom |
 
 World objects and pickups are drawn at 2× like everything else; dark objects (the bomb) need a broad lit side in `grey`/`silver`, because `charcoal` alone vanishes on the dark grass.
 

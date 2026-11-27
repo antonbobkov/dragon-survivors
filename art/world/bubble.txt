@@ -1,0 +1,17 @@
+# merchant.bubble: drawn over a merchant who will trade. A white speech bubble with a gold
+# coin (yellow, a gold.dark rim on the bottom right), silver shade on the bottom right of the
+# bubble, the tail at the bottom left pointing down at him.
+key
+  w white
+  s silver
+  y yellow
+  o gold.dark
+frame
+.wwwwwww.
+wwwyyywws
+wwyyyyows
+wwyyyyows
+wwwooowws
+.wsssssss
+.ws......
+.s.......

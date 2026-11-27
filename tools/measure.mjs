@@ -196,7 +196,8 @@ export function botIntent(game, policy, pick = 'naive', opts = {}) {
   const p = POLICIES[policy], k = PICKS[pick];
   if (!p) throw new Error(`unknown policy "${policy}"`);
   if (!k) throw new Error(`unknown pick rule "${pick}"`);
-  return { ...p(game, opts), pick: game.offers.length ? k(game) : -1 };
+  // The merchant (§14.3): bots ignore him; a shop that opens because one stood by him is left.
+  return { ...p(game, opts), pick: game.offers.length ? k(game) : -1, leave: !game.offers.length && !!game.shop };
 }
 
 // Instrument only: wraps this game's collisions step to split the tower HP it takes by
