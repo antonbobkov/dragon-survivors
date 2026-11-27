@@ -81,10 +81,12 @@ export function iconSlots(weapons, buffs) {
   });
 }
 
-// §17 edge markers: an arrow at the screen edge toward each merchant, prince, brazier or pickup whose
-// sprite is wholly off screen, with the thing's own sprite at 1× just inside it. A prince's arrow is
-// red (FOE_MARKER): he is a foe.
+// §17 edge markers: an arrow at the screen edge toward each merchant, prince, brazier, pickup or
+// princess whose sprite is wholly off screen, with the thing's own sprite at 1× just inside it. The
+// princess's arrow is magenta (PRINCESS_MARKER), so the escort stands out from the loot; a prince's
+// is red (FOE_MARKER): he is a foe.
 export const MARKER = { margin: 26, size: 7, iconGap: 20, fill: '#ffbf00', edge: '#7f0000' };
+export const PRINCESS_MARKER = { fill: '#ff00ff', edge: '#3f003f' };
 export const FOE_MARKER = { fill: '#ff4040', edge: '#000000' };
 
 // The marker for a sprite of half size (hw, hh) at screen point (x, y), or null while any of it
@@ -100,8 +102,8 @@ export function edgeMarker(x, y, hw, hh, w = VIEW_W, h = VIEW_H, margin = MARKER
   return { x: cx + dx * s, y: cy + dy * s, angle: Math.atan2(dy, dx) };
 }
 
-// Markers of every off-screen merchant, then prince, then brazier, then pickup still showing, in
-// list order: [{ x, y, angle, anim, frame, fill, edge }].
+// Markers of every off-screen merchant, then prince, then brazier, then pickup still showing, then
+// princess (drawn last, so on top), in list order: [{ x, y, angle, anim, frame, fill, edge }].
 export function edgeMarkers(game, atlas) {
   const o = cameraOffset(game.dragon);
   const out = [];
@@ -115,6 +117,7 @@ export function edgeMarkers(game, atlas) {
   for (const e of game.enemies || []) if (ENEMIES[e.type] && ENEMIES[e.type].rival) add(e, FOE_MARKER); // §14.5
   for (const b of game.braziers || []) add(b);
   for (const p of game.pickups || []) if (pickupVisible(p)) add(p);
+  for (const p of game.princesses || []) add(p, PRINCESS_MARKER); // §14.4
   return out;
 }
 

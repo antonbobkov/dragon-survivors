@@ -1,5 +1,6 @@
-// Enemies: target the tower, move, separate, despawn (§8), slime fusion (§8.9), generic death
-// (§2.1 step 9) and the roster specials: slime split, mage cast + summon, ghost knight burn, golem.
+// Enemies: target the tower (or a princess near them, §14.4), move, separate, despawn (§8),
+// slime fusion (§8.9), generic death (§2.1 step 9) and the roster specials: slime split, mage
+// cast + summon, ghost knight burn, golem.
 import {
   ENEMIES, TOWER_RADIUS, CONTACT_INSET, SEPARATION_MAX_NEIGHBOURS, DESPAWN_DIST, DT, MAX_ENEMIES,
   SLIME_CHILDREN, SLIME_GENS, SLIME_FUSE_COUNT, SLIME_FUSE_SIZE, SLIME_FUSE_RADIUS, SLIME_FUSE_INTERVAL, MEGASLIME_HP_FACTOR,
@@ -11,6 +12,7 @@ import { dropGem } from './gems.js';
 import { initialOrbTimer, stepMageOrb } from './enemyShots.js';
 import { initGolem, golemSpecial, golemHit, golemFootstep } from './golem.js';
 import { merchantHit } from './merchant.js';
+import { lureOf } from './princess.js';
 import { initPrince, princeSpecial, walkPrince, princeDeath } from './prince.js';
 
 const MAGE_INTERVAL_TICKS = Math.round(MAGE_CAST_INTERVAL / DT);
@@ -251,10 +253,13 @@ export function stepEnemies(game) {
       advanceAnim(e, true);
       continue;
     }
-    if (def.rival) { walkPrince(game, e); continue; } // §14.5: at the dragon
-    const dx = tower.x - e.x, dy = tower.y - e.y;
+    if (def.rival) { walkPrince(game, e); continue; } // §14.5: at the dragon, never lured
+    // §14.4 a princess within PRINCESS_LURE draws it off the tower (never the golem).
+    const p = e.unkillable ? null : lureOf(game, e);
+    const tx = p ? p.x : tower.x, ty = p ? p.y : tower.y;
+    const dx = tx - e.x, dy = ty - e.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const stop = e.r + TOWER_RADIUS - CONTACT_INSET;
+    const stop = e.r + (p ? p.r : TOWER_RADIUS) - CONTACT_INSET;
     if (dist > stop) {
       const step = Math.min(def.speed * tierOf(e).speed * DT, dist - stop);
       const vx = (dx / dist) * step;

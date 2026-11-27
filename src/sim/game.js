@@ -18,6 +18,7 @@ import { normalizeMeta } from './damage.js';
 import { stepBraziers, collideBraziers, collidePickups, BRAZIER_INTERVAL_TICKS } from './braziers.js';
 import { spawnMerchantIfDue, stepMerchants, merchantDeaths, openShopIfDue, MERCHANT_INTERVAL_TICKS } from './merchant.js';
 import { stepShop } from './shop.js';
+import { spawnPrincessIfDue, stepPrincesses, collidePrincesses, princessDeaths, PRINCESS_INTERVAL_TICKS } from './princess.js';
 import { spawnPrinceIfDue } from './prince.js';
 
 const DYING_TICKS = Math.round(DYING_TIME / DT);
@@ -84,6 +85,8 @@ export class Game {
     this.merchantTimer = MERCHANT_INTERVAL_TICKS; // spawner steps until the next merchant is due
     this.shop = null; // the merchant's shop while it is open (§14.3)
     this.rerolls = 0; // level-up rerolls bought from merchants (§14)
+    this.princesses = []; // §14.4, at most one
+    this.princessTimer = PRINCESS_INTERVAL_TICKS; // spawner steps until the next princess is due
     this.princeNext = PRINCE_FIRST; // s: when the next prince is due (§14.5)
     this.spawner = createSpawner();
     this.grid = new Grid();
@@ -184,17 +187,19 @@ export class Game {
   stepDragon() { moveDragon(this); }
   // 3. §7.1
   stepTether() { stepTether(this); }
-  // 4. §9 enemies, then §14.2 braziers, then §14.3 the merchant, then §14.5 the prince.
+  // 4. §9 enemies, then §14.2 braziers, then §14.3 the merchant, then §14.4 the princess, then §14.5 the prince.
   stepSpawner() {
     stepSpawner(this);
     stepBraziers(this);
     spawnMerchantIfDue(this);
+    spawnPrincessIfDue(this);
     spawnPrinceIfDue(this);
   }
   // 5. Special timers (mage cast, summon anim), AI, move, separation, despawn, slime fusion (§8).
   stepEnemies() {
     stepEnemies(this);
     stepMerchants(this); // §14.3
+    stepPrincesses(this); // §14.4
   }
   // 6. §10: cooldowns, firing, ring positions, mini towers.
   stepWeapons() { stepWeapons(this); }
@@ -207,7 +212,7 @@ export class Game {
   }
   // 8. Player hits vs braziers, projectile vs enemy (with procs), ring vs enemy, claw slashes
   // vs enemy (and braziers), bite vs enemy (and braziers), saw blades vs enemy, enemy vs tower,
-  // enemy shot vs dragon, dragon vs pickups (§14.2).
+  // enemy vs princess (§14.4), enemy shot vs dragon, dragon vs pickups (§14.2).
   stepCollisions() {
     this.grid.build(this.enemies);
     collideBraziers(this);
@@ -217,6 +222,7 @@ export class Game {
     collideBites(this);
     collideBlades(this);
     collideTower(this);
+    collidePrincesses(this);
     collideEnemyShots(this);
     collidePickups(this);
   }
@@ -224,6 +230,7 @@ export class Game {
   stepDeaths() {
     stepDeaths(this);
     merchantDeaths(this); // §14.3: a chest, no gem, no kill
+    princessDeaths(this); // §14.4: nothing lost
   }
   // 10. §14: attract and collect gems, queue level-ups and roll offers.
   stepGems() { stepGems(this); }
@@ -258,6 +265,7 @@ export class Game {
       projectiles: this.projectiles, enemyShots: this.enemyShots, effects: this.effects, gems: this.gems, miniTowers: this.miniTowers, slashes: this.slashes, blades: this.blades,
       braziers: this.braziers, pickups: this.pickups, brazierTimer: this.brazierTimer, lastBomb: this.lastBomb, lastFusion: this.lastFusion,
       merchants: this.merchants, merchantTimer: this.merchantTimer, shop: this.shop, rerolls: this.rerolls,
+      princesses: this.princesses, princessTimer: this.princessTimer,
       princeNext: this.princeNext,
       weapons: this.weapons, buffs: this.buffs,
     };

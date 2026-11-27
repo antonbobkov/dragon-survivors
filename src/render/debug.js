@@ -1,7 +1,7 @@
 // Debug overlay (§19, only with ?debug=1): collision circles over the world, and loop and
 // entity stats at the top right. Reads the game and the loop stats; never writes them.
 import { golemPoiseNeeded } from '../sim/golem.js';
-import { TOWER_RADIUS, DRAGON_PICKUP_RADIUS, DRAGON_RADIUS, WEAPONS, BRAZIER_RADIUS, GOLEM_POISE } from '../sim/content.js';
+import { TOWER_RADIUS, DRAGON_PICKUP_RADIUS, DRAGON_RADIUS, WEAPONS, BRAZIER_RADIUS, GOLEM_POISE, PRINCESS_LURE } from '../sim/content.js';
 import { VIEW_W } from '../viewport.js';
 import { worldOffset } from './draw.js';
 import { shadowText } from './hud.js';
@@ -11,7 +11,7 @@ import { buffMods, weaponLevel } from '../sim/weapons.js';
 export const DEBUG_FONT = '12px monospace';
 export const DEBUG_COLORS = {
   enemy: '#ff4040', tower: '#ffa020', projectile: '#ffff40', ring: '#ffff40', pickup: '#40e0ff', mini: '#c080ff', orb: '#60ff60', dragon: '#ffffff', brazier: '#ff8000',
-  slash: '#ff80ff', bite: '#ff4040', blade: '#e0e0e0',
+  slash: '#ff80ff', bite: '#ff4040', blade: '#e0e0e0', princess: '#ff00ff',
 };
 // §19 the golem's poise bar: POISE_BAR.w × h px, centred POISE_BAR.gap px above its circle;
 // filled to poise / the poise its next stagger needs, full in the stagger colour while it staggers.
@@ -63,7 +63,8 @@ function slashOutline(ctx, s, o) {
 
 // Collision circles: enemies, the tower, projectiles, enemy shots, ring fireballs, saw blades,
 // mini towers' target radius, braziers, claw slash hitboxes, the bite's reach around the
-// dragon, the dragon's hit circle and its gem pickup radius; the golem's poise bar.
+// dragon, a princess's circle and her lure radius (§14.4), the dragon's hit circle and its gem
+// pickup radius; the golem's poise bar.
 export function drawDebugWorld(ctx, game, shake) {
   const o = worldOffset(game, shake); // shaken with the world (§5)
   ctx.save();
@@ -86,6 +87,10 @@ export function drawDebugWorld(ctx, game, shake) {
     if (w.id !== 'bite') continue;
     const reach = weaponLevel(w).reach * buffMods(game).area;
     circle(ctx, game.dragon.x + o.x, game.dragon.y + o.y, reach, DEBUG_COLORS.bite);
+  }
+  for (const p of game.princesses || []) {
+    circle(ctx, p.x + o.x, p.y + o.y, p.r, DEBUG_COLORS.princess);
+    circle(ctx, p.x + o.x, p.y + o.y, PRINCESS_LURE, DEBUG_COLORS.princess);
   }
   circle(ctx, game.dragon.x + o.x, game.dragon.y + o.y, DRAGON_RADIUS, DEBUG_COLORS.dragon);
   circle(ctx, game.dragon.x + o.x, game.dragon.y + o.y, DRAGON_PICKUP_RADIUS, DEBUG_COLORS.pickup);
