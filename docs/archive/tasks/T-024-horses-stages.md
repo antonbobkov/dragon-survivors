@@ -1,6 +1,6 @@
 # T-024: Horses, mounted knights, stages and banners
 
-**Source:** [strategy-depth design](../../reports/designs/2026-11-26-strategy-depth-design.md) §5, §7; owner notes 2 (enemies; "different stages require different strategies") · **Model:** Opus · **Depends on:** T-017 (art), T-018 (resistances), T-019 (mass), T-021 (tiers) — all merged
+**Source:** [strategy-depth design](../../../reports/designs/2026-11-26-strategy-depth-design.md) §5, §7; owner notes 2 (enemies; "different stages require different strategies") · **Model:** Opus · **Depends on:** T-017 (art), T-018 (resistances), T-019 (mass), T-021 (tiers) — all merged
 
 ## Why
 
