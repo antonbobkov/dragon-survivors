@@ -26,15 +26,29 @@ export const CONTACT_INSET = 1; // enemies stop advancing this far inside contac
 export const REPAIR_HP = 25;
 export const DYING_TIME = 2; // s of 'dying' phase before 'over' (§13)
 
+// §8.4 slime generations: gen 0 is the §8 row. A slime of a generation with a `split` splits
+// on death into SLIME_CHILDREN slimes of the next generation, `offset` px either side of its
+// path; the last generation dies with its `die`. HP and radius are tier 1 (scaled by the tier).
+export const SLIME_CHILDREN = 2;
+export const SLIME_GENS = [
+  { hp: 3, r: 12, walk: 'slime.walk',  split: 'slime.split',  offset: 20 },
+  { hp: 2, r: 9,  walk: 'slime.walk1', split: 'slime.split1', offset: 15 },
+  { hp: 1, r: 7,  walk: 'slime.walk2', die: 'slime.die2' },
+];
+
 // §8 Enemies. hp Infinity = cannot die. xp 0 = no gem. `mass` divides knockback (§8.7); the
 // golem has none: it keeps its own knockback rule (GOLEM_KNOCKBACK). `scale` (default 2, the
 // standard) is the screen scale of a type drawn bigger (§5, §8.6). `stampede` marks the horse:
-// it comes only in stampedes and runs straight (§8.8), never from the spawn budget.
-export const ENEMY_TYPES = ['knight', 'skeleton', 'slime', 'mage', 'ghostKnight', 'ghost', 'horse', 'mountedKnight', 'golem'];
+// it comes only in stampedes and runs straight (§8.8), never from the spawn budget. `gens` are
+// the slime's generations (SLIME_GENS, §8.4). `fused` marks the megaslime: it comes only from a
+// slime fusion (§8.9), which sets its HP and XP (`hp` and `xp` null here). `summon` is an anim
+// played once on arrival, without walking, before `walk` (a summoned skeleton, a fusing megaslime).
+export const ENEMY_TYPES = ['knight', 'skeleton', 'slime', 'megaslime', 'mage', 'ghostKnight', 'ghost', 'horse', 'mountedKnight', 'golem'];
 export const ENEMIES = {
   knight:      { name: 'Knight',       hp: 3,        speed: 27.5, r: 12, dps: 2,  xp: 1, mass: 1,    walk: 'knight.walk',  die: 'knight.die',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.25 } },
   skeleton:    { name: 'Skeleton',     hp: 1,        speed: 45,   r: 10, dps: 6,  xp: 1, mass: 0.7,  walk: 'skelly.walk',  die: 'skelly.die',  alpha: 1, resist: { fire: 0,    arcane: 0.25, physical: -0.5 }, summon: 'skelly.summon' },
-  slime:       { name: 'Slime',        hp: 2,        speed: 35,   r: 12, dps: 8,  xp: 1, mass: 0.8,  walk: 'slime.walk',   die: 'slime.die',   alpha: 1, resist: { fire: -0.5, arcane: 0,    physical: 0.5 }, split: 'slime.split' },
+  slime:       { name: 'Slime',        hp: 3,        speed: 35,   r: 12, dps: 8,  xp: 1, mass: 0.8,  walk: 'slime.walk',   die: 'slime.die',   alpha: 1, resist: { fire: -0.5, arcane: 0,    physical: 0.5 }, split: 'slime.split', gens: SLIME_GENS },
+  megaslime:   { name: 'Megaslime',    hp: null,     speed: 15,   r: 28, dps: 0,  xp: null, mass: 4, walk: 'megaslime.walk', die: 'megaslime.die', alpha: 1, resist: { fire: -0.5, arcane: 0, physical: 0.5 }, summon: 'megaslime.fuse', fused: true },
   mage:        { name: 'Mage',         hp: 4,        speed: 20,   r: 12, dps: 5,  xp: 5, mass: 1,    walk: 'mage.walk',    die: 'mage.die',    alpha: 1, resist: { fire: 0,    arcane: 0.5,  physical: -0.25 }, spell: 'mage.spell' },
   ghostKnight: { name: 'Ghost knight', hp: 10,       speed: 27.5, r: 12, dps: 10, xp: 2, mass: 1,    walk: 'ghost.knight', die: 'ghost.burn',  alpha: 1, resist: { fire: 0,    arcane: 0,    physical: 0.25 } },
   ghost:       { name: 'Ghost',        hp: 2,        speed: 36,   r: 10, dps: 8,  xp: 1, mass: 0.6,  walk: 'ghost.ghost',  die: 'ghost.die',   alpha: 0.6, resist: { fire: 0.25, arcane: -0.5, physical: 0.75 } },
@@ -60,22 +74,28 @@ export const tierOf = (ent) => TIERS[ent.tier] || TIERS[1];
 export const tierHp = (hp, tier) => Math.ceil(hp * TIERS[tier].hp - 1e-9);
 // Atlas name of an anim at a tier: tier 1 is the plain anim, others `<anim>@t<tier>` (§3.3).
 export const tierAnim = (anim, tier) => (tier > 1 ? `${anim}@t${tier}` : anim);
-// Every anim with tier variants: all anims of every enemy type except the golem's.
-export const TIERED_ANIMS = ENEMY_TYPES.filter((t) => !ENEMIES[t].unkillable)
-  .flatMap((t) => { const d = ENEMIES[t]; return [d.walk, d.die, d.summon, d.split, d.spell].filter(Boolean); });
+// Every anim of an enemy type: walk, die, summon, split, spell, then the anims of the slime's
+// later generations (§8.4). Tier variants exist for every enemy type's anims except the golem's.
+export const enemyAnims = (d) => [d.walk, d.die, d.summon, d.split, d.spell,
+  ...(d.gens || []).slice(1).flatMap((g) => [g.walk, g.split, g.die])].filter(Boolean);
+export const TIERED_ANIMS = ENEMY_TYPES.filter((t) => !ENEMIES[t].unkillable).flatMap((t) => enemyAnims(ENEMIES[t]));
 // §5, §8.6 the screen scale of an enemy or death-effect sprite: its type's scale (2 unless the
 // type is drawn bigger) times the tier's ratio to the standard, rounded down to a whole number.
 // A 3× type is 3× at tiers 1–2 and 4× at tiers 3–4; every other type 2× and 3×.
 export const ANIM_SCALE = Object.fromEntries(ENEMY_TYPES.filter((t) => ENEMIES[t].scale)
-  .flatMap((t) => { const d = ENEMIES[t]; return [d.walk, d.die, d.summon, d.split, d.spell].filter(Boolean).map((a) => [a, d.scale]); }));
+  .flatMap((t) => enemyAnims(ENEMIES[t]).map((a) => [a, ENEMIES[t].scale])));
 export const screenScale = (anim, tier) =>
   Math.floor((ANIM_SCALE[anim] || TIERS[1].scale) * (TIERS[tier] || TIERS[1]).scale / TIERS[1].scale + 1e-9);
 
-// §8 specials (implemented by the roster task)
-export const SLIME_CHILDREN = 2;
-export const SLIME_CHILD_HP = 1;
-export const SLIME_CHILD_R = 8;
-export const SLIME_CHILD_OFFSET = 20;
+// §8 specials
+// §8.9 slime fusion: while more than SLIME_FUSE_COUNT slimes are alive, at most once per
+// SLIME_FUSE_INTERVAL s, the SLIME_FUSE_SIZE slimes nearest the slime with the most slimes within
+// SLIME_FUSE_RADIUS px fuse into a megaslime of MEGASLIME_HP_FACTOR × their HP and their XP.
+export const SLIME_FUSE_COUNT = 100;
+export const SLIME_FUSE_SIZE = 12;
+export const SLIME_FUSE_RADIUS = 80;
+export const SLIME_FUSE_INTERVAL = 1;
+export const MEGASLIME_HP_FACTOR = 4;
 export const MAGE_CAST_INTERVAL = 8;
 export const MAGE_CAST_TIME = 1;
 export const MAGE_SUMMON_COUNT = 4;
@@ -345,7 +365,8 @@ export const ATLAS_NAMES = [
   'dragon.walk',
   'knight.walk', 'knight.die',
   'skelly.walk', 'skelly.die', 'skelly.summon',
-  'slime.walk', 'slime.die', 'slime.split',
+  'slime.walk', 'slime.die', 'slime.split', 'slime.walk1', 'slime.split1', 'slime.walk2', 'slime.die2',
+  'megaslime.walk', 'megaslime.die', 'megaslime.fuse',
   'mage.walk', 'mage.die', 'mage.spell',
   'ghost.knight', 'ghost.burn', 'ghost.ghost', 'ghost.die',
   'golem.walk', 'golem.die',

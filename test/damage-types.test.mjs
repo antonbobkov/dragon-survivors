@@ -72,8 +72,8 @@ test('dealDamage: applies resistance and the armoury, takes it off HP, returns i
   assert.equal(dealDamage(m, mage2, 3, 'arcane', mage2), 6, 'resist 0.5 shredded to 0, × 2');
   const g2 = still();
   const s = createEnemy(g2, 'slime', 0, 0);
-  assert.equal(dealDamage(g2, s, 2, 'fire', s), 3);
-  assert.equal(s.hp, -1, 'not capped at the HP left');
+  assert.equal(dealDamage(g2, s, 3, 'fire', s), 5, 'ceil(3 × 1.5)');
+  assert.equal(s.hp, -2, 'not capped at the HP left');
   g2.stepDeaths();
   assert.equal(g2.kills, 1, 'the deaths step kills it as before');
 });

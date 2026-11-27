@@ -61,7 +61,7 @@ test('content: mage orb constants match §8.5', () => {
 });
 
 test('content: enemy table matches §8', () => {
-  const names = { Knight: 'knight', Skeleton: 'skeleton', Slime: 'slime', Mage: 'mage', 'Ghost knight': 'ghostKnight', Ghost: 'ghost', Horse: 'horse', 'Mounted knight': 'mountedKnight', 'Mega golem': 'golem' };
+  const names = { Knight: 'knight', Skeleton: 'skeleton', Slime: 'slime', Megaslime: 'megaslime', Mage: 'mage', 'Ghost knight': 'ghostKnight', Ghost: 'ghost', Horse: 'horse', 'Mounted knight': 'mountedKnight', 'Mega golem': 'golem' };
   const rows = tableAfter('## 8. Enemies');
   assert.equal(rows.length, C.ENEMY_TYPES.length);
   assert.deepEqual(rows.map((r) => names[r[0]]), C.ENEMY_TYPES, 'ENEMY_TYPES in table order (the bestiary order, §17.1)');
@@ -70,11 +70,24 @@ test('content: enemy table matches §8', () => {
     assert.ok(e, type);
     assert.deepEqual(e.resist, { fire: num(fire), arcane: num(arcane), physical: num(physical) }, `${type} resistances (§8, §12.1)`);
     for (const t of C.DAMAGE_TYPES) assert.ok(e.resist[t] >= C.RESIST_MIN && e.resist[t] <= 1, `${type} ${t} in [-0.5, 1]`);
-    assert.equal(e.hp, hp === '∞' ? Infinity : num(hp), `${type} hp`);
+    // A slime's HP and radius are three numbers, gen 0 / 1 / 2 (§8.4); the megaslime's HP and XP
+    // come from its fusion (§8.9): `4 × fused` and `fused`.
+    const many = (cell) => cell.split('/').map(num);
+    if (e.gens) {
+      assert.deepEqual(e.gens.map((g) => g.hp), many(hp), `${type} hp per generation`);
+      assert.deepEqual(e.gens.map((g) => g.r), many(r), `${type} r per generation`);
+    }
+    if (e.fused) {
+      assert.equal(hp, `${C.MEGASLIME_HP_FACTOR} × fused`, `${type} hp`);
+      assert.equal(xp, 'fused', `${type} xp`);
+      assert.deepEqual([e.hp, e.xp], [null, null]);
+    } else {
+      assert.equal(e.hp, hp === '∞' ? Infinity : num(hp), `${type} hp`);
+      assert.equal(e.xp, xp === 'none' ? 0 : num(xp), `${type} xp`);
+    }
     assert.equal(e.speed, num(speed), `${type} speed`);
     assert.equal(e.r, num(r), `${type} r`);
     assert.equal(e.dps, num(dps), `${type} dps`);
-    assert.equal(e.xp, xp === 'none' ? 0 : num(xp), `${type} xp`);
     assert.equal(e.mass, mass === 'none' ? null : num(mass), `${type} mass (§8.7)`);
     if (mass !== 'none') assert.ok(e.mass > 0, `${type} mass > 0`);
     const prefix = sprite.replace(/`/g, '');

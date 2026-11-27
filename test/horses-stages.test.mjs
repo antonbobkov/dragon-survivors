@@ -330,9 +330,9 @@ test('art: horse 20×14 (2-frame gallop, 5-frame death), mounted knight 22×22 (
   }
 });
 
-test('bestiary: 9 types fit (87 px cards), the new types in table order, their sprites at 2× in the box', () => {
+test('bestiary: every type fits (87 px cards), the new types in table order, their sprites at 2× in the box', () => {
   const rects = bestiaryLayout(ENEMY_TYPES.length);
-  assert.equal(ENEMY_TYPES.length, 9);
+  assert.ok(ENEMY_TYPES.length <= 10, 'two columns of 87 px cards hold 10');
   assert.equal(rects[0].h, 87);
   assert.ok(rects.every((r) => r.y + r.h <= BESTIARY.bottom));
   const g = still();
