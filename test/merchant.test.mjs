@@ -138,6 +138,7 @@ test('spawn: one at a time (a due merchant while one is about draws nothing), th
   g.tick({});
   assert.equal(g.merchants.length, 1, 'still one');
   g.merchants.length = 0;
+  g.rng = () => 0.5; // the princess due on the way (§14.4) draws her side
   run(g, MERCHANT_INTERVAL_TICKS - 1);
   assert.equal(g.merchants.length, 0);
   g.rng = scripted([0, 0.5]);

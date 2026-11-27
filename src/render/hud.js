@@ -81,9 +81,11 @@ export function iconSlots(weapons, buffs) {
   });
 }
 
-// §17 edge markers: an arrow at the screen edge toward each merchant, brazier or pickup whose sprite is
-// wholly off screen, with the thing's own sprite at 1× just inside it.
+// §17 edge markers: an arrow at the screen edge toward each merchant, brazier, pickup or princess
+// whose sprite is wholly off screen, with the thing's own sprite at 1× just inside it. The
+// princess's arrow is magenta (PRINCESS_MARKER), so the escort stands out from the loot.
 export const MARKER = { margin: 26, size: 7, iconGap: 20, fill: '#ffbf00', edge: '#7f0000' };
+export const PRINCESS_MARKER = { fill: '#ff00ff', edge: '#3f003f' };
 
 // The marker for a sprite of half size (hw, hh) at screen point (x, y), or null while any of it
 // is on the w × h screen. The arrow sits where the line from the screen centre to the point
@@ -98,20 +100,21 @@ export function edgeMarker(x, y, hw, hh, w = VIEW_W, h = VIEW_H, margin = MARKER
   return { x: cx + dx * s, y: cy + dy * s, angle: Math.atan2(dy, dx) };
 }
 
-// Markers of every off-screen merchant, then brazier, then pickup still showing, in list order:
-// [{ x, y, angle, anim, frame }].
+// Markers of every off-screen merchant, then brazier, then pickup still showing, then princess
+// (drawn last, so on top), in list order: [{ x, y, angle, anim, frame, fill, edge }].
 export function edgeMarkers(game, atlas) {
   const o = cameraOffset(game.dragon);
   const out = [];
-  const add = (ent) => {
+  const add = (ent, colors = MARKER) => {
     const r = frameRect(atlas, ent.anim, ent.frame);
     const hw = r ? (r.w * SPRITE_SCALE) / 2 : 0, hh = r ? (r.h * SPRITE_SCALE) / 2 : 0;
     const m = edgeMarker(ent.x + o.x, ent.y + o.y, hw, hh);
-    if (m) out.push({ ...m, anim: ent.anim, frame: ent.frame });
+    if (m) out.push({ ...m, anim: ent.anim, frame: ent.frame, fill: colors.fill, edge: colors.edge });
   };
   for (const m of game.merchants || []) add(m); // §14.3
   for (const b of game.braziers || []) add(b);
   for (const p of game.pickups || []) if (pickupVisible(p)) add(p);
+  for (const p of game.princesses || []) add(p, PRINCESS_MARKER); // §14.4
   return out;
 }
 
@@ -128,10 +131,10 @@ function drawMarker(ctx, atlas, m) {
   ctx.lineTo(-size * 0.4, 0);
   ctx.lineTo(-size, size);
   ctx.closePath();
-  ctx.fillStyle = MARKER.fill;
+  ctx.fillStyle = m.fill || MARKER.fill;
   ctx.fill();
   ctx.lineWidth = 2;
-  ctx.strokeStyle = MARKER.edge;
+  ctx.strokeStyle = m.edge || MARKER.edge;
   ctx.stroke();
   ctx.restore();
 }

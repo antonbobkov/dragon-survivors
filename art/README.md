@@ -135,6 +135,7 @@ What the pack's sprites look like (print any of them with `node tools/bmp-to-art
 | `pickups/chest.txt` | `pickup.chest` | 12 × 10 chest dropped by a robbed merchant: `gold.dark` wood with `brown` shade (as the horse, so it does not sink into the grass) under a domed lid with a `gold` lit top, two silver bands, a yellow lock |
 | `world/bubble.txt` | `merchant.bubble` | 9 × 8 white speech bubble with a yellow coin (`gold.dark` rim), silver shade, the tail at the bottom left; drawn over a merchant who will trade |
 | `icons/reroll.txt` | `icon.reroll` | Reroll: a white die showing three, silver shade on the right and bottom |
+| `effects/sparkle.txt` | `princess.sparkle` | 15 × 15 rescue sparkle over the tower, 5 frames (4, 4, 5, 6, 8 ticks): a white and yellow star flares at the centre, bursts into four small yellow stars on the diagonals with gold sparks on the axes, the sparks drift out and fade. Drawn at 4× so it reads over the 60 px castle |
 
 World objects and pickups are drawn at 2× like everything else; dark objects (the bomb) need a broad lit side in `grey`/`silver`, because `charcoal` alone vanishes on the dark grass.
 
